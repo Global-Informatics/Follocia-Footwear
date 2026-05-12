@@ -7,6 +7,7 @@ export default defineConfig({
   base: "/Follocia-Footwear/",
   plugins: [react(), tailwindcss(), tsConfigPaths({ projects: ["./tsconfig.json"] })],
   build: {
-    outDir: "dist-pages",
+    outDir: "docs",
+    emptyOutDir: true,
   },
 });
