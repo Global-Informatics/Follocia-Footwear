@@ -13,7 +13,7 @@ import { Benefits } from "@/components/sections/Benefits";
 import { Testimonials } from "@/components/sections/Testimonials";
 import { VipNewsletter } from "@/components/sections/VipNewsletter";
 import { Footer } from "@/components/sections/Footer";
-import { AdminPanel, UserPanel } from "@/components/panels/CommercePanels";
+import { AdminPanel } from "@/components/panels/CommercePanels";
 
 function Storefront() {
   return (
@@ -47,7 +47,6 @@ export function App() {
   const path = hashPath.startsWith("/") ? hashPath : routedPath;
 
   if (path.startsWith("/admin")) return <AdminPanel />;
-  if (path.startsWith("/account") || path.startsWith("/user")) return <UserPanel />;
 
   return <Storefront />;
 }

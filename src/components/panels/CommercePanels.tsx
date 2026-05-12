@@ -79,7 +79,6 @@ function PanelTopbar() {
         <a href={appRoot} className="font-display text-2xl tracking-[0.28em] text-[var(--ink)]">FOLLOCIA</a>
         <div className="flex flex-wrap items-center gap-2">
           <a className="border border-[var(--ink)]/15 px-4 py-3 eyebrow text-[var(--ink)]/75 hover:border-[var(--gold)] hover:text-[var(--ink)]" href={liveHref("admin")}>Admin</a>
-          <a className="border border-[var(--ink)]/15 px-4 py-3 eyebrow text-[var(--ink)]/75 hover:border-[var(--gold)] hover:text-[var(--ink)]" href={liveHref("account")}>User</a>
           <a className="bg-[var(--ink)] px-4 py-3 eyebrow text-[var(--bone)] hover:bg-[var(--gold)] hover:text-[var(--ink)]" href={appRoot}>Storefront</a>
         </div>
       </div>
