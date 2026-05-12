@@ -31,3 +31,14 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# ASP.NET / Visual Studio build output
+.vs/
+bin/
+obj/
+**/bin/
+**/obj/
+*.csproj.user
+
+# Local generated static build
+docs/

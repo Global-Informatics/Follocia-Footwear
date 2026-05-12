@@ -1,10 +1,10 @@
-import { Link } from "@tanstack/react-router";
 import { motion, useScroll, useTransform, AnimatePresence } from "framer-motion";
 import { useEffect, useState } from "react";
 import { Magnetic } from "./Magnetic";
 import { useCart } from "./cart/CartContext";
 
 export function Navigation() {
+  const baseUrl = import.meta.env.BASE_URL === "/react/" ? "/" : import.meta.env.BASE_URL;
   const { scrollY } = useScroll();
   const bg = useTransform(scrollY, [0, 80], ["oklch(1 0 0 / 0)", "oklch(0.14 0.005 60 / 0.85)"]);
   const color = useTransform(scrollY, [0, 80], ["var(--bone)", "var(--bone)"]);
@@ -29,9 +29,9 @@ export function Navigation() {
         className="fixed inset-x-0 top-0 z-[60] backdrop-blur-md transition-colors"
       >
         <div className="mx-auto flex h-20 max-w-[1600px] items-center justify-between px-6 md:px-12">
-          <Link to="/" className="font-display text-2xl tracking-[0.3em] text-[var(--bone)]">
+          <a href={baseUrl} className="font-display text-2xl tracking-[0.3em] text-[var(--bone)]">
             FOLLOCIA
-          </Link>
+          </a>
           <nav className="hidden items-center gap-10 md:flex">
             {nav.map(([label]) => (
               <a key={label} href="#" className="eyebrow text-[var(--bone)]/80 transition-colors hover:text-[var(--gold)]">

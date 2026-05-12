@@ -13,8 +13,9 @@ import { Benefits } from "@/components/sections/Benefits";
 import { Testimonials } from "@/components/sections/Testimonials";
 import { VipNewsletter } from "@/components/sections/VipNewsletter";
 import { Footer } from "@/components/sections/Footer";
+import { AdminPanel, UserPanel } from "@/components/panels/CommercePanels";
 
-export function App() {
+function Storefront() {
   return (
     <CartProvider>
       <Loader />
@@ -36,4 +37,15 @@ export function App() {
       </main>
     </CartProvider>
   );
+}
+
+export function App() {
+  const base = import.meta.env.BASE_URL.toLowerCase().replace(/\/$/, "");
+  const fullPath = window.location.pathname.toLowerCase();
+  const path = base && fullPath.startsWith(base) ? fullPath.slice(base.length) || "/" : fullPath;
+
+  if (path.startsWith("/admin")) return <AdminPanel />;
+  if (path.startsWith("/account") || path.startsWith("/user")) return <UserPanel />;
+
+  return <Storefront />;
 }

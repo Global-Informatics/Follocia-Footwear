@@ -113,14 +113,6 @@
 }
 
 @layer base {
-  @font-face {
-    font-family: "Cormorant Garamond";
-    font-style: normal;
-    font-weight: 300 700;
-    font-display: swap;
-    src: url("https://fonts.gstatic.com/s/cormorantgaramond/v16/co3YmX5slCNuHLi8bLeY9MK7whWMhyjQAllvuQWJ5heb_w.woff2") format("woff2");
-  }
-
   * {
     border-color: var(--color-border);
   }
