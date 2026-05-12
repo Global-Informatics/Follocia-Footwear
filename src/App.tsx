@@ -42,7 +42,9 @@ function Storefront() {
 export function App() {
   const base = import.meta.env.BASE_URL.toLowerCase().replace(/\/$/, "");
   const fullPath = window.location.pathname.toLowerCase();
-  const path = base && fullPath.startsWith(base) ? fullPath.slice(base.length) || "/" : fullPath;
+  const routedPath = base && fullPath.startsWith(base) ? fullPath.slice(base.length) || "/" : fullPath;
+  const hashPath = window.location.hash.replace(/^#/, "").toLowerCase();
+  const path = hashPath.startsWith("/") ? hashPath : routedPath;
 
   if (path.startsWith("/admin")) return <AdminPanel />;
   if (path.startsWith("/account") || path.startsWith("/user")) return <UserPanel />;

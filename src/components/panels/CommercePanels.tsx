@@ -71,14 +71,15 @@ function statusTone(status: string) {
 function PanelTopbar() {
   const appRoot = import.meta.env.BASE_URL === "/react/" ? "/" : import.meta.env.BASE_URL;
   const href = (path: string) => `${appRoot}${path}`.replace(/\/{2,}/g, "/");
+  const liveHref = (path: string) => import.meta.env.BASE_URL === "/react/" ? href(path) : `${appRoot}#/${path}`;
 
   return (
     <header className="sticky top-0 z-40 border-b border-[var(--ink)]/10 bg-[var(--bone)]/85 px-6 backdrop-blur-xl md:px-10">
       <div className="mx-auto flex h-20 max-w-[1700px] items-center justify-between gap-4">
         <a href={appRoot} className="font-display text-2xl tracking-[0.28em] text-[var(--ink)]">FOLLOCIA</a>
         <div className="flex flex-wrap items-center gap-2">
-          <a className="border border-[var(--ink)]/15 px-4 py-3 eyebrow text-[var(--ink)]/75 hover:border-[var(--gold)] hover:text-[var(--ink)]" href={href("admin")}>Admin</a>
-          <a className="border border-[var(--ink)]/15 px-4 py-3 eyebrow text-[var(--ink)]/75 hover:border-[var(--gold)] hover:text-[var(--ink)]" href={href("account")}>User</a>
+          <a className="border border-[var(--ink)]/15 px-4 py-3 eyebrow text-[var(--ink)]/75 hover:border-[var(--gold)] hover:text-[var(--ink)]" href={liveHref("admin")}>Admin</a>
+          <a className="border border-[var(--ink)]/15 px-4 py-3 eyebrow text-[var(--ink)]/75 hover:border-[var(--gold)] hover:text-[var(--ink)]" href={liveHref("account")}>User</a>
           <a className="bg-[var(--ink)] px-4 py-3 eyebrow text-[var(--bone)] hover:bg-[var(--gold)] hover:text-[var(--ink)]" href={appRoot}>Storefront</a>
         </div>
       </div>
