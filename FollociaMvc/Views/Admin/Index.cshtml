@@ -1,0 +1,209 @@
+@model FollociaMvc.Models.AdminPanelViewModel
+@{
+    Layout = null;
+}
+
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Follocia Admin Panel</title>
+    <link rel="stylesheet" href="~/css/panels.css" asp-append-version="true" />
+</head>
+<body>
+    <main class="panel-shell">
+        <header class="panel-topbar">
+            <a class="brand-mark" asp-controller="Home" asp-action="Index">FOLLOCIA</a>
+            <div class="top-actions">
+                <a asp-controller="Account" asp-action="Index">User Panel</a>
+                <a asp-controller="Home" asp-action="Index">Storefront</a>
+            </div>
+        </header>
+
+        <div class="panel-frame">
+            <aside class="panel-sidebar">
+                <h2>Admin</h2>
+                <p>Control room for a scarce, invitation-led women footwear house.</p>
+                <nav class="panel-nav" aria-label="Admin sections">
+                    <a class="active" href="#dashboard">Dashboard <span>01</span></a>
+                    <a href="#orders">Reservations <span>02</span></a>
+                    <a href="#inventory">Inventory <span>03</span></a>
+                    <a href="#customers">Customers <span>04</span></a>
+                    <a href="#concierge">Concierge <span>05</span></a>
+                    <a href="#content">Content <span>06</span></a>
+                </nav>
+            </aside>
+
+            <section class="panel-main">
+                <section id="dashboard" class="hero-panel">
+                    <div>
+                        <p class="eyebrow">Maison operations / MMXXV</p>
+                        <h1>Premium commerce dashboard for the rare drop cycle.</h1>
+                        <p>Track limited editions, VIP demand, concierge orders, white-glove dispatch and private fitting tasks from one place.</p>
+                    </div>
+                    <div class="hero-stamp">8 pairs<br />per year</div>
+                </section>
+
+                <section class="metrics-grid" aria-label="Admin metrics">
+                    @foreach (var metric in Model.Metrics)
+                    {
+                        <article class="metric-card">
+                            <span>@metric.Label</span>
+                            <strong>@metric.Value</strong>
+                            <small class="@(metric.Tone == "warn" ? "warn" : "")">@metric.Delta</small>
+                        </article>
+                    }
+                </section>
+
+                <section class="quick-actions" id="content">
+                    <article class="action-card">
+                        <strong>Create drop</strong>
+                        <p>Add a new edition, production cap, VIP preview window, hero assets and launch inventory.</p>
+                    </article>
+                    <article class="action-card">
+                        <strong>Approve VIPs</strong>
+                        <p>Shortlist collectors, rank buying intent and move profiles into private early access.</p>
+                    </article>
+                    <article class="action-card">
+                        <strong>Dispatch queue</strong>
+                        <p>Review paid reservations, packaging status, certificate generation and delivery slots.</p>
+                    </article>
+                </section>
+
+                <section class="panel-grid">
+                    <article id="orders" class="panel-card">
+                        <div class="card-head">
+                            <div>
+                                <p class="eyebrow">Live commerce</p>
+                                <h3>Reservation Pipeline</h3>
+                            </div>
+                            <span>Flipkart-style order control</span>
+                        </div>
+                        <div class="table-scroll">
+                            <table class="data-table">
+                                <thead>
+                                    <tr>
+                                        <th>Order</th>
+                                        <th>Customer</th>
+                                        <th>Product</th>
+                                        <th>Size</th>
+                                        <th>Amount</th>
+                                        <th>Status</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                @foreach (var order in Model.Orders)
+                                {
+                                    var tone = order.Status.Contains("Paid") || order.Status.Contains("Dispatch") ? "green" : order.Status.Contains("Review") ? "gold" : "";
+                                    <tr>
+                                        <td><strong>@order.Id</strong><span>@order.Date</span></td>
+                                        <td>@order.Customer</td>
+                                        <td>@order.Product</td>
+                                        <td>@order.Size</td>
+                                        <td>@order.Amount</td>
+                                        <td><span class="status @tone">@order.Status</span></td>
+                                    </tr>
+                                }
+                                </tbody>
+                            </table>
+                        </div>
+                    </article>
+
+                    <article id="concierge" class="panel-card">
+                        <div class="card-head">
+                            <div>
+                                <p class="eyebrow">Human layer</p>
+                                <h3>Concierge Tasks</h3>
+                            </div>
+                            <span>Today</span>
+                        </div>
+                        <div class="task-list">
+                            @foreach (var task in Model.ConciergeTasks)
+                            {
+                                <div class="task">
+                                    <strong>@task.Title</strong>
+                                    <p>@task.Owner · @task.Due · @task.Priority priority</p>
+                                </div>
+                            }
+                        </div>
+                    </article>
+                </section>
+
+                <section class="panel-grid">
+                    <article id="inventory" class="panel-card">
+                        <div class="card-head">
+                            <div>
+                                <p class="eyebrow">Catalogue</p>
+                                <h3>Edition Inventory</h3>
+                            </div>
+                            <span>Product CMS</span>
+                        </div>
+                        <div class="table-scroll">
+                            <table class="data-table">
+                                <thead>
+                                    <tr>
+                                        <th>Edition</th>
+                                        <th>Price</th>
+                                        <th>Status</th>
+                                        <th>Produced</th>
+                                        <th>Reserved</th>
+                                        <th>Available</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                @foreach (var product in Model.Products)
+                                {
+                                    var tone = product.Status == "Live" ? "green" : product.Status.Contains("Preview") ? "gold" : "";
+                                    <tr>
+                                        <td><strong>@product.Name</strong><span>@product.Edition</span></td>
+                                        <td>@product.Price</td>
+                                        <td><span class="status @tone">@product.Status</span></td>
+                                        <td>@product.Produced</td>
+                                        <td>@product.Reserved</td>
+                                        <td>@product.Available</td>
+                                    </tr>
+                                }
+                                </tbody>
+                            </table>
+                        </div>
+                    </article>
+
+                    <article id="customers" class="panel-card">
+                        <div class="card-head">
+                            <div>
+                                <p class="eyebrow">CRM</p>
+                                <h3>Top Collectors</h3>
+                            </div>
+                            <span>VIP tiers</span>
+                        </div>
+                        <div class="table-scroll">
+                            <table class="data-table">
+                                <thead>
+                                    <tr>
+                                        <th>Name</th>
+                                        <th>Tier</th>
+                                        <th>City</th>
+                                        <th>LTV</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                @foreach (var customer in Model.Customers)
+                                {
+                                    <tr>
+                                        <td><strong>@customer.Name</strong><span>@customer.LastOrder</span></td>
+                                        <td>@customer.Tier</td>
+                                        <td>@customer.Location</td>
+                                        <td>@customer.LifetimeValue</td>
+                                    </tr>
+                                }
+                                </tbody>
+                            </table>
+                        </div>
+                    </article>
+                </section>
+            </section>
+        </div>
+    </main>
+</body>
+</html>

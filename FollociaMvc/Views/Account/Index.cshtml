@@ -1,0 +1,179 @@
+@model FollociaMvc.Models.UserPanelViewModel
+@{
+    Layout = null;
+}
+
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Follocia User Panel</title>
+    <link rel="stylesheet" href="~/css/panels.css" asp-append-version="true" />
+</head>
+<body>
+    <main class="panel-shell">
+        <header class="panel-topbar">
+            <a class="brand-mark" asp-controller="Home" asp-action="Index">FOLLOCIA</a>
+            <div class="top-actions">
+                <a asp-controller="Admin" asp-action="Index">Admin Panel</a>
+                <a asp-controller="Home" asp-action="Index">Storefront</a>
+            </div>
+        </header>
+
+        <div class="panel-frame">
+            <aside class="panel-sidebar">
+                <h2>My Atelier</h2>
+                <p>@Model.Name · @Model.Tier · @Model.MemberSince</p>
+                <nav class="panel-nav" aria-label="Account sections">
+                    <a class="active" href="#overview">Overview <span>01</span></a>
+                    <a href="#reservations">Orders <span>02</span></a>
+                    <a href="#wishlist">Wishlist <span>03</span></a>
+                    <a href="#addresses">Addresses <span>04</span></a>
+                    <a href="#support">Support <span>05</span></a>
+                    <a href="#profile">Profile <span>06</span></a>
+                </nav>
+            </aside>
+
+            <section class="panel-main">
+                <section id="overview" class="hero-panel">
+                    <div>
+                        <p class="eyebrow">Private account / @Model.Tier</p>
+                        <h1>Welcome back, @Model.Name.Split(' ')[0].</h1>
+                        <p>Manage reservations, fittings, wishlist alerts, delivery addresses, restoration requests and concierge conversations from your private Follocia account.</p>
+                    </div>
+                    <div class="hero-stamp">VIP<br />72h access</div>
+                </section>
+
+                <section class="metrics-grid" aria-label="Account metrics">
+                    @foreach (var metric in Model.Metrics)
+                    {
+                        <article class="metric-card">
+                            <span>@metric.Label</span>
+                            <strong>@metric.Value</strong>
+                            <small class="@(metric.Tone == "warn" ? "warn" : "")">@metric.Delta</small>
+                        </article>
+                    }
+                </section>
+
+                <section class="quick-actions" id="profile">
+                    <article class="action-card">
+                        <strong>Book fitting</strong>
+                        <p>Choose Mumbai, Milan or Paris private salon availability for selected reserved pairs.</p>
+                    </article>
+                    <article class="action-card">
+                        <strong>Request invite</strong>
+                        <p>Ask for early access to the next numbered edition before public release.</p>
+                    </article>
+                    <article class="action-card">
+                        <strong>Start restoration</strong>
+                        <p>Submit a pair for lifetime care, artisan review and white-glove pickup scheduling.</p>
+                    </article>
+                </section>
+
+                <section class="panel-grid">
+                    <article id="reservations" class="panel-card">
+                        <div class="card-head">
+                            <div>
+                                <p class="eyebrow">Commerce</p>
+                                <h3>My Reservations</h3>
+                            </div>
+                            <span>Orders and services</span>
+                        </div>
+                        <div class="table-scroll">
+                            <table class="data-table">
+                                <thead>
+                                    <tr>
+                                        <th>Reservation</th>
+                                        <th>Pair</th>
+                                        <th>Size</th>
+                                        <th>Status</th>
+                                        <th>Amount</th>
+                                        <th>ETA</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                @foreach (var reservation in Model.Reservations)
+                                {
+                                    var tone = reservation.Status.Contains("Ready") || reservation.Status.Contains("Booked") ? "green" : reservation.Status.Contains("Restoration") ? "gold" : "";
+                                    <tr>
+                                        <td><strong>@reservation.Id</strong></td>
+                                        <td>@reservation.Product</td>
+                                        <td>@reservation.Size</td>
+                                        <td><span class="status @tone">@reservation.Status</span></td>
+                                        <td>@reservation.Amount</td>
+                                        <td>@reservation.Eta</td>
+                                    </tr>
+                                }
+                                </tbody>
+                            </table>
+                        </div>
+                    </article>
+
+                    <article id="wishlist" class="panel-card">
+                        <div class="card-head">
+                            <div>
+                                <p class="eyebrow">Saved pieces</p>
+                                <h3>Wishlist</h3>
+                            </div>
+                            <span>Drop alerts</span>
+                        </div>
+                        <div class="wish-list">
+                            @foreach (var item in Model.Wishlist)
+                            {
+                                <div class="wish-item">
+                                    <img src="@item.ImagePath" alt="@item.Product" />
+                                    <div>
+                                        <h4>@item.Product</h4>
+                                        <p>@item.Edition · @item.Availability</p>
+                                    </div>
+                                </div>
+                            }
+                        </div>
+                    </article>
+                </section>
+
+                <section class="panel-grid">
+                    <article id="addresses" class="panel-card">
+                        <div class="card-head">
+                            <div>
+                                <p class="eyebrow">Delivery</p>
+                                <h3>White-glove Addresses</h3>
+                            </div>
+                            <span>Secure profile</span>
+                        </div>
+                        <div class="address-list">
+                            @foreach (var address in Model.Addresses)
+                            {
+                                <div class="address-item">
+                                    <strong>@address.Label · @address.Recipient</strong>
+                                    <p>@address.Line<br />@address.City</p>
+                                </div>
+                            }
+                        </div>
+                    </article>
+
+                    <article id="support" class="panel-card">
+                        <div class="card-head">
+                            <div>
+                                <p class="eyebrow">Concierge</p>
+                                <h3>Support Timeline</h3>
+                            </div>
+                            <span>Private desk</span>
+                        </div>
+                        <div class="task-list">
+                            @foreach (var task in Model.SupportTimeline)
+                            {
+                                <div class="task">
+                                    <strong>@task.Title</strong>
+                                    <p>@task.Owner · @task.Due · @task.Priority priority</p>
+                                </div>
+                            }
+                        </div>
+                    </article>
+                </section>
+            </section>
+        </div>
+    </main>
+</body>
+</html>

@@ -97,3 +97,16 @@ D:\atelier-follocia-lux-main\FollociaMvc\obj\Debug\net9.0\FollociaMvc.genruntime
 D:\atelier-follocia-lux-main\FollociaMvc\obj\Debug\net9.0\ref\FollociaMvc.dll
 D:\atelier-follocia-lux-main\FollociaMvc\obj\Debug\net9.0\compressed\ogui9h2icv-drj5e7iln2.gz
 D:\atelier-follocia-lux-main\FollociaMvc\obj\Debug\net9.0\compressed\t86kpdrt5t-gtcclvmuhq.gz
+D:\atelier-follocia-lux-main\FollociaMvc\obj\Debug\net9.0\staticwebassets.upToDateCheck.txt
+D:\atelier-follocia-lux-main\FollociaMvc\obj\Debug\net9.0\compressed\ij1eyxaapo-46vakuafgv.gz
+D:\atelier-follocia-lux-main\FollociaMvc\obj\Debug\net9.0\compressed\tfzz7p5ezs-93fli7cee8.gz
+D:\atelier-follocia-lux-main\FollociaMvc\obj\Debug\net9.0\compressed\yrq2ojoys0-qaf6h3r4y3.gz
+D:\atelier-follocia-lux-main\FollociaMvc\obj\codex-build\appsettings.Development.json
+D:\atelier-follocia-lux-main\FollociaMvc\obj\codex-build\appsettings.json
+D:\atelier-follocia-lux-main\FollociaMvc\obj\codex-build\FollociaMvc.staticwebassets.runtime.json
+D:\atelier-follocia-lux-main\FollociaMvc\obj\codex-build\FollociaMvc.staticwebassets.endpoints.json
+D:\atelier-follocia-lux-main\FollociaMvc\obj\codex-build\FollociaMvc.deps.json
+D:\atelier-follocia-lux-main\FollociaMvc\obj\codex-build\FollociaMvc.runtimeconfig.json
+D:\atelier-follocia-lux-main\FollociaMvc\obj\codex-build\FollociaMvc.dll
+D:\atelier-follocia-lux-main\FollociaMvc\obj\codex-build\FollociaMvc.pdb
+D:\atelier-follocia-lux-main\FollociaMvc\obj\Debug\net9.0\compressed\5z0aucmdr5-jum8z5t4jl.gz
