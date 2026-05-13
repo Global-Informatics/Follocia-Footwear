@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 import { Magnetic } from "./Magnetic";
 import { useCart } from "./cart/CartContext";
 
-export function Navigation() {
+export function Navigation({ userName, onLogout }: { userName?: string; onLogout?: () => void }) {
   const baseUrl = import.meta.env.BASE_URL === "/react/" ? "/" : import.meta.env.BASE_URL;
   const { scrollY } = useScroll();
   const bg = useTransform(scrollY, [0, 80], ["oklch(1 0 0 / 0)", "oklch(0.14 0.005 60 / 0.85)"]);
@@ -40,6 +40,11 @@ export function Navigation() {
             ))}
           </nav>
           <div className="flex items-center gap-5 md:gap-7">
+            {userName && (
+              <span className="hidden max-w-28 truncate eyebrow text-[var(--gold)] lg:inline" title={userName}>
+                {userName.split(" ")[0]}
+              </span>
+            )}
             <a href="#vip" className="hidden eyebrow text-[var(--bone)]/80 transition-colors hover:text-[var(--gold)] md:inline">
               VIP Access
             </a>
@@ -87,6 +92,11 @@ export function Navigation() {
                 </AnimatePresence>
               </button>
             </Magnetic>
+            {onLogout && (
+              <button onClick={onLogout} className="hidden eyebrow text-[var(--bone)]/60 transition-colors hover:text-[var(--gold)] lg:block">
+                Logout
+              </button>
+            )}
             <Magnetic>
               <button
                 aria-label="Menu"

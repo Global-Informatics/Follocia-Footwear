@@ -68,7 +68,7 @@ function statusTone(status: string) {
   return "text-[var(--ink)]/70";
 }
 
-function PanelTopbar() {
+function PanelTopbar({ onLogout }: { onLogout?: () => void }) {
   const appRoot = import.meta.env.BASE_URL === "/react/" ? "/" : import.meta.env.BASE_URL;
   const href = (path: string) => `${appRoot}${path}`.replace(/\/{2,}/g, "/");
   const liveHref = (path: string) => import.meta.env.BASE_URL === "/react/" ? href(path) : `${appRoot}#/${path}`;
@@ -80,6 +80,11 @@ function PanelTopbar() {
         <div className="flex flex-wrap items-center gap-2">
           <a className="border border-[var(--ink)]/15 px-4 py-3 eyebrow text-[var(--ink)]/75 hover:border-[var(--gold)] hover:text-[var(--ink)]" href={liveHref("admin")}>Admin</a>
           <a className="bg-[var(--ink)] px-4 py-3 eyebrow text-[var(--bone)] hover:bg-[var(--gold)] hover:text-[var(--ink)]" href={appRoot}>Storefront</a>
+          {onLogout && (
+            <button onClick={onLogout} className="border border-[var(--ink)]/15 px-4 py-3 eyebrow text-[var(--ink)]/75 hover:border-[var(--gold)] hover:text-[var(--ink)]">
+              Logout
+            </button>
+          )}
         </div>
       </div>
     </header>
@@ -169,10 +174,10 @@ function HeroPanel({ eyebrow, title, copy, stamp }: { eyebrow: string; title: st
   );
 }
 
-function PanelLayout({ children, sidebar }: { children: ReactNode; sidebar: ReactNode }) {
+function PanelLayout({ children, sidebar, onLogout }: { children: ReactNode; sidebar: ReactNode; onLogout?: () => void }) {
   return (
     <main className="min-h-screen bg-[radial-gradient(circle_at_20%_0%,oklch(0.78_0.12_80_/_0.18),transparent_28rem),var(--bone)] text-[var(--ink)]">
-      <PanelTopbar />
+      <PanelTopbar onLogout={onLogout} />
       <div className="mx-auto grid max-w-[1700px] gap-5 p-5 lg:grid-cols-[280px_minmax(0,1fr)]">
         {sidebar}
         <motion.section initial="hidden" animate="visible" transition={{ staggerChildren: 0.08 }} className="grid gap-5">
@@ -183,9 +188,9 @@ function PanelLayout({ children, sidebar }: { children: ReactNode; sidebar: Reac
   );
 }
 
-export function AdminPanel() {
+export function AdminPanel({ onLogout }: { onLogout?: () => void }) {
   return (
-    <PanelLayout sidebar={<Sidebar title="Admin" subtitle="Control room for a scarce, invitation-led women footwear house." links={["Dashboard", "Reservations", "Inventory", "Customers", "Concierge", "Content"]} />}>
+    <PanelLayout onLogout={onLogout} sidebar={<Sidebar title="Admin" subtitle="Control room for a scarce, invitation-led women footwear house." links={["Dashboard", "Reservations", "Inventory", "Customers", "Concierge", "Content"]} />}>
       <HeroPanel eyebrow="Maison operations / MMXXV" title="Premium commerce dashboard for the rare drop cycle." copy="Track limited editions, VIP demand, concierge orders, white-glove dispatch and private fitting tasks from one place." stamp={"8 pairs\nper year"} />
       <MetricGrid metrics={adminMetrics} />
 
