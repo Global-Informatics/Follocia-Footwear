@@ -1,4 +1,4 @@
-import { useRef, useState, type MouseEvent } from "react";
+import { useEffect, useRef, useState, type MouseEvent } from "react";
 import { motion, useMotionValue, useSpring, useTransform } from "framer-motion";
 import { Reveal } from "../Reveal";
 import { useCart } from "../cart/CartContext";
@@ -6,6 +6,7 @@ import { QuickView, type QuickItem } from "../cart/QuickView";
 import c1 from "@/assets/collection-1.jpg";
 import c2 from "@/assets/collection-2.jpg";
 import c3 from "@/assets/collection-3.jpg";
+import { COMMERCE_EVENT, getProducts, syncCommerceFromBackend } from "@/lib/commerceStore";
 
 const items: QuickItem[] = [
   { id: "atelier-01", title: "Atelier 01 — Lumière", edition: "Edition of 220", price: "€ 1,480", image: c1, tone: "Ivory Calfskin" },
@@ -100,6 +101,41 @@ function Card({ item, i, onQuick }: { item: QuickItem; i: number; onQuick: (it: 
 
 export function FeaturedCollections() {
   const [quick, setQuick] = useState<QuickItem | null>(null);
+  const [query, setQuery] = useState("");
+  const [status, setStatus] = useState("All");
+  const [sort, setSort] = useState("Recommended");
+  const [catalogue, setCatalogue] = useState<QuickItem[]>(() =>
+    getProducts()
+      .filter((item) => item.status !== "Draft")
+      .map((item) => ({ id: item.id, title: item.title, edition: item.edition, tone: item.tone, price: item.price, image: item.image })),
+  );
+
+  useEffect(() => {
+    const sync = () =>
+      setCatalogue(
+        getProducts()
+          .filter((item) => item.status !== "Draft")
+          .map((item) => ({ id: item.id, title: item.title, edition: item.edition, tone: item.tone, price: item.price, image: item.image })),
+      );
+    window.addEventListener(COMMERCE_EVENT, sync);
+    void syncCommerceFromBackend();
+    return () => window.removeEventListener(COMMERCE_EVENT, sync);
+  }, []);
+
+  const visibleCatalogue = (catalogue.length ? catalogue : items)
+    .filter((item) => {
+      const haystack = `${item.title} ${item.edition} ${item.tone}`.toLowerCase();
+      const matchesSearch = haystack.includes(query.trim().toLowerCase());
+      const matchesStatus = status === "All" || (status === "Ready to ship" ? !item.edition.toLowerCase().includes("80") : item.edition.includes(status));
+      return matchesSearch && matchesStatus;
+    })
+    .sort((a, b) => {
+      const priceA = Number(a.price.replace(/[^\d.]/g, "")) || 0;
+      const priceB = Number(b.price.replace(/[^\d.]/g, "")) || 0;
+      if (sort === "Price: Low to High") return priceA - priceB;
+      if (sort === "Price: High to Low") return priceB - priceA;
+      return a.title.localeCompare(b.title);
+    });
 
   return (
     <section id="collections" className="relative bg-[var(--bone)] px-6 py-32 md:px-12 md:py-48">
@@ -118,9 +154,39 @@ export function FeaturedCollections() {
           </div>
         </Reveal>
 
-        <div className="grid grid-cols-1 gap-10 md:grid-cols-3 md:gap-8">
-          {items.map((item, i) => <Card key={item.id} item={item} i={i} onQuick={setQuick} />)}
+        <div className="mb-12 grid gap-3 border-y border-[var(--ink)]/10 py-5 md:grid-cols-[1fr_190px_190px]">
+          <label className="grid gap-2 text-sm text-[var(--ink)]/55">
+            Search catalogue
+            <input
+              value={query}
+              onChange={(event) => setQuery(event.target.value)}
+              placeholder="Search by edition, tone, product..."
+              className="h-12 border border-[var(--ink)]/15 bg-white/60 px-4 text-[var(--ink)] outline-none focus:border-[var(--ink)]"
+            />
+          </label>
+          <label className="grid gap-2 text-sm text-[var(--ink)]/55">
+            Filter
+            <select value={status} onChange={(event) => setStatus(event.target.value)} className="h-12 border border-[var(--ink)]/15 bg-white/60 px-4 text-[var(--ink)] outline-none">
+              {["All", "220", "180", "140", "Ready to ship"].map((item) => <option key={item}>{item}</option>)}
+            </select>
+          </label>
+          <label className="grid gap-2 text-sm text-[var(--ink)]/55">
+            Sort
+            <select value={sort} onChange={(event) => setSort(event.target.value)} className="h-12 border border-[var(--ink)]/15 bg-white/60 px-4 text-[var(--ink)] outline-none">
+              {["Recommended", "Price: Low to High", "Price: High to Low"].map((item) => <option key={item}>{item}</option>)}
+            </select>
+          </label>
         </div>
+
+        <div className="grid grid-cols-1 gap-10 md:grid-cols-3 md:gap-8">
+          {visibleCatalogue.map((item, i) => <Card key={item.id} item={item} i={i} onQuick={setQuick} />)}
+        </div>
+        {visibleCatalogue.length === 0 && (
+          <div className="border border-[var(--ink)]/10 py-16 text-center">
+            <p className="font-display text-3xl">No pieces match this search.</p>
+            <button onClick={() => { setQuery(""); setStatus("All"); }} className="mt-5 bg-[var(--ink)] px-6 py-3 eyebrow text-[var(--bone)]">Clear filters</button>
+          </div>
+        )}
       </div>
 
       <QuickView item={quick} onClose={() => setQuick(null)} />

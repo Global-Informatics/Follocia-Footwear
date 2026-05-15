@@ -1,275 +1,930 @@
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { motion } from "framer-motion";
-import type { ReactNode } from "react";
-import c1 from "@/assets/collection-1.jpg";
-import c2 from "@/assets/collection-2.jpg";
-import c3 from "@/assets/collection-3.jpg";
-import atelier from "@/assets/atelier.jpg";
+import {
+  COMMERCE_EVENT,
+  ensureCustomer,
+  getCustomers,
+  getOrders,
+  getProducts,
+  saveCustomerRemote,
+  saveOrderRemote,
+  saveProductRemote,
+  saveOrders,
+  saveProducts,
+  syncCommerceFromBackend,
+  upsertCustomer,
+  type CommerceAddress,
+  type CommerceOrder,
+  type CommerceProduct,
+  type CustomerProfile,
+} from "@/lib/commerceStore";
+import type { AuthSession } from "@/components/auth/AuthGateway";
 
-type Metric = { label: string; value: string; delta: string; tone?: "good" | "warn" };
-type Product = { name: string; edition: string; price: string; status: string; produced: number; reserved: number; available: number };
-type Order = { id: string; customer: string; product: string; size: string; amount: string; status: string; date: string };
-type Task = { title: string; owner: string; due: string; priority: string };
+const menu = ["My Orders", "My Wishlist", "My Addresses", "My Wallet", "My Coupons", "Gift Cards", "My Reviews", "Notifications", "My Subscriptions", "My Account"] as const;
+type AccountSection = (typeof menu)[number];
 
-const adminMetrics: Metric[] = [
-  { label: "Annual pairs planned", value: "08", delta: "+2 from last atelier" },
-  { label: "Reserved value", value: "EUR 32.7k", delta: "+18% this drop" },
-  { label: "VIP waitlist", value: "1,284", delta: "92 high-intent" },
-  { label: "Pairs remaining", value: "17", delta: "Limited stock", tone: "warn" },
-];
-
-const products: Product[] = [
-  { name: "Atelier 01 - Lumiere", edition: "Edition of 220", price: "EUR 1,480", status: "Live", produced: 220, reserved: 184, available: 36 },
-  { name: "Atelier 02 - Noir Suspendu", edition: "Edition of 180", price: "EUR 1,640", status: "Live", produced: 180, reserved: 168, available: 12 },
-  { name: "Atelier 03 - Or Liquide", edition: "Edition of 140", price: "EUR 1,820", status: "Private Preview", produced: 140, reserved: 121, available: 19 },
-  { name: "Atelier 04 - Rosso Vow", edition: "Edition of 80", price: "EUR 2,120", status: "Draft", produced: 80, reserved: 0, available: 80 },
-];
-
-const orders: Order[] = [
-  { id: "RSV-1048", customer: "Camille R.", product: "Atelier 03 - Or Liquide", size: "38", amount: "EUR 1,820", status: "Concierge Review", date: "Today" },
-  { id: "RSV-1047", customer: "Ananya S.", product: "Atelier 02 - Noir Suspendu", size: "39", amount: "EUR 1,640", status: "Fitting Booked", date: "Today" },
-  { id: "RSV-1046", customer: "Sofia M.", product: "Atelier 01 - Lumiere", size: "37", amount: "EUR 1,480", status: "White-glove Dispatch", date: "Yesterday" },
-  { id: "RSV-1045", customer: "Elena V.", product: "Atelier 02 - Noir Suspendu", size: "40", amount: "EUR 1,640", status: "Paid", date: "May 10" },
-];
-
-const tasks: Task[] = [
-  { title: "Approve Or Liquide private preview shortlist", owner: "Nadia", due: "2h", priority: "High" },
-  { title: "Confirm Paris fitting slot for Camille R.", owner: "Elise", due: "Today", priority: "High" },
-  { title: "Update atelier capacity for Rosso Vow", owner: "Marco", due: "Tomorrow", priority: "Medium" },
-  { title: "Prepare archive certificate for Sofia M.", owner: "Luca", due: "May 14", priority: "Low" },
-];
-
-const userMetrics: Metric[] = [
-  { label: "Active reservations", value: "02", delta: "1 fitting pending" },
-  { label: "Wishlist pieces", value: "05", delta: "2 nearing close", tone: "warn" },
-  { label: "Cercle status", value: "72h", delta: "Early access window" },
-  { label: "Lifetime pairs", value: "03", delta: "Collector profile" },
-];
-
-const wishlist = [
-  { product: "Atelier 03 - Or Liquide", edition: "Edition of 140", availability: "19 pairs left", image: c3 },
-  { product: "Atelier 01 - Lumiere", edition: "Edition of 220", availability: "36 pairs left", image: c1 },
-  { product: "Atelier 04 - Rosso Vow", edition: "Edition of 80", availability: "Private preview soon", image: atelier },
-];
-
-const userReservations = [
-  { id: "RSV-1047", product: "Atelier 02 - Noir Suspendu", size: "39", status: "Fitting Booked", amount: "EUR 1,640", eta: "May 18" },
-  { id: "RSV-1031", product: "Atelier 01 - Lumiere", size: "38", status: "Certificate Ready", amount: "EUR 1,480", eta: "Delivered" },
-  { id: "RSV-0998", product: "Archive 06 - Cristallo", size: "38", status: "Restoration", amount: "EUR 420", eta: "May 21" },
-];
-
-const fade = {
-  hidden: { opacity: 0, y: 24 },
-  visible: { opacity: 1, y: 0 },
-};
-
-function statusTone(status: string) {
-  if (status.includes("Live") || status.includes("Paid") || status.includes("Ready") || status.includes("Booked") || status.includes("Dispatch")) return "text-emerald-700";
-  if (status.includes("Preview") || status.includes("Review") || status.includes("Restoration")) return "text-[var(--gold)]";
-  return "text-[var(--ink)]/70";
+function initials(name: string) {
+  return name.trim().charAt(0).toUpperCase() || "M";
 }
 
-function PanelTopbar({ onLogout }: { onLogout?: () => void }) {
-  const appRoot = import.meta.env.BASE_URL === "/react/" ? "/" : import.meta.env.BASE_URL;
-  const href = (path: string) => `${appRoot}${path}`.replace(/\/{2,}/g, "/");
-  const liveHref = (path: string) => import.meta.env.BASE_URL === "/react/" ? href(path) : `${appRoot}#/${path}`;
-
+function AccountShell({ profile, active, onActive, children }: { profile: CustomerProfile; active: AccountSection; onActive: (section: AccountSection) => void; children: ReactNode }) {
   return (
-    <header className="sticky top-0 z-40 border-b border-[var(--ink)]/10 bg-[var(--bone)]/85 px-6 backdrop-blur-xl md:px-10">
-      <div className="mx-auto flex h-20 max-w-[1700px] items-center justify-between gap-4">
-        <a href={appRoot} className="font-display text-2xl tracking-[0.28em] text-[var(--ink)]">FOLLOCIA</a>
-        <div className="flex flex-wrap items-center gap-2">
-          <a className="border border-[var(--ink)]/15 px-4 py-3 eyebrow text-[var(--ink)]/75 hover:border-[var(--gold)] hover:text-[var(--ink)]" href={liveHref("admin")}>Admin</a>
-          <a className="bg-[var(--ink)] px-4 py-3 eyebrow text-[var(--bone)] hover:bg-[var(--gold)] hover:text-[var(--ink)]" href={appRoot}>Storefront</a>
-          {onLogout && (
-            <button onClick={onLogout} className="border border-[var(--ink)]/15 px-4 py-3 eyebrow text-[var(--ink)]/75 hover:border-[var(--gold)] hover:text-[var(--ink)]">
-              Logout
-            </button>
-          )}
-        </div>
-      </div>
-    </header>
-  );
-}
-
-function Sidebar({ title, subtitle, links }: { title: string; subtitle: string; links: string[] }) {
-  return (
-    <aside className="border border-[var(--bone)]/10 bg-[var(--ink)] p-5 text-[var(--bone)] shadow-[var(--shadow-luxe)] lg:sticky lg:top-24 lg:h-[calc(100vh-7rem)]">
-      <h2 className="font-display text-4xl">{title}</h2>
-      <p className="mt-3 text-sm leading-relaxed text-[var(--bone)]/60">{subtitle}</p>
-      <nav className="mt-10 grid gap-2">
-        {links.map((link, index) => (
-          <a
-            key={link}
-            href={`#${link.toLowerCase().replaceAll(" ", "-")}`}
-            className="flex justify-between border border-transparent px-4 py-3 eyebrow text-[var(--bone)]/70 transition-colors hover:border-[var(--gold)]/40 hover:bg-[var(--gold)]/10 hover:text-[var(--bone)]"
-          >
-            {link}
-            <span>{String(index + 1).padStart(2, "0")}</span>
-          </a>
-        ))}
-      </nav>
-    </aside>
-  );
-}
-
-function MetricGrid({ metrics }: { metrics: Metric[] }) {
-  return (
-    <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
-      {metrics.map((metric, index) => (
-        <motion.article
-          key={metric.label}
-          variants={fade}
-          transition={{ delay: index * 0.06 }}
-          className="border border-[var(--ink)]/10 bg-[var(--ivory)]/75 p-6 shadow-[var(--shadow-soft)]"
-        >
-          <span className="eyebrow text-[var(--ink)]/50">{metric.label}</span>
-          <strong className="mt-4 block font-display text-5xl text-[var(--ink)]">{metric.value}</strong>
-          <small className={`mt-3 block text-sm font-semibold ${metric.tone === "warn" ? "text-red-800" : "text-emerald-800"}`}>{metric.delta}</small>
-        </motion.article>
-      ))}
-    </div>
-  );
-}
-
-function PanelCard({ id, eyebrow, title, action, children }: { id: string; eyebrow: string; title: string; action: string; children: ReactNode }) {
-  return (
-    <motion.article variants={fade} id={id} className="overflow-hidden border border-[var(--ink)]/10 bg-[var(--ivory)]/75 shadow-[var(--shadow-soft)]">
-      <div className="flex flex-col justify-between gap-3 border-b border-[var(--ink)]/10 p-6 md:flex-row md:items-end">
-        <div>
-          <p className="eyebrow text-[var(--gold)]">{eyebrow}</p>
-          <h3 className="mt-2 font-display text-3xl text-[var(--ink)]">{title}</h3>
-        </div>
-        <span className="eyebrow text-[var(--ink)]/45">{action}</span>
-      </div>
-      {children}
-    </motion.article>
-  );
-}
-
-function DataTable({ children }: { children: ReactNode }) {
-  return <div className="overflow-x-auto"><table className="w-full min-w-[760px] border-collapse text-left">{children}</table></div>;
-}
-
-function Th({ children }: { children: ReactNode }) {
-  return <th className="border-b border-[var(--ink)]/10 px-6 py-4 eyebrow text-[var(--ink)]/50">{children}</th>;
-}
-
-function Td({ children }: { children: ReactNode }) {
-  return <td className="border-b border-[var(--ink)]/10 px-6 py-4 align-top text-sm text-[var(--ink)]/75">{children}</td>;
-}
-
-function HeroPanel({ eyebrow, title, copy, stamp }: { eyebrow: string; title: string; copy: string; stamp: string }) {
-  return (
-    <motion.section variants={fade} className="relative overflow-hidden bg-[var(--ink)] p-8 text-[var(--bone)] shadow-[var(--shadow-luxe)] luxe-grain md:p-12">
-      <div className="absolute right-10 top-10 h-56 w-56 rounded-full bg-[var(--gold)]/15 blur-3xl" />
-      <div className="relative grid gap-8 lg:grid-cols-[1fr_auto] lg:items-end">
-        <div>
-          <p className="eyebrow text-[var(--gold)]">{eyebrow}</p>
-          <h1 className="mt-5 max-w-5xl font-display text-[clamp(2.6rem,6vw,6rem)] leading-[0.95] text-[var(--bone)]">{title}</h1>
-          <p className="mt-6 max-w-2xl text-base leading-relaxed text-[var(--bone)]/65">{copy}</p>
-        </div>
-        <div className="grid h-36 w-36 place-items-center rounded-full border border-[var(--bone)]/20 text-center eyebrow text-[var(--gold)]">{stamp}</div>
-      </div>
-    </motion.section>
-  );
-}
-
-function PanelLayout({ children, sidebar, onLogout }: { children: ReactNode; sidebar: ReactNode; onLogout?: () => void }) {
-  return (
-    <main className="min-h-screen bg-[radial-gradient(circle_at_20%_0%,oklch(0.78_0.12_80_/_0.18),transparent_28rem),var(--bone)] text-[var(--ink)]">
-      <PanelTopbar onLogout={onLogout} />
-      <div className="mx-auto grid max-w-[1700px] gap-5 p-5 lg:grid-cols-[280px_minmax(0,1fr)]">
-        {sidebar}
-        <motion.section initial="hidden" animate="visible" transition={{ staggerChildren: 0.08 }} className="grid gap-5">
-          {children}
-        </motion.section>
+    <main className="min-h-screen bg-white pt-28 text-[#1a2b34]">
+      <div className="mx-auto grid max-w-[1080px] gap-12 px-6 pb-24 md:grid-cols-[250px_1fr]">
+        <aside>
+          <div className="relative grid h-[190px] place-items-center border border-[#d8d8d8] bg-white">
+            <button aria-label="Account options" className="absolute right-7 top-7 text-2xl leading-none">⋮</button>
+            <div className="text-center">
+              <div className="mx-auto grid h-[90px] w-[90px] place-items-center rounded-full bg-[#5b3d32] text-5xl text-white">{initials(profile.name)}</div>
+              <p className="mt-4 text-lg font-light">{profile.name}</p>
+            </div>
+          </div>
+          <nav className="mt-8 grid border border-[#d8d8d8] bg-white py-3 text-[16px] font-light">
+            {menu.map((item) => (
+              <button key={item} onClick={() => onActive(item)} className={`px-8 py-2.5 text-left transition-colors ${active === item ? "text-[#5b3d32]" : "text-[#465966] hover:text-[#111]"}`}>
+                {item}
+              </button>
+            ))}
+          </nav>
+        </aside>
+        <section>{children}</section>
       </div>
     </main>
   );
 }
 
-export function AdminPanel({ onLogout }: { onLogout?: () => void }) {
+function SectionHead({ title, copy }: { title: string; copy: string }) {
   return (
-    <PanelLayout onLogout={onLogout} sidebar={<Sidebar title="Admin" subtitle="Control room for a scarce, invitation-led women footwear house." links={["Dashboard", "Reservations", "Inventory", "Customers", "Concierge", "Content"]} />}>
-      <HeroPanel eyebrow="Maison operations / MMXXV" title="Premium commerce dashboard for the rare drop cycle." copy="Track limited editions, VIP demand, concierge orders, white-glove dispatch and private fitting tasks from one place." stamp={"8 pairs\nper year"} />
-      <MetricGrid metrics={adminMetrics} />
-
-      <div id="content" className="grid grid-cols-1 gap-4 xl:grid-cols-3">
-        {["Create drop", "Approve VIPs", "Dispatch queue"].map((title, index) => (
-          <motion.article key={title} variants={fade} className="border border-[var(--ink)]/10 bg-[var(--ivory)]/75 p-6 shadow-[var(--shadow-soft)]">
-            <h3 className="font-display text-3xl text-[var(--ink)]">{title}</h3>
-            <p className="mt-3 text-sm leading-relaxed text-[var(--ink)]/60">
-              {index === 0 && "Add edition caps, assets, preview windows and launch inventory."}
-              {index === 1 && "Rank collectors, shortlist intent and open private access."}
-              {index === 2 && "Review paid reservations, certificates and delivery slots."}
-            </p>
-          </motion.article>
-        ))}
-      </div>
-
-      <div className="grid gap-5 xl:grid-cols-[1.4fr_0.6fr]">
-        <PanelCard id="reservations" eyebrow="Live commerce" title="Reservation Pipeline" action="Order control">
-          <DataTable>
-            <thead><tr><Th>Order</Th><Th>Customer</Th><Th>Product</Th><Th>Size</Th><Th>Amount</Th><Th>Status</Th></tr></thead>
-            <tbody>{orders.map((order) => <tr key={order.id}><Td><strong>{order.id}</strong><br />{order.date}</Td><Td>{order.customer}</Td><Td>{order.product}</Td><Td>{order.size}</Td><Td>{order.amount}</Td><Td><span className={`eyebrow ${statusTone(order.status)}`}>{order.status}</span></Td></tr>)}</tbody>
-          </DataTable>
-        </PanelCard>
-        <PanelCard id="concierge" eyebrow="Human layer" title="Concierge Tasks" action="Today">
-          <div className="grid gap-3 p-5">{tasks.map((task) => <div key={task.title} className="border border-[var(--ink)]/10 bg-[var(--bone)]/60 p-4"><strong>{task.title}</strong><p className="mt-2 text-sm text-[var(--ink)]/55">{task.owner} - {task.due} - {task.priority}</p></div>)}</div>
-        </PanelCard>
-      </div>
-
-      <PanelCard id="inventory" eyebrow="Catalogue" title="Edition Inventory" action="Product CMS">
-        <DataTable>
-          <thead><tr><Th>Edition</Th><Th>Price</Th><Th>Status</Th><Th>Produced</Th><Th>Reserved</Th><Th>Available</Th></tr></thead>
-          <tbody>{products.map((product) => <tr key={product.name}><Td><strong>{product.name}</strong><br />{product.edition}</Td><Td>{product.price}</Td><Td><span className={`eyebrow ${statusTone(product.status)}`}>{product.status}</span></Td><Td>{product.produced}</Td><Td>{product.reserved}</Td><Td>{product.available}</Td></tr>)}</tbody>
-        </DataTable>
-      </PanelCard>
-    </PanelLayout>
+    <header className="border-b border-[#d8d8d8] pb-8">
+      <h1 className="text-3xl font-semibold tracking-[-0.02em]">{title}</h1>
+      <p className="mt-4 text-sm font-light text-[#687782]">{copy}</p>
+    </header>
   );
 }
 
-export function UserPanel() {
+function EmptyState({ title, copy, action }: { title: string; copy?: string; action?: ReactNode }) {
   return (
-    <PanelLayout sidebar={<Sidebar title="My Atelier" subtitle="Ananya Sharma - Private Atelier - Member since MMXXIV." links={["Overview", "Orders", "Wishlist", "Addresses", "Support", "Profile"]} />}>
-      <HeroPanel eyebrow="Private account / Private Atelier" title="Welcome back, Ananya." copy="Manage reservations, fittings, wishlist alerts, delivery addresses, restoration requests and concierge conversations from your private Follocia account." stamp={"VIP\n72h access"} />
-      <MetricGrid metrics={userMetrics} />
+    <div className="grid min-h-[290px] place-items-center border-b border-[#d8d8d8] text-center">
+      <div>
+        <p className="text-xl font-light text-[#596b75]">{title}</p>
+        {copy && <p className="mt-3 max-w-md text-sm font-light text-[#687782]">{copy}</p>}
+        {action && <div className="mt-8">{action}</div>}
+      </div>
+    </div>
+  );
+}
 
-      <div id="profile" className="grid grid-cols-1 gap-4 xl:grid-cols-3">
-        {["Book fitting", "Request invite", "Start restoration"].map((title, index) => (
-          <motion.article key={title} variants={fade} className="border border-[var(--ink)]/10 bg-[var(--ivory)]/75 p-6 shadow-[var(--shadow-soft)]">
-            <h3 className="font-display text-3xl text-[var(--ink)]">{title}</h3>
-            <p className="mt-3 text-sm leading-relaxed text-[var(--ink)]/60">
-              {index === 0 && "Choose Mumbai, Milan or Paris private salon availability."}
-              {index === 1 && "Ask for early access to the next numbered edition."}
-              {index === 2 && "Submit a pair for lifetime care and artisan review."}
-            </p>
-          </motion.article>
+function AddressModal({ profile, onClose, onSave }: { profile: CustomerProfile; onClose: () => void; onSave: (address: CommerceAddress) => void }) {
+  const [address, setAddress] = useState<CommerceAddress>({
+    id: `addr-${Date.now()}`,
+    firstName: profile.firstName,
+    lastName: profile.lastName,
+    company: "",
+    address: "",
+    address2: "",
+    city: "",
+    country: "India",
+    region: "",
+    zip: "",
+    phone: profile.phone,
+    isDefault: profile.addresses.length === 0,
+  });
+  const set = (key: keyof CommerceAddress, value: string | boolean) => setAddress((current) => ({ ...current, [key]: value }));
+
+  return (
+    <div className="fixed inset-0 z-[100] bg-black/75 p-4">
+      <motion.form
+        initial={{ opacity: 0, y: 22 }}
+        animate={{ opacity: 1, y: 0 }}
+        onSubmit={(event) => {
+          event.preventDefault();
+          onSave(address);
+        }}
+        className="mx-auto mt-10 flex max-h-[86vh] max-w-[630px] flex-col bg-white text-[#1a2b34]"
+      >
+        <div className="flex items-center justify-between px-11 pt-10">
+          <h2 className="text-lg font-light">Add New Address</h2>
+          <button type="button" onClick={onClose} aria-label="Close" className="text-3xl font-light">×</button>
+        </div>
+        <div className="mx-11 mt-4 border-t border-[#222]" />
+        <div className="grid flex-1 gap-6 overflow-y-auto px-11 py-8">
+          <div className="grid gap-6 md:grid-cols-2">
+            <Field label="* First name" value={address.firstName} onChange={(v) => set("firstName", v)} required />
+            <Field label="* Last name" value={address.lastName} onChange={(v) => set("lastName", v)} required />
+          </div>
+          <Field label="Company name" value={address.company} onChange={(v) => set("company", v)} />
+          <Field label="Address" value={address.address} onChange={(v) => set("address", v)} required />
+          <Field label="Address - line 2" value={address.address2} onChange={(v) => set("address2", v)} placeholder="Apartment, suite, floor" />
+          <Field label="City" value={address.city} onChange={(v) => set("city", v)} required />
+          <div className="grid gap-6 md:grid-cols-2">
+            <Field label="Country/Region" value={address.country} onChange={(v) => set("country", v)} />
+            <Field label="Region" value={address.region} onChange={(v) => set("region", v)} />
+            <Field label="Zip / Postal code" value={address.zip} onChange={(v) => set("zip", v)} />
+            <Field label="Phone" value={address.phone} onChange={(v) => set("phone", v)} />
+          </div>
+          <label className="flex items-center gap-3 text-sm font-light text-[#687782]">
+            <input type="checkbox" checked={address.isDefault} onChange={(event) => set("isDefault", event.target.checked)} />
+            Make this my default address
+          </label>
+        </div>
+        <footer className="border-t border-[#d8d8d8] px-11 py-8">
+          <button className="w-full max-w-[260px] bg-[#333] px-8 py-3 text-sm text-white">Add Address</button>
+        </footer>
+      </motion.form>
+    </div>
+  );
+}
+
+function Field({ label, value, onChange, required, placeholder }: { label: string; value: string; onChange: (value: string) => void; required?: boolean; placeholder?: string }) {
+  return (
+    <label className="grid gap-2 text-sm font-light text-[#687782]">
+      <span>{label}</span>
+      <input required={required} value={value} placeholder={placeholder} onChange={(event) => onChange(event.target.value)} className="h-10 border border-[#cfd5d8] bg-white px-3 text-[#1a2b34] outline-none focus:border-[#1a2b34]" />
+    </label>
+  );
+}
+
+export function AccountPanel({ session, initialSection = "My Orders" }: { session: AuthSession; initialSection?: AccountSection }) {
+  const [profile, setProfile] = useState(() => ensureCustomer(session.user));
+  const [active, setActive] = useState<AccountSection>(initialSection);
+  const [orders, setOrders] = useState(() => getOrders());
+  const [showAddress, setShowAddress] = useState(false);
+  const [products, setProducts] = useState(() => getProducts());
+  const myOrders = orders.filter((order) => order.customerId === profile.id || order.email.toLowerCase() === profile.email.toLowerCase());
+
+  useEffect(() => {
+    const sync = () => {
+      setProfile(ensureCustomer(session.user));
+      setOrders(getOrders());
+      setProducts(getProducts());
+    };
+    void syncCommerceFromBackend();
+    window.addEventListener(COMMERCE_EVENT, sync);
+    return () => window.removeEventListener(COMMERCE_EVENT, sync);
+  }, [session.user]);
+
+  const saveProfile = (next: CustomerProfile) => {
+    upsertCustomer(next);
+    void saveCustomerRemote(next);
+    setProfile(next);
+  };
+  const updateOrder = (next: CommerceOrder) => {
+    const updated = orders.map((order) => (order.id === next.id ? next : order));
+    setOrders(updated);
+    saveOrders(updated);
+    void saveOrderRemote(next);
+  };
+
+  return (
+    <AccountShell profile={profile} active={active} onActive={setActive}>
+      {active === "My Orders" && (
+        <>
+          <SectionHead title="My Orders" copy="View your order history or check the status of a recent order." />
+          {myOrders.length === 0 ? (
+            <EmptyState title="You haven't placed any orders yet." action={<a className="text-sm underline" href="/">Start Browsing</a>} />
+          ) : (
+            <div className="grid gap-3 py-12">
+              {myOrders.map((order) => <OrderRow key={order.id} order={order} onUpdate={updateOrder} />)}
+            </div>
+          )}
+        </>
+      )}
+      {active === "My Addresses" && (
+        <>
+          <SectionHead title="My Addresses" copy="Add and manage the addresses you use often." />
+          {profile.addresses.length === 0 ? (
+            <EmptyState title="You haven't saved any addresses yet." action={<button onClick={() => setShowAddress(true)} className="bg-[#333] px-9 py-3 text-sm text-white">Add New Address</button>} />
+          ) : (
+            <div className="grid gap-4 py-10">
+              {profile.addresses.map((address) => (
+                <article key={address.id} className="border border-[#d8d8d8] p-5 text-sm font-light">
+                  <strong className="font-medium">{address.firstName} {address.lastName}</strong>
+                  <p className="mt-2 text-[#687782]">{address.address}{address.address2 ? `, ${address.address2}` : ""}<br />{address.city}, {address.region} {address.zip}<br />{address.country} · {address.phone}</p>
+                </article>
+              ))}
+              <button onClick={() => setShowAddress(true)} className="w-fit bg-[#333] px-9 py-3 text-sm text-white">Add New Address</button>
+            </div>
+          )}
+        </>
+      )}
+      {active === "My Wallet" && <><SectionHead title="Wallet" copy="Save your payment details for faster checkout." /><EmptyState title="You haven't saved any payment methods yet" copy="Securely save your payment details for faster checkout whenever you place an order." /></>}
+      {active === "My Coupons" && (
+        <>
+          <SectionHead title="My Coupons" copy="Private atelier coupons and limited drop benefits." />
+          <div className="grid gap-4 py-10 md:grid-cols-2">
+            {[
+              ["FOLLOCIA10", "10% off your next reservation", "Valid on live editions"],
+              ["ATELIERCARE", "Complimentary care kit", "Auto-applied on premium pairs"],
+            ].map(([code, title, copy]) => (
+              <article key={code} className="border border-dashed border-[#b7b7b7] p-5">
+                <p className="text-xs uppercase tracking-[0.25em] text-[#5b3d32]">{code}</p>
+                <h3 className="mt-3 text-xl font-light">{title}</h3>
+                <p className="mt-2 text-sm text-[#687782]">{copy}</p>
+              </article>
+            ))}
+          </div>
+        </>
+      )}
+      {active === "Gift Cards" && <><SectionHead title="Gift Cards" copy="Manage atelier gift cards and private balance." /><EmptyState title="No gift cards added yet." copy="Gift card balance and redemption history will appear here." /></>}
+      {active === "My Reviews" && <><SectionHead title="My Reviews" copy="Ratings and reviews shared for purchased pieces." /><EmptyState title="No reviews yet." copy="After delivery, you can review fit, finish and concierge experience." /></>}
+      {active === "Notifications" && (
+        <>
+          <SectionHead title="Notifications" copy="Order alerts, drop reminders and concierge updates." />
+          <div className="grid gap-3 py-10">
+            {["Order status updates", "Wishlist price and availability alerts", "New private drop invitations", "Concierge support replies"].map((item) => (
+              <label key={item} className="flex items-center justify-between border border-[#d8d8d8] p-4 text-sm">
+                {item}
+                <input type="checkbox" defaultChecked />
+              </label>
+            ))}
+          </div>
+        </>
+      )}
+      {active === "My Wishlist" && (
+        <>
+          <SectionHead title="My Wishlist" copy="Saved pieces and drop alerts from your private atelier profile." />
+          {profile.wishlist.length === 0 ? (
+            <EmptyState title="You haven't saved any pieces yet." action={<a className="text-sm underline" href="/#collections">Start Browsing</a>} />
+          ) : (
+            <div className="grid gap-4 py-10 md:grid-cols-2">
+              {products.filter((product) => profile.wishlist.includes(product.id)).map((product) => (
+                <article key={product.id} className="grid grid-cols-[92px_1fr] gap-4 border border-[#d8d8d8] p-4">
+                  <img src={product.image} alt={product.title} className="aspect-[3/4] w-full object-cover" />
+                  <div>
+                    <p className="text-sm font-light text-[#687782]">{product.edition}</p>
+                    <h3 className="mt-1 text-lg font-light">{product.title}</h3>
+                    <p className="mt-2 text-sm text-[#5b3d32]">{product.price}</p>
+                    <p className="mt-1 text-xs uppercase tracking-[0.2em] text-[#9aa4aa]">{product.status}</p>
+                  </div>
+                </article>
+              ))}
+            </div>
+          )}
+        </>
+      )}
+      {active === "My Subscriptions" && <><SectionHead title="Subscriptions" copy="View and manage the subscriptions you've purchased." /><EmptyState title="No purchased subscriptions" copy="When you purchase a subscription, it'll appear here." /></>}
+      {active === "My Account" && <AccountForm profile={profile} onSave={saveProfile} />}
+      {showAddress && (
+        <AddressModal
+          profile={profile}
+          onClose={() => setShowAddress(false)}
+          onSave={(address) => {
+            const addresses = address.isDefault ? profile.addresses.map((item) => ({ ...item, isDefault: false })) : profile.addresses;
+            saveProfile({ ...profile, addresses: [...addresses, address] });
+            setShowAddress(false);
+          }}
+        />
+      )}
+    </AccountShell>
+  );
+}
+
+function AccountForm({ profile, onSave }: { profile: CustomerProfile; onSave: (profile: CustomerProfile) => void }) {
+  const [draft, setDraft] = useState(profile);
+  useEffect(() => setDraft(profile), [profile]);
+  const update = (key: keyof CustomerProfile, value: string) => setDraft((current) => ({ ...current, [key]: value, name: key === "firstName" || key === "lastName" ? `${key === "firstName" ? value : current.firstName} ${key === "lastName" ? value : current.lastName}`.trim() : current.name }));
+
+  return (
+    <>
+      <SectionHead title="Account" copy="View and edit your personal info below." />
+      <form
+        onSubmit={(event) => {
+          event.preventDefault();
+          onSave(draft);
+        }}
+        className="border-b border-[#d8d8d8] py-9"
+      >
+        <h2 className="text-xl font-semibold">Personal info</h2>
+        <p className="mt-4 text-sm font-light text-[#687782]">Update your personal information.</p>
+        <div className="mt-8 grid max-w-[600px] gap-6 md:grid-cols-2">
+          <Field label="First name" value={draft.firstName} onChange={(value) => update("firstName", value)} />
+          <Field label="Last name" value={draft.lastName} onChange={(value) => update("lastName", value)} />
+          <Field label="Phone" value={draft.phone} onChange={(value) => update("phone", value)} />
+        </div>
+        <div className="mt-8 flex justify-end gap-3">
+          <button type="button" onClick={() => setDraft(profile)} className="border border-[#333] px-7 py-2 text-sm">Discard</button>
+          <button className="bg-[#333] px-7 py-2 text-sm text-white">Update Info</button>
+        </div>
+      </form>
+      <section className="border-b border-[#d8d8d8] py-8 text-sm font-light text-[#687782]">
+        <h2 className="text-xl font-semibold text-[#1a2b34]">Login info</h2>
+        <p className="mt-4">View and update your login email and password.</p>
+        <p className="mt-8">Login email:<br />{profile.email}</p>
+        <button className="mt-3 underline">Change Email</button>
+        <p className="mt-8">Password:<br />••••••••</p>
+        <button className="mt-3 underline">Change Password</button>
+      </section>
+    </>
+  );
+}
+
+function OrderRow({ order, onUpdate }: { order: CommerceOrder; onUpdate: (order: CommerceOrder) => void }) {
+  const steps = ["Order Placed", "Fitting Scheduled", "In Atelier", "Dispatched", "Delivered"];
+  const activeIndex = Math.max(0, steps.findIndex((step) => step === order.deliveryStatus));
+  return (
+    <article className="border border-[#d8d8d8] p-5 text-sm">
+      <div className="grid gap-3 md:grid-cols-[1fr_auto]">
+        <div>
+          <strong>{order.id}</strong>
+          <p className="mt-1 text-[#687782]">{order.product} - Size {order.size} - {order.amount}</p>
+        </div>
+        <div className="text-left md:text-right">
+          <span className="text-[#5b3d32]">{order.status}</span>
+          <p className="mt-1 text-[#687782]">{order.paymentStatus}</p>
+        </div>
+      </div>
+      <div className="mt-5 grid gap-5 border-t border-[#e6e6e6] pt-5 md:grid-cols-[1fr_220px]">
+        <div>
+          <p className="font-medium">Delivery status: {order.deliveryStatus}</p>
+          <p className="mt-1 text-[#687782]">ETA: {order.deliveryEta}</p>
+          <p className="mt-1 text-[#687782]">Tracking: {order.trackingCode || "Assigned after dispatch"}</p>
+          <p className="mt-3 text-[#687782]">{order.deliveryAddress || "Delivery address will appear after checkout confirmation."}</p>
+          <div className="mt-4 flex flex-wrap gap-2">
+            {!["Cancelled", "Delivered"].includes(order.deliveryStatus) && (
+              <button onClick={() => onUpdate({ ...order, status: "Cancelled", deliveryStatus: "Cancelled", deliveryEta: "Cancelled by customer" })} className="border border-[#333] px-4 py-2 text-xs uppercase tracking-[0.18em]">
+                Cancel Order
+              </button>
+            )}
+            {order.deliveryStatus === "Delivered" && (
+              <button onClick={() => onUpdate({ ...order, status: "Return Requested", deliveryStatus: "Return Requested", deliveryEta: "Concierge will contact you" })} className="border border-[#333] px-4 py-2 text-xs uppercase tracking-[0.18em]">
+                Request Return
+              </button>
+            )}
+            <button onClick={() => onUpdate({ ...order, status: "Support Requested" })} className="bg-[#333] px-4 py-2 text-xs uppercase tracking-[0.18em] text-white">
+              Need Help
+            </button>
+          </div>
+        </div>
+        <div className="grid gap-2">
+          {steps.map((step, index) => (
+            <div key={step} className="flex items-center gap-3">
+              <span className={`h-3 w-3 rounded-full ${index <= activeIndex ? "bg-[#5b3d32]" : "bg-[#d8d8d8]"}`} />
+              <span className={index <= activeIndex ? "text-[#1a2b34]" : "text-[#9aa4aa]"}>{step}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+    </article>
+  );
+}
+
+function AdminField({ label, value, onChange }: { label: string; value: string | number; onChange: (value: string) => void }) {
+  return (
+    <label className="grid gap-1 text-xs uppercase tracking-[0.22em] text-[var(--ink)]/45">
+      {label}
+      <input value={value} onChange={(event) => onChange(event.target.value)} className="border border-[var(--ink)]/15 bg-white px-3 py-2 text-sm normal-case tracking-normal text-[var(--ink)] outline-none focus:border-[var(--gold)]" />
+    </label>
+  );
+}
+
+type AdminRecord = { id: string; title: string; meta: string; status: string };
+
+function readAdminRecords(key: string, seed: AdminRecord[]) {
+  if (typeof window === "undefined") return seed;
+  try {
+    return JSON.parse(localStorage.getItem(key) || "") as AdminRecord[];
+  } catch {
+    localStorage.setItem(key, JSON.stringify(seed));
+    return seed;
+  }
+}
+
+function saveAdminRecords(key: string, records: AdminRecord[]) {
+  localStorage.setItem(key, JSON.stringify(records));
+}
+
+async function syncAdminRecordsFromBackend(setters: Record<string, (records: AdminRecord[]) => void>) {
+  try {
+    const response = await fetch("/api/commerce/admin-records");
+    if (!response.ok) return;
+    const records = (await response.json()) as Array<AdminRecord & { module: string }>;
+    Object.entries(setters).forEach(([module, setRecords]) => {
+      const moduleRecords = records.filter((record) => record.module === module).map(({ id, title, meta, status }) => ({ id, title, meta, status }));
+      if (moduleRecords.length > 0) {
+        saveAdminRecords(`follocia_admin_${module}`, moduleRecords);
+        setRecords(moduleRecords);
+      }
+    });
+  } catch {
+    // Local fallback keeps admin usable while API/dev server is unavailable.
+  }
+}
+
+async function saveAdminRecordsRemote(module: string, records: AdminRecord[]) {
+  try {
+    await fetch(`/api/commerce/admin-records/${module}`, {
+      method: "PUT",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify(records.map((record) => ({ ...record, module }))),
+    });
+  } catch {
+    // Local persistence already happened.
+  }
+}
+
+const adminSections = ["dashboard", "orders", "inventory", "customers", "coupons", "reviews", "banners", "cms", "analytics", "newsletter", "contact", "audit"] as const;
+type AdminSection = (typeof adminSections)[number];
+
+const adminSectionCopy: Record<AdminSection, { label: string; title: string; copy: string }> = {
+  dashboard: { label: "Dashboard", title: "Maison command center", copy: "Live store health, order flow, stock alerts and customer activity." },
+  orders: { label: "Orders", title: "Order operations", copy: "Payment, delivery, tracking, address and concierge status controls." },
+  inventory: { label: "Inventory", title: "Product studio", copy: "Catalogue copy, prices, stock, reservations and visible product states." },
+  customers: { label: "Customers", title: "Customer ecosystem", copy: "Buyers, tiers, addresses, wishlist intent and account signals." },
+  coupons: { label: "Coupons", title: "Coupon desk", copy: "Private-drop offers, cart recovery codes and VIP access benefits." },
+  reviews: { label: "Reviews", title: "Review moderation", copy: "Publish, pause and review customer feedback before storefront use." },
+  banners: { label: "Banners", title: "Homepage banners", copy: "Hero slots, VIP strips and seasonal storefront placements." },
+  cms: { label: "CMS", title: "Content pages", copy: "Atelier story, policies, care guides and client-facing pages." },
+  analytics: { label: "Analytics", title: "Performance room", copy: "Conversion, revenue, cart recovery and wishlist movement." },
+  newsletter: { label: "Newsletter", title: "Audience segments", copy: "Private drop audiences and high-intent customer campaigns." },
+  contact: { label: "Contact", title: "Client concierge", copy: "Sizing questions, delivery requests and service follow-ups." },
+  audit: { label: "Audit", title: "Audit log", copy: "Operational changes kept visible for the client demo." },
+};
+
+function getAdminSectionFromHash() {
+  if (typeof window === "undefined") return "dashboard" as AdminSection;
+  const hash = window.location.hash.replace("#", "").toLowerCase();
+  return adminSections.includes(hash as AdminSection) ? (hash as AdminSection) : "dashboard";
+}
+
+export function AdminPanel({ onLogout }: { onLogout?: () => void }) {
+  const [activeSection, setActiveSection] = useState<AdminSection>(getAdminSectionFromHash);
+  const [products, setProducts] = useState<CommerceProduct[]>(() => getProducts());
+  const [orders, setOrders] = useState<CommerceOrder[]>(() => getOrders());
+  const [customers, setCustomers] = useState<CustomerProfile[]>(() => getCustomers());
+  const [coupons, setCoupons] = useState<AdminRecord[]>(() => readAdminRecords("follocia_admin_coupons", [
+    { id: "coupon-1", title: "FOLLOCIA10", meta: "10% off - Live editions", status: "Active" },
+    { id: "coupon-2", title: "ATELIERCARE", meta: "Free care kit - Delivered orders", status: "Active" },
+    { id: "coupon-3", title: "VIPFIRST", meta: "Priority fitting - Private members", status: "Paused" },
+  ]));
+  const [reviews, setReviews] = useState<AdminRecord[]>(() => readAdminRecords("follocia_admin_reviews", [
+    { id: "review-1", title: "5.0 / 5", meta: "Fit was perfect, packaging felt premium", status: "Published" },
+    { id: "review-2", title: "4.0 / 5", meta: "Concierge helped with size exchange", status: "Published" },
+    { id: "review-3", title: "3.0 / 5", meta: "Waiting for dispatch update", status: "Review" },
+  ]));
+  const [banners, setBanners] = useState<AdminRecord[]>(() => readAdminRecords("follocia_admin_banners", [
+    { id: "banner-1", title: "Hero drop banner", meta: "Homepage first viewport", status: "Live" },
+    { id: "banner-2", title: "VIP access strip", meta: "Navigation and checkout", status: "Live" },
+  ]));
+  const [cmsPages, setCmsPages] = useState<AdminRecord[]>(() => readAdminRecords("follocia_admin_cms", [
+    { id: "cms-1", title: "About atelier", meta: "Brand story page", status: "Published" },
+    { id: "cms-2", title: "Care guide", meta: "Post-purchase care", status: "Published" },
+    { id: "cms-3", title: "Return policy", meta: "Customer support", status: "Draft" },
+  ]));
+  const [contactQueries, setContactQueries] = useState<AdminRecord[]>(() => readAdminRecords("follocia_admin_contact", [
+    { id: "contact-1", title: "Sizing query from Mumbai", meta: "Customer asked for 38/39 fitting help", status: "Open" },
+    { id: "contact-2", title: "Delivery request from Delhi", meta: "White-glove delivery timing", status: "Open" },
+  ]));
+  const [newsletter, setNewsletter] = useState<AdminRecord[]>(() => readAdminRecords("follocia_admin_newsletter", [
+    { id: "news-1", title: "1,284 subscribers", meta: "Private drop audience", status: "Ready" },
+    { id: "news-2", title: "92 high-intent members", meta: "Wishlist and repeat customers", status: "Segmented" },
+  ]));
+  const [audit, setAudit] = useState<AdminRecord[]>(() => readAdminRecords("follocia_admin_audit", [
+    { id: "audit-1", title: "Product inventory updated", meta: "Admin changed available stock", status: "Logged" },
+    { id: "audit-2", title: "Order status changed", meta: "Delivery timeline updated", status: "Logged" },
+  ]));
+
+  const metrics = useMemo(() => [
+    { label: "Total orders", value: String(orders.length).padStart(2, "0"), delta: "Backend synced" },
+    { label: "Reserved value", value: `EUR ${orders.reduce((sum, order) => sum + (Number(order.amount.replace(/[^\d.]/g, "")) || 0), 0).toLocaleString()}`, delta: "Live order value" },
+    { label: "VIP customers", value: String(customers.length).padStart(2, "0"), delta: "Customer ecosystem" },
+    { label: "Pairs remaining", value: String(products.reduce((sum, product) => sum + product.available, 0)), delta: "Across catalogue", tone: "warn" },
+  ], [customers.length, orders, products]);
+
+  const persistProducts = (next: CommerceProduct[]) => {
+    setProducts(next);
+    saveProducts(next);
+    next.forEach((product) => void saveProductRemote(product));
+  };
+  const persistOrders = (next: CommerceOrder[]) => {
+    setOrders(next);
+    saveOrders(next);
+    next.forEach((order) => void saveOrderRemote(order));
+  };
+  const openSection = (section: AdminSection) => {
+    setActiveSection(section);
+    if (typeof window !== "undefined") window.location.hash = section;
+  };
+
+  useEffect(() => {
+    const sync = () => {
+      setProducts(getProducts());
+      setOrders(getOrders());
+      setCustomers(getCustomers());
+    };
+    void syncCommerceFromBackend();
+    void syncAdminRecordsFromBackend({ coupons: setCoupons, reviews: setReviews, banners: setBanners, cms: setCmsPages, newsletter: setNewsletter, contact: setContactQueries, audit: setAudit });
+    window.addEventListener(COMMERCE_EVENT, sync);
+    const onHashChange = () => setActiveSection(getAdminSectionFromHash());
+    window.addEventListener("hashchange", onHashChange);
+    return () => {
+      window.removeEventListener(COMMERCE_EVENT, sync);
+      window.removeEventListener("hashchange", onHashChange);
+    };
+  }, []);
+
+  const dashboardPanel = (
+    <div className="grid gap-5">
+      <section className="grid gap-8 bg-[var(--ink)] p-8 text-[var(--bone)] lg:grid-cols-[1.35fr_0.65fr]">
+        <div>
+          <p className="eyebrow text-[var(--gold)]">Maison operations</p>
+          <h2 className="mt-4 max-w-3xl font-display text-6xl leading-none">Premium commerce dashboard.</h2>
+          <p className="mt-5 max-w-xl text-sm leading-6 text-[var(--bone)]/62">Orders, product CMS, customers, offers, reviews, banners, content, analytics, newsletter, concierge and audit are split into real working modules.</p>
+        </div>
+        <div className="grid gap-3 border border-[var(--bone)]/12 p-5">
+          <p className="eyebrow text-[var(--bone)]/45">Demo readiness</p>
+          <strong className="font-display text-5xl">Live</strong>
+          <span className="text-sm text-[var(--bone)]/60">Backend API, LocalDB persistence and local fallback are connected.</span>
+        </div>
+      </section>
+      <div className="grid gap-4 md:grid-cols-4">
+        {metrics.map((metric) => <article key={metric.label} className="border border-[var(--ink)]/10 bg-white p-5"><p className="eyebrow text-[var(--ink)]/45">{metric.label}</p><strong className="mt-4 block font-display text-4xl">{metric.value}</strong><small className={metric.tone === "warn" ? "text-red-800" : "text-emerald-800"}>{metric.delta}</small></article>)}
+      </div>
+      <div className="grid gap-5 xl:grid-cols-[1.2fr_0.8fr]">
+        <AdminCard id="dashboard-orders" title="Latest Orders">
+          <AdminMiniList items={orders.slice(0, 5).map((order) => `${order.id} - ${order.customer} - ${order.status}`)} />
+        </AdminCard>
+        <AdminCard id="dashboard-actions" title="Quick Actions">
+          <div className="grid gap-3 md:grid-cols-2">
+            {(["orders", "inventory", "customers", "coupons"] as AdminSection[]).map((section) => <button key={section} onClick={() => openSection(section)} className="border border-[var(--ink)]/15 bg-white px-4 py-4 text-left"><span className="eyebrow text-[var(--ink)]/45">Open</span><strong className="mt-2 block font-display text-2xl">{adminSectionCopy[section].label}</strong></button>)}
+          </div>
+        </AdminCard>
+      </div>
+    </div>
+  );
+
+  const ordersPanel = (
+    <AdminCard id="orders" title="Order Control">
+      <div className="grid gap-4">
+        {orders.map((order) => (
+          <article key={order.id} className="grid gap-4 border border-[var(--ink)]/10 bg-white p-5">
+            <div className="flex flex-wrap items-start justify-between gap-4">
+              <div><p className="eyebrow text-[var(--ink)]/45">{order.id}</p><h3 className="mt-1 font-display text-3xl">{order.customer}</h3><p className="text-sm text-[var(--ink)]/60">{order.product} - Size {order.size} - {order.amount}</p></div>
+              <div className="grid min-w-[220px] gap-1 border border-[var(--ink)]/10 bg-[var(--bone)]/35 p-3 text-sm"><span>Payment: <strong>{order.paymentStatus}</strong></span><span>Delivery: <strong>{order.deliveryStatus}</strong></span></div>
+            </div>
+            <div className="grid gap-3 md:grid-cols-3">
+              <label className="grid gap-1 text-xs uppercase tracking-[0.22em] text-[var(--ink)]/45">Order status<select value={order.status} onChange={(event) => persistOrders(orders.map((item) => item.id === order.id ? { ...item, status: event.target.value } : item))} className="border border-[var(--ink)]/15 bg-white px-3 py-2 text-sm normal-case tracking-normal text-[var(--ink)]">{["Concierge Review", "Fitting Booked", "Paid", "White-glove Dispatch", "Delivered", "Cancelled", "Support Requested"].map((status) => <option key={status}>{status}</option>)}</select></label>
+              <label className="grid gap-1 text-xs uppercase tracking-[0.22em] text-[var(--ink)]/45">Payment<select value={order.paymentStatus} onChange={(event) => persistOrders(orders.map((item) => item.id === order.id ? { ...item, paymentStatus: event.target.value } : item))} className="border border-[var(--ink)]/15 bg-white px-3 py-2 text-sm normal-case tracking-normal text-[var(--ink)]">{["Payment Pending", "Authorized", "Paid", "Due on Delivery", "Refunded"].map((status) => <option key={status}>{status}</option>)}</select></label>
+              <label className="grid gap-1 text-xs uppercase tracking-[0.22em] text-[var(--ink)]/45">Delivery<select value={order.deliveryStatus} onChange={(event) => persistOrders(orders.map((item) => item.id === order.id ? { ...item, deliveryStatus: event.target.value } : item))} className="border border-[var(--ink)]/15 bg-white px-3 py-2 text-sm normal-case tracking-normal text-[var(--ink)]">{["Order Placed", "Fitting Scheduled", "In Atelier", "Dispatched", "Delivered", "Cancelled"].map((status) => <option key={status}>{status}</option>)}</select></label>
+              <AdminField label="Order date" value={order.date} onChange={(value) => persistOrders(orders.map((item) => item.id === order.id ? { ...item, date: value } : item))} />
+              <AdminField label="Delivery ETA" value={order.deliveryEta} onChange={(value) => persistOrders(orders.map((item) => item.id === order.id ? { ...item, deliveryEta: value } : item))} />
+              <AdminField label="Tracking code" value={order.trackingCode} onChange={(value) => persistOrders(orders.map((item) => item.id === order.id ? { ...item, trackingCode: value } : item))} />
+            </div>
+            <AdminField label="Delivery address" value={order.deliveryAddress} onChange={(value) => persistOrders(orders.map((item) => item.id === order.id ? { ...item, deliveryAddress: value } : item))} />
+          </article>
         ))}
       </div>
+    </AdminCard>
+  );
 
-      <div className="grid gap-5 xl:grid-cols-[1.25fr_0.75fr]">
-        <PanelCard id="orders" eyebrow="Commerce" title="My Reservations" action="Orders and services">
-          <DataTable>
-            <thead><tr><Th>Reservation</Th><Th>Pair</Th><Th>Size</Th><Th>Status</Th><Th>Amount</Th><Th>ETA</Th></tr></thead>
-            <tbody>{userReservations.map((reservation) => <tr key={reservation.id}><Td><strong>{reservation.id}</strong></Td><Td>{reservation.product}</Td><Td>{reservation.size}</Td><Td><span className={`eyebrow ${statusTone(reservation.status)}`}>{reservation.status}</span></Td><Td>{reservation.amount}</Td><Td>{reservation.eta}</Td></tr>)}</tbody>
-          </DataTable>
-        </PanelCard>
-        <PanelCard id="wishlist" eyebrow="Saved pieces" title="Wishlist" action="Drop alerts">
-          <div className="grid gap-3 p-5">{wishlist.map((item) => <div key={item.product} className="grid grid-cols-[72px_1fr] gap-4 border border-[var(--ink)]/10 bg-[var(--bone)]/60 p-3"><img src={item.image} alt={item.product} className="aspect-[3/4] h-full w-full object-cover" /><div><h4 className="font-display text-2xl">{item.product}</h4><p className="mt-1 text-sm text-[var(--ink)]/55">{item.edition} - {item.availability}</p></div></div>)}</div>
-        </PanelCard>
+  const inventoryPanel = (
+    <AdminCard id="inventory" title="Product CMS">
+      <div className="grid gap-4">
+        {products.map((product) => (
+          <article key={product.id} className="grid gap-5 border border-[var(--ink)]/10 bg-white p-5 xl:grid-cols-[150px_1fr]">
+            <img src={product.image} alt={product.title} className="aspect-[3/4] w-full object-cover" />
+            <div className="grid gap-3 md:grid-cols-3">
+              <AdminField label="Title" value={product.title} onChange={(value) => persistProducts(products.map((item) => item.id === product.id ? { ...item, title: value } : item))} />
+              <AdminField label="Price" value={product.price} onChange={(value) => persistProducts(products.map((item) => item.id === product.id ? { ...item, price: value } : item))} />
+              <AdminField label="Status" value={product.status} onChange={(value) => persistProducts(products.map((item) => item.id === product.id ? { ...item, status: value } : item))} />
+              <AdminField label="Produced" value={product.produced} onChange={(value) => persistProducts(products.map((item) => item.id === product.id ? { ...item, produced: Number(value) || 0 } : item))} />
+              <AdminField label="Reserved" value={product.reserved} onChange={(value) => persistProducts(products.map((item) => item.id === product.id ? { ...item, reserved: Number(value) || 0 } : item))} />
+              <AdminField label="Available" value={product.available} onChange={(value) => persistProducts(products.map((item) => item.id === product.id ? { ...item, available: Number(value) || 0 } : item))} />
+            </div>
+          </article>
+        ))}
       </div>
+    </AdminCard>
+  );
 
-      <div className="grid gap-5 xl:grid-cols-2">
-        <PanelCard id="addresses" eyebrow="Delivery" title="White-glove Addresses" action="Secure profile">
-          <div className="grid gap-3 p-5">
-            {["Home - Altamount Road, Cumballa Hill, Mumbai", "Studio - Via private concierge hold, Milan"].map((address) => <div key={address} className="border border-[var(--ink)]/10 bg-[var(--bone)]/60 p-4"><strong>{address}</strong><p className="mt-2 text-sm text-[var(--ink)]/55">Managed for white-glove delivery and pickup.</p></div>)}
+  const customersPanel = (
+    <AdminCard id="customers" title="Customer Ecosystem">
+      <div className="overflow-x-auto">
+        <table className="w-full min-w-[860px] bg-white text-left text-sm">
+          <thead className="eyebrow text-[var(--ink)]/45"><tr><th className="p-4">Name</th><th>Email</th><th>Tier</th><th>Phone</th><th>Addresses</th><th>Wishlist</th><th>Orders</th></tr></thead>
+          <tbody>{customers.map((customer) => <tr key={customer.id} className="border-t border-[var(--ink)]/10"><td className="p-4 font-medium">{customer.name}</td><td>{customer.email}</td><td>{customer.tier}</td><td>{customer.phone || "Not added"}</td><td>{customer.addresses.length}</td><td>{customer.wishlist.length}</td><td>{orders.filter((order) => order.customerId === customer.id).length}</td></tr>)}</tbody>
+        </table>
+      </div>
+    </AdminCard>
+  );
+
+  const analyticsPanel = (
+    <div className="grid gap-5">
+      <div className="grid gap-4 md:grid-cols-4">
+        <article className="border border-[var(--ink)]/10 bg-white p-5"><p className="eyebrow text-[var(--ink)]/45">Conversion</p><strong className="font-display text-5xl">8.4%</strong></article>
+        <article className="border border-[var(--ink)]/10 bg-white p-5"><p className="eyebrow text-[var(--ink)]/45">Revenue</p><strong className="font-display text-5xl">+18%</strong></article>
+        <article className="border border-[var(--ink)]/10 bg-white p-5"><p className="eyebrow text-[var(--ink)]/45">Cart recovery</p><strong className="font-display text-5xl">{orders.filter((order) => order.status === "Support Requested").length}</strong></article>
+        <article className="border border-[var(--ink)]/10 bg-white p-5"><p className="eyebrow text-[var(--ink)]/45">Wishlist intent</p><strong className="font-display text-5xl">{customers.reduce((sum, customer) => sum + customer.wishlist.length, 0)}</strong></article>
+      </div>
+      <AdminCard id="analytics" title="Performance Notes"><AdminMiniList items={["Orders from checkout appear in customer account and admin.", "Inventory stock changes sync to storefront product cards.", "Coupons, reviews, banners and CMS persist through backend records.", "Customer wishlist and account data are visible for demo."]} /></AdminCard>
+    </div>
+  );
+
+  const panels: Record<AdminSection, ReactNode> = {
+    dashboard: dashboardPanel,
+    orders: ordersPanel,
+    inventory: inventoryPanel,
+    customers: customersPanel,
+    coupons: <AdminCard id="coupons" title="Coupons"><AdminCrudList storageKey="follocia_admin_coupons" records={coupons} onChange={setCoupons} titlePlaceholder="Coupon code" metaPlaceholder="Benefit and scope" /></AdminCard>,
+    reviews: <AdminCard id="reviews" title="Reviews & Ratings"><AdminCrudList storageKey="follocia_admin_reviews" records={reviews} onChange={setReviews} titlePlaceholder="Rating" metaPlaceholder="Review text" /></AdminCard>,
+    banners: <AdminCard id="banners" title="Banners"><AdminCrudList storageKey="follocia_admin_banners" records={banners} onChange={setBanners} titlePlaceholder="Banner title" metaPlaceholder="Placement" /></AdminCard>,
+    cms: <AdminCard id="cms" title="CMS Pages"><AdminCrudList storageKey="follocia_admin_cms" records={cmsPages} onChange={setCmsPages} titlePlaceholder="Page title" metaPlaceholder="Page purpose" /></AdminCard>,
+    analytics: analyticsPanel,
+    newsletter: <AdminCard id="newsletter" title="Newsletter"><AdminCrudList storageKey="follocia_admin_newsletter" records={newsletter} onChange={setNewsletter} titlePlaceholder="Segment" metaPlaceholder="Audience note" /></AdminCard>,
+    contact: <AdminCard id="contact" title="Contact Queries"><AdminCrudList storageKey="follocia_admin_contact" records={contactQueries} onChange={setContactQueries} titlePlaceholder="Query title" metaPlaceholder="Query detail" /></AdminCard>,
+    audit: <AdminCard id="audit" title="Audit Log"><AdminCrudList storageKey="follocia_admin_audit" records={audit} onChange={setAudit} titlePlaceholder="Audit event" metaPlaceholder="Details" /></AdminCard>,
+  };
+
+  return (
+    <main className="min-h-screen bg-[var(--bone)] text-[var(--ink)]">
+      <header className="sticky top-0 z-40 border-b border-[var(--ink)]/10 bg-[var(--bone)]/90 px-6 backdrop-blur-xl">
+        <div className="mx-auto flex h-20 max-w-[1500px] items-center justify-between">
+          <a href="/" className="font-display text-2xl tracking-[0.28em]">FOLLOCIA</a>
+          <div className="flex gap-2">
+            <a href="/" className="border border-[var(--ink)]/15 px-4 py-3 eyebrow">Storefront</a>
+            {onLogout && <button onClick={onLogout} className="bg-[var(--ink)] px-4 py-3 eyebrow text-[var(--bone)]">Logout</button>}
           </div>
-        </PanelCard>
-        <PanelCard id="support" eyebrow="Concierge" title="Support Timeline" action="Private desk">
-          <div className="grid gap-3 p-5">{["Private fitting confirmed", "Noir Suspendu care kit added", "Archive restoration quote shared"].map((task) => <div key={task} className="border border-[var(--ink)]/10 bg-[var(--bone)]/60 p-4"><strong>{task}</strong><p className="mt-2 text-sm text-[var(--ink)]/55">Concierge desk update.</p></div>)}</div>
-        </PanelCard>
+        </div>
+      </header>
+      <div className="mx-auto grid max-w-[1500px] gap-5 p-5 lg:grid-cols-[270px_1fr]">
+        <aside className="border border-[var(--ink)]/10 bg-[var(--ink)] p-6 text-[var(--bone)] lg:sticky lg:top-24 lg:h-[calc(100vh-7rem)]">
+          <h1 className="font-display text-5xl">Admin</h1>
+          <p className="mt-4 text-sm text-[var(--bone)]/60">Manage storefront, products, orders, customers and profile ecosystem from one place.</p>
+          <nav className="mt-10 grid gap-2 eyebrow text-[var(--bone)]/70">
+            {adminSections.map((section) => <button key={section} onClick={() => openSection(section)} className={`border px-4 py-3 text-left transition-colors ${activeSection === section ? "border-[var(--gold)]/60 bg-[var(--bone)] text-[var(--ink)]" : "border-transparent hover:border-[var(--gold)]/40"}`}>{adminSectionCopy[section].label}</button>)}
+          </nav>
+        </aside>
+        <section className="grid gap-5">
+          <header className="border border-[var(--ink)]/10 bg-[var(--ivory)] p-6">
+            <p className="eyebrow text-[var(--gold)]">{adminSectionCopy[activeSection].label}</p>
+            <h2 className="mt-2 font-display text-5xl leading-none">{adminSectionCopy[activeSection].title}</h2>
+            <p className="mt-3 max-w-2xl text-sm text-[var(--ink)]/55">{adminSectionCopy[activeSection].copy}</p>
+          </header>
+          {panels[activeSection]}
+        </section>
       </div>
-    </PanelLayout>
+    </main>
+  );
+}
+
+function LegacyAdminPanel({ onLogout }: { onLogout?: () => void }) {
+  const [products, setProducts] = useState<CommerceProduct[]>(() => getProducts());
+  const [orders, setOrders] = useState<CommerceOrder[]>(() => getOrders());
+  const [customers, setCustomers] = useState<CustomerProfile[]>(() => getCustomers());
+  const [coupons, setCoupons] = useState<AdminRecord[]>(() => readAdminRecords("follocia_admin_coupons", [
+    { id: "coupon-1", title: "FOLLOCIA10", meta: "10% off - Live editions", status: "Active" },
+    { id: "coupon-2", title: "ATELIERCARE", meta: "Free care kit - Delivered orders", status: "Active" },
+    { id: "coupon-3", title: "VIPFIRST", meta: "Priority fitting - Private members", status: "Paused" },
+  ]));
+  const [reviews, setReviews] = useState<AdminRecord[]>(() => readAdminRecords("follocia_admin_reviews", [
+    { id: "review-1", title: "5.0 / 5", meta: "Fit was perfect, packaging felt premium", status: "Published" },
+    { id: "review-2", title: "4.0 / 5", meta: "Concierge helped with size exchange", status: "Published" },
+    { id: "review-3", title: "3.0 / 5", meta: "Waiting for dispatch update", status: "Review" },
+  ]));
+  const [banners, setBanners] = useState<AdminRecord[]>(() => readAdminRecords("follocia_admin_banners", [
+    { id: "banner-1", title: "Hero drop banner", meta: "Homepage first viewport", status: "Live" },
+    { id: "banner-2", title: "VIP access strip", meta: "Navigation and checkout", status: "Live" },
+  ]));
+  const [cmsPages, setCmsPages] = useState<AdminRecord[]>(() => readAdminRecords("follocia_admin_cms", [
+    { id: "cms-1", title: "About atelier", meta: "Brand story page", status: "Published" },
+    { id: "cms-2", title: "Care guide", meta: "Post-purchase care", status: "Published" },
+    { id: "cms-3", title: "Return policy", meta: "Customer support", status: "Draft" },
+  ]));
+  const [contactQueries, setContactQueries] = useState<AdminRecord[]>(() => readAdminRecords("follocia_admin_contact", [
+    { id: "contact-1", title: "Sizing query from Mumbai", meta: "Customer asked for 38/39 fitting help", status: "Open" },
+    { id: "contact-2", title: "Delivery request from Delhi", meta: "White-glove delivery timing", status: "Open" },
+  ]));
+  const [newsletter, setNewsletter] = useState<AdminRecord[]>(() => readAdminRecords("follocia_admin_newsletter", [
+    { id: "news-1", title: "1,284 subscribers", meta: "Private drop audience", status: "Ready" },
+    { id: "news-2", title: "92 high-intent members", meta: "Wishlist and repeat customers", status: "Segmented" },
+  ]));
+  const [audit, setAudit] = useState<AdminRecord[]>(() => readAdminRecords("follocia_admin_audit", [
+    { id: "audit-1", title: "Product inventory updated", meta: "Admin changed available stock", status: "Logged" },
+    { id: "audit-2", title: "Order status changed", meta: "Delivery timeline updated", status: "Logged" },
+  ]));
+  const metrics = useMemo(() => [
+    { label: "Total orders", value: String(orders.length).padStart(2, "0"), delta: "Backend synced" },
+    { label: "Reserved value", value: `EUR ${orders.reduce((sum, order) => sum + (Number(order.amount.replace(/[^\d.]/g, "")) || 0), 0).toLocaleString()}`, delta: "Live order value" },
+    { label: "VIP customers", value: String(customers.length).padStart(2, "0"), delta: "Customer ecosystem" },
+    { label: "Pairs remaining", value: String(products.reduce((sum, product) => sum + product.available, 0)), delta: "Across catalogue", tone: "warn" },
+    { label: "Open queries", value: String(contactQueries.filter((item) => item.status === "Open").length).padStart(2, "0"), delta: "Support desk" },
+  ], [customers.length, orders, products, contactQueries]);
+
+  const persistProducts = (next: CommerceProduct[]) => {
+    setProducts(next);
+    saveProducts(next);
+    next.forEach((product) => void saveProductRemote(product));
+  };
+  const persistOrders = (next: CommerceOrder[]) => {
+    setOrders(next);
+    saveOrders(next);
+    next.forEach((order) => void saveOrderRemote(order));
+  };
+
+  useEffect(() => {
+    const sync = () => {
+      setProducts(getProducts());
+      setOrders(getOrders());
+      setCustomers(getCustomers());
+    };
+    void syncCommerceFromBackend();
+    void syncAdminRecordsFromBackend({
+      coupons: setCoupons,
+      reviews: setReviews,
+      banners: setBanners,
+      cms: setCmsPages,
+      newsletter: setNewsletter,
+      contact: setContactQueries,
+      audit: setAudit,
+    });
+    window.addEventListener(COMMERCE_EVENT, sync);
+    return () => window.removeEventListener(COMMERCE_EVENT, sync);
+  }, []);
+
+  return (
+    <main className="min-h-screen bg-[var(--bone)] text-[var(--ink)]">
+      <header className="sticky top-0 z-40 border-b border-[var(--ink)]/10 bg-[var(--bone)]/90 px-6 backdrop-blur-xl">
+        <div className="mx-auto flex h-20 max-w-[1500px] items-center justify-between">
+          <a href="/" className="font-display text-2xl tracking-[0.28em]">FOLLOCIA</a>
+          <div className="flex gap-2">
+            <a href="/" className="border border-[var(--ink)]/15 px-4 py-3 eyebrow">Storefront</a>
+            {onLogout && <button onClick={onLogout} className="bg-[var(--ink)] px-4 py-3 eyebrow text-[var(--bone)]">Logout</button>}
+          </div>
+        </div>
+      </header>
+      <div className="mx-auto grid max-w-[1500px] gap-5 p-5 lg:grid-cols-[260px_1fr]">
+        <aside className="border border-[var(--ink)]/10 bg-[var(--ink)] p-6 text-[var(--bone)] lg:sticky lg:top-24 lg:h-[calc(100vh-7rem)]">
+          <h1 className="font-display text-5xl">Admin</h1>
+          <p className="mt-4 text-sm text-[var(--bone)]/60">Manage storefront, products, orders, customers and profile ecosystem from one place.</p>
+          <nav className="mt-10 grid gap-2 eyebrow text-[var(--bone)]/70">
+            {["Dashboard", "Orders", "Inventory", "Customers", "Coupons", "Reviews", "Banners", "CMS", "Analytics", "Audit"].map((item) => <a key={item} href={`#${item.toLowerCase()}`} className="border border-transparent px-4 py-3 hover:border-[var(--gold)]/40">{item}</a>)}
+          </nav>
+        </aside>
+        <section className="grid gap-5">
+          <section id="dashboard" className="bg-[var(--ink)] p-8 text-[var(--bone)]">
+            <p className="eyebrow text-[var(--gold)]">Maison operations</p>
+            <h2 className="mt-4 font-display text-6xl leading-none">Premium commerce dashboard.</h2>
+          </section>
+          <div className="grid gap-4 md:grid-cols-5">
+            {metrics.map((metric) => <article key={metric.label} className="border border-[var(--ink)]/10 bg-white p-5"><p className="eyebrow text-[var(--ink)]/45">{metric.label}</p><strong className="mt-4 block font-display text-4xl">{metric.value}</strong><small className={metric.tone === "warn" ? "text-red-800" : "text-emerald-800"}>{metric.delta}</small></article>)}
+          </div>
+          <AdminCard id="orders" title="Order Control">
+            <div className="grid gap-3">
+              {orders.map((order) => (
+                <article key={order.id} className="grid gap-3 border border-[var(--ink)]/10 bg-white p-4 xl:grid-cols-[1fr_160px_180px]">
+                  <div><strong>{order.id}</strong><p className="text-sm text-[var(--ink)]/60">{order.customer} · {order.product} · Size {order.size} · {order.amount}</p></div>
+                  <select value={order.status} onChange={(event) => persistOrders(orders.map((item) => item.id === order.id ? { ...item, status: event.target.value } : item))} className="border border-[var(--ink)]/15 bg-white px-3 py-2 text-sm">
+                    {["Concierge Review", "Fitting Booked", "Paid", "White-glove Dispatch", "Delivered", "Cancelled"].map((status) => <option key={status}>{status}</option>)}
+                  </select>
+                  <input value={order.date} onChange={(event) => persistOrders(orders.map((item) => item.id === order.id ? { ...item, date: event.target.value } : item))} className="border border-[var(--ink)]/15 px-3 py-2 text-sm" />
+                  <select value={order.paymentStatus} onChange={(event) => persistOrders(orders.map((item) => item.id === order.id ? { ...item, paymentStatus: event.target.value } : item))} className="border border-[var(--ink)]/15 bg-white px-3 py-2 text-sm">
+                    {["Payment Pending", "Authorized", "Paid", "Due on Delivery", "Refunded"].map((status) => <option key={status}>{status}</option>)}
+                  </select>
+                  <select value={order.deliveryStatus} onChange={(event) => persistOrders(orders.map((item) => item.id === order.id ? { ...item, deliveryStatus: event.target.value } : item))} className="border border-[var(--ink)]/15 bg-white px-3 py-2 text-sm">
+                    {["Order Placed", "Fitting Scheduled", "In Atelier", "Dispatched", "Delivered", "Cancelled"].map((status) => <option key={status}>{status}</option>)}
+                  </select>
+                  <input placeholder="ETA" value={order.deliveryEta} onChange={(event) => persistOrders(orders.map((item) => item.id === order.id ? { ...item, deliveryEta: event.target.value } : item))} className="border border-[var(--ink)]/15 px-3 py-2 text-sm" />
+                  <input placeholder="Tracking code" value={order.trackingCode} onChange={(event) => persistOrders(orders.map((item) => item.id === order.id ? { ...item, trackingCode: event.target.value } : item))} className="border border-[var(--ink)]/15 px-3 py-2 text-sm" />
+                  <input placeholder="Delivery address" value={order.deliveryAddress} onChange={(event) => persistOrders(orders.map((item) => item.id === order.id ? { ...item, deliveryAddress: event.target.value } : item))} className="border border-[var(--ink)]/15 px-3 py-2 text-sm xl:col-span-3" />
+                </article>
+              ))}
+            </div>
+          </AdminCard>
+          <AdminCard id="inventory" title="Product CMS">
+            <div className="grid gap-4">
+              {products.map((product) => (
+                <article key={product.id} className="grid gap-4 border border-[var(--ink)]/10 bg-white p-4 xl:grid-cols-[100px_1fr]">
+                  <img src={product.image} alt={product.title} className="aspect-[3/4] w-full object-cover" />
+                  <div className="grid gap-3 md:grid-cols-3">
+                    <AdminField label="Title" value={product.title} onChange={(value) => persistProducts(products.map((item) => item.id === product.id ? { ...item, title: value } : item))} />
+                    <AdminField label="Price" value={product.price} onChange={(value) => persistProducts(products.map((item) => item.id === product.id ? { ...item, price: value } : item))} />
+                    <AdminField label="Status" value={product.status} onChange={(value) => persistProducts(products.map((item) => item.id === product.id ? { ...item, status: value } : item))} />
+                    <AdminField label="Produced" value={product.produced} onChange={(value) => persistProducts(products.map((item) => item.id === product.id ? { ...item, produced: Number(value) || 0 } : item))} />
+                    <AdminField label="Reserved" value={product.reserved} onChange={(value) => persistProducts(products.map((item) => item.id === product.id ? { ...item, reserved: Number(value) || 0 } : item))} />
+                    <AdminField label="Available" value={product.available} onChange={(value) => persistProducts(products.map((item) => item.id === product.id ? { ...item, available: Number(value) || 0 } : item))} />
+                  </div>
+                </article>
+              ))}
+            </div>
+          </AdminCard>
+          <AdminCard id="customers" title="Customer Ecosystem">
+            <div className="overflow-x-auto">
+              <table className="w-full min-w-[760px] bg-white text-left text-sm">
+                <thead className="eyebrow text-[var(--ink)]/45"><tr><th className="p-4">Name</th><th>Email</th><th>Tier</th><th>Addresses</th><th>Wishlist</th></tr></thead>
+                <tbody>{customers.map((customer) => <tr key={customer.id} className="border-t border-[var(--ink)]/10"><td className="p-4 font-medium">{customer.name}</td><td>{customer.email}</td><td>{customer.tier}</td><td>{customer.addresses.length}</td><td>{customer.wishlist.length}</td></tr>)}</tbody>
+              </table>
+            </div>
+          </AdminCard>
+          <div className="grid gap-5 xl:grid-cols-2">
+            <AdminCard id="coupons" title="Coupons">
+              <AdminCrudList storageKey="follocia_admin_coupons" records={coupons} onChange={setCoupons} titlePlaceholder="Coupon code" metaPlaceholder="Benefit and scope" />
+            </AdminCard>
+            <AdminCard id="reviews" title="Reviews & Ratings">
+              <AdminCrudList storageKey="follocia_admin_reviews" records={reviews} onChange={setReviews} titlePlaceholder="Rating" metaPlaceholder="Review text" />
+            </AdminCard>
+          </div>
+          <div className="grid gap-5 xl:grid-cols-3">
+            <AdminCard id="banners" title="Banners">
+              <AdminCrudList storageKey="follocia_admin_banners" records={banners} onChange={setBanners} titlePlaceholder="Banner title" metaPlaceholder="Placement" compact />
+            </AdminCard>
+            <AdminCard id="cms" title="CMS Pages">
+              <AdminCrudList storageKey="follocia_admin_cms" records={cmsPages} onChange={setCmsPages} titlePlaceholder="Page title" metaPlaceholder="Page purpose" compact />
+            </AdminCard>
+            <AdminCard id="analytics" title="Analytics">
+              <AdminMiniList items={["Conversion: 8.4%", `Cart recovery: ${orders.filter((order) => order.status === "Support Requested").length} leads`, `Wishlist intent: ${customers.reduce((sum, customer) => sum + customer.wishlist.length, 0)} pieces`, "Revenue trend: +18%"]} />
+            </AdminCard>
+          </div>
+          <div className="grid gap-5 xl:grid-cols-3">
+            <AdminCard id="newsletter" title="Newsletter">
+              <AdminCrudList storageKey="follocia_admin_newsletter" records={newsletter} onChange={setNewsletter} titlePlaceholder="Segment" metaPlaceholder="Audience note" compact />
+            </AdminCard>
+            <AdminCard id="contact" title="Contact Queries">
+              <AdminCrudList storageKey="follocia_admin_contact" records={contactQueries} onChange={setContactQueries} titlePlaceholder="Query title" metaPlaceholder="Query detail" compact />
+            </AdminCard>
+            <AdminCard id="audit" title="Audit Log">
+              <AdminCrudList storageKey="follocia_admin_audit" records={audit} onChange={setAudit} titlePlaceholder="Audit event" metaPlaceholder="Details" compact />
+            </AdminCard>
+          </div>
+        </section>
+      </div>
+    </main>
+  );
+}
+
+function AdminMiniList({ items }: { items: string[] }) {
+  return (
+    <div className="grid gap-2">
+      {items.map((item) => (
+        <div key={item} className="border border-[var(--ink)]/10 bg-white px-4 py-3 text-sm text-[var(--ink)]/70">{item}</div>
+      ))}
+    </div>
+  );
+}
+
+function AdminCrudList({
+  storageKey,
+  records,
+  onChange,
+  titlePlaceholder,
+  metaPlaceholder,
+  compact,
+}: {
+  storageKey: string;
+  records: AdminRecord[];
+  onChange: (records: AdminRecord[]) => void;
+  titlePlaceholder: string;
+  metaPlaceholder: string;
+  compact?: boolean;
+}) {
+  const [draftTitle, setDraftTitle] = useState("");
+  const [draftMeta, setDraftMeta] = useState("");
+  const persist = (next: AdminRecord[]) => {
+    onChange(next);
+    saveAdminRecords(storageKey, next);
+    const module = storageKey.replace("follocia_admin_", "");
+    void saveAdminRecordsRemote(module, next);
+  };
+
+  return (
+    <div className="grid gap-3">
+      <div className={`grid gap-2 ${compact ? "" : "md:grid-cols-[1fr_1fr_auto]"}`}>
+        <input value={draftTitle} onChange={(event) => setDraftTitle(event.target.value)} placeholder={titlePlaceholder} className="border border-[var(--ink)]/15 bg-white px-3 py-2 text-sm outline-none focus:border-[var(--ink)]" />
+        <input value={draftMeta} onChange={(event) => setDraftMeta(event.target.value)} placeholder={metaPlaceholder} className="border border-[var(--ink)]/15 bg-white px-3 py-2 text-sm outline-none focus:border-[var(--ink)]" />
+        <button
+          onClick={() => {
+            if (!draftTitle.trim()) return;
+            persist([{ id: `${storageKey}-${Date.now()}`, title: draftTitle.trim(), meta: draftMeta.trim() || "No details", status: "Active" }, ...records]);
+            setDraftTitle("");
+            setDraftMeta("");
+          }}
+          className="bg-[var(--ink)] px-4 py-2 eyebrow text-[var(--bone)]"
+        >
+          Add
+        </button>
+      </div>
+      {records.map((record) => (
+        <article key={record.id} className="grid gap-2 border border-[var(--ink)]/10 bg-white p-4">
+          <div className="grid gap-2 md:grid-cols-[1fr_1.4fr_130px_auto]">
+            <input value={record.title} onChange={(event) => persist(records.map((item) => item.id === record.id ? { ...item, title: event.target.value } : item))} className="border border-transparent bg-[var(--bone)]/50 px-2 py-2 text-sm font-semibold outline-none focus:border-[var(--ink)]/20" />
+            <input value={record.meta} onChange={(event) => persist(records.map((item) => item.id === record.id ? { ...item, meta: event.target.value } : item))} className="border border-transparent bg-[var(--bone)]/50 px-2 py-2 text-sm text-[var(--ink)]/65 outline-none focus:border-[var(--ink)]/20" />
+            <select value={record.status} onChange={(event) => persist(records.map((item) => item.id === record.id ? { ...item, status: event.target.value } : item))} className="border border-[var(--ink)]/10 bg-white px-2 py-2 text-sm">
+              {["Active", "Live", "Published", "Draft", "Paused", "Open", "Resolved", "Review", "Logged", "Ready", "Segmented"].map((status) => <option key={status}>{status}</option>)}
+            </select>
+            <button onClick={() => persist(records.filter((item) => item.id !== record.id))} className="border border-[var(--ink)]/15 px-3 py-2 text-xs uppercase tracking-[0.18em] text-[var(--ink)]/55">Delete</button>
+          </div>
+        </article>
+      ))}
+    </div>
+  );
+}
+
+function AdminCard({ id, title, children }: { id: string; title: string; children: ReactNode }) {
+  return (
+    <section id={id} className="border border-[var(--ink)]/10 bg-[var(--ivory)] p-5 shadow-[var(--shadow-soft)]">
+      <div className="mb-5 flex items-center justify-between border-b border-[var(--ink)]/10 pb-4">
+        <h2 className="font-display text-4xl">{title}</h2>
+        <span className="eyebrow text-[var(--ink)]/35">Manage</span>
+      </div>
+      {children}
+    </section>
   );
 }

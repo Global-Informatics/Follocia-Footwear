@@ -1,5 +1,6 @@
 import { motion } from "framer-motion";
 import { useMemo, useState } from "react";
+import { ensureCustomerRemote } from "@/lib/commerceStore";
 
 export type UserRole = "admin" | "customer";
 
@@ -20,6 +21,7 @@ type StoredUser = AuthUser & { password: string };
 
 type AuthGatewayProps = {
   intent?: UserRole;
+  compact?: boolean;
   onAuthenticated: (session: AuthSession) => void;
 };
 
@@ -62,7 +64,7 @@ export function clearAuthSession() {
   localStorage.removeItem(SESSION_KEY);
 }
 
-export function AuthGateway({ intent = "customer", onAuthenticated }: AuthGatewayProps) {
+export function AuthGateway({ intent = "customer", compact = false, onAuthenticated }: AuthGatewayProps) {
   const [mode, setMode] = useState<"login" | "register">("login");
   const [role, setRole] = useState<UserRole>(intent);
   const [name, setName] = useState("");
@@ -86,7 +88,7 @@ export function AuthGateway({ intent = "customer", onAuthenticated }: AuthGatewa
     [role],
   );
 
-  const authenticate = (selectedEmail = email, selectedPassword = password, selectedRole = role) => {
+  const authenticate = async (selectedEmail = email, selectedPassword = password, selectedRole = role) => {
     const users = getUsers();
     const user = users.find(
       (item) =>
@@ -101,10 +103,11 @@ export function AuthGateway({ intent = "customer", onAuthenticated }: AuthGatewa
     }
 
     const { password: _password, ...safeUser } = user;
+    if (safeUser.role === "customer") await ensureCustomerRemote(safeUser);
     onAuthenticated(saveSession(safeUser));
   };
 
-  const register = () => {
+  const register = async () => {
     const cleanEmail = email.trim().toLowerCase();
     const cleanName = name.trim();
     if (!cleanName || !cleanEmail || password.length < 6) {
@@ -128,6 +131,7 @@ export function AuthGateway({ intent = "customer", onAuthenticated }: AuthGatewa
     };
     localStorage.setItem(USERS_KEY, JSON.stringify([...users, user]));
     const { password: _password, ...safeUser } = user;
+    await ensureCustomerRemote(safeUser);
     onAuthenticated(saveSession(safeUser));
   };
 
@@ -141,10 +145,10 @@ export function AuthGateway({ intent = "customer", onAuthenticated }: AuthGatewa
   };
 
   return (
-    <main className="relative min-h-screen overflow-hidden bg-[var(--ink)] text-[var(--bone)] luxe-grain">
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_72%_24%,oklch(0.78_0.12_80_/_0.22),transparent_26rem)]" />
-      <section className="relative mx-auto grid min-h-screen max-w-[1500px] gap-10 px-6 py-8 md:px-12 lg:grid-cols-[1fr_480px] lg:items-center">
-        <motion.div initial={{ opacity: 0, y: 24 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.8 }} className="flex min-h-[45vh] flex-col justify-between">
+    <main className={`relative overflow-hidden text-[var(--bone)] luxe-grain ${compact ? "bg-transparent" : "min-h-screen bg-[var(--ink)]"}`}>
+      {!compact && <div className="absolute inset-0 bg-[radial-gradient(circle_at_72%_24%,oklch(0.78_0.12_80_/_0.22),transparent_26rem)]" />}
+      <section className={`relative mx-auto grid gap-10 ${compact ? "max-w-[480px] p-0" : "min-h-screen max-w-[1500px] px-6 py-8 md:px-12 lg:grid-cols-[1fr_480px] lg:items-center"}`}>
+        <motion.div initial={{ opacity: 0, y: 24 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.8 }} className={`${compact ? "hidden" : "flex min-h-[45vh] flex-col justify-between"}`}>
           <a href={import.meta.env.BASE_URL === "/react/" ? "/" : import.meta.env.BASE_URL} className="font-display text-3xl tracking-[0.28em]">
             FOLLOCIA
           </a>
@@ -167,10 +171,10 @@ export function AuthGateway({ intent = "customer", onAuthenticated }: AuthGatewa
           onSubmit={(event) => {
             event.preventDefault();
             setError("");
-            if (mode === "register") register();
-            else authenticate();
+            if (mode === "register") void register();
+            else void authenticate();
           }}
-          className="border border-[var(--bone)]/12 bg-[var(--bone)] px-5 py-6 text-[var(--ink)] shadow-[var(--shadow-luxe)] md:px-8 md:py-8"
+          className={`border border-[var(--bone)]/12 bg-[var(--bone)] px-5 py-6 text-[var(--ink)] shadow-[var(--shadow-luxe)] md:px-8 md:py-8 ${compact ? "w-full" : ""}`}
         >
           <div className="flex gap-2 border border-[var(--ink)]/10 p-1">
             {(["customer", "admin"] as const).map((item) => (
@@ -191,7 +195,7 @@ export function AuthGateway({ intent = "customer", onAuthenticated }: AuthGatewa
 
           <div className="mt-8">
             <p className="eyebrow text-[var(--gold)]">{mode === "register" ? "Create account" : "Secure sign in"}</p>
-            <h2 className="mt-3 font-display text-5xl">{mode === "register" ? "Join Private Atelier" : role === "admin" ? "Maison Admin" : "Welcome Back"}</h2>
+            <h2 className={`mt-3 font-display ${compact ? "text-4xl" : "text-5xl"}`}>{mode === "register" ? "Join Private Atelier" : role === "admin" ? "Maison Admin" : "Welcome Back"}</h2>
           </div>
 
           <div className="mt-8 grid gap-4">
