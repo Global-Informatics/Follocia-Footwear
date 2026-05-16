@@ -1,6 +1,7 @@
 import { motion } from "framer-motion";
 import { useMemo, useState } from "react";
 import { ensureCustomerRemote } from "@/lib/commerceStore";
+import { BrandLogo } from "@/components/BrandLogo";
 
 export type UserRole = "admin" | "customer";
 
@@ -149,8 +150,8 @@ export function AuthGateway({ intent = "customer", compact = false, onAuthentica
       {!compact && <div className="absolute inset-0 bg-[radial-gradient(circle_at_72%_24%,oklch(0.78_0.12_80_/_0.22),transparent_26rem)]" />}
       <section className={`relative mx-auto grid gap-10 ${compact ? "max-w-[480px] p-0" : "min-h-screen max-w-[1500px] px-6 py-8 md:px-12 lg:grid-cols-[1fr_480px] lg:items-center"}`}>
         <motion.div initial={{ opacity: 0, y: 24 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.8 }} className={`${compact ? "hidden" : "flex min-h-[45vh] flex-col justify-between"}`}>
-          <a href={import.meta.env.BASE_URL === "/react/" ? "/" : import.meta.env.BASE_URL} className="font-display text-3xl tracking-[0.28em]">
-            FOLLOCIA
+          <a href={import.meta.env.BASE_URL === "/react/" ? "/" : import.meta.env.BASE_URL} aria-label="Follocia home" className="w-fit">
+            <BrandLogo imageClassName="h-24 w-24 border border-white/10" />
           </a>
           <div className="max-w-4xl">
             <p className="eyebrow text-[var(--gold)]">{copy.eyebrow}</p>

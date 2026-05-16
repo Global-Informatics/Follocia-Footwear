@@ -1,5 +1,6 @@
 import { AnimatePresence, motion } from "framer-motion";
 import { useEffect, useState } from "react";
+import { BrandLogo } from "./BrandLogo";
 
 export function Loader() {
   const [done, setDone] = useState(false);
@@ -33,12 +34,12 @@ export function Loader() {
           className="fixed inset-0 z-[200] flex flex-col items-center justify-center bg-[var(--ink)] luxe-grain text-[var(--bone)]"
         >
           <motion.div
-            initial={{ opacity: 0, letterSpacing: "0.6em" }}
-            animate={{ opacity: 1, letterSpacing: "0.3em" }}
+            initial={{ opacity: 0, scale: 0.92 }}
+            animate={{ opacity: 1, scale: 1 }}
             transition={{ duration: 1.4, ease: [0.2, 0.8, 0.2, 1] }}
-            className="font-display text-5xl md:text-7xl"
+            className="grid place-items-center"
           >
-            FOLLOCIA
+            <BrandLogo imageClassName="h-32 w-32 border border-white/10 md:h-40 md:w-40" />
           </motion.div>
           <motion.div
             initial={{ opacity: 0 }}

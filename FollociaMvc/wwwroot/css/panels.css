@@ -41,11 +41,12 @@ button, input, select, textarea { font: inherit; }
 }
 
 .brand-mark {
-  font-family: Georgia, "Times New Roman", serif;
-  font-size: 1.5rem;
-  letter-spacing: .28em;
-  white-space: nowrap;
+  display: inline-flex;
+  align-items: center;
+  background: #fff;
+  border: 1px solid rgba(23, 19, 15, .08);
 }
+.brand-mark img { display: block; width: 3.25rem; height: 3.25rem; object-fit: contain; }
 
 .top-actions { display: flex; align-items: center; gap: .75rem; }
 .top-actions a, .top-actions button {

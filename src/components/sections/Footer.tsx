@@ -1,3 +1,5 @@
+import { BrandLogo } from "@/components/BrandLogo";
+
 export function Footer() {
   const cols = [
     { t: "Maison", l: ["The House", "Atelier", "Sustainability", "Press"] },
@@ -9,7 +11,7 @@ export function Footer() {
       <div className="mx-auto max-w-[1500px]">
         <div className="grid grid-cols-2 gap-12 border-b border-[var(--bone)]/10 pb-16 md:grid-cols-12">
           <div className="col-span-2 md:col-span-5">
-            <div className="font-display text-5xl tracking-[0.25em]">FOLLOCIA</div>
+            <BrandLogo imageClassName="h-28 w-28 border border-white/10" />
             <p className="mt-6 max-w-xs text-sm leading-relaxed text-[var(--bone)]/60">
               Limited edition women's footwear. Sculpted in Florence. Worn by the few.
             </p>

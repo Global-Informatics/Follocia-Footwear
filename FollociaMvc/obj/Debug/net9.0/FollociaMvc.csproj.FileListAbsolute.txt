@@ -97,8 +97,6 @@ D:\atelier-follocia-lux-main\FollociaMvc\obj\Debug\net9.0\FollociaMvc.genruntime
 D:\atelier-follocia-lux-main\FollociaMvc\obj\Debug\net9.0\ref\FollociaMvc.dll
 D:\atelier-follocia-lux-main\FollociaMvc\obj\Debug\net9.0\compressed\ogui9h2icv-drj5e7iln2.gz
 D:\atelier-follocia-lux-main\FollociaMvc\obj\Debug\net9.0\compressed\t86kpdrt5t-gtcclvmuhq.gz
-D:\atelier-follocia-lux-main\FollociaMvc\obj\Debug\net9.0\compressed\ij1eyxaapo-46vakuafgv.gz
-D:\atelier-follocia-lux-main\FollociaMvc\obj\Debug\net9.0\compressed\tfzz7p5ezs-93fli7cee8.gz
 D:\atelier-follocia-lux-main\FollociaMvc\obj\codex-build\appsettings.Development.json
 D:\atelier-follocia-lux-main\FollociaMvc\obj\codex-build\appsettings.json
 D:\atelier-follocia-lux-main\FollociaMvc\obj\codex-build\FollociaMvc.staticwebassets.runtime.json
@@ -158,6 +156,8 @@ D:\atelier-follocia-lux-main\FollociaMvc\bin\Debug\net9.0\runtimes\win\lib\net6.
 D:\atelier-follocia-lux-main\FollociaMvc\bin\Debug\net9.0\runtimes\win\lib\net6.0\System.Windows.Extensions.dll
 D:\atelier-follocia-lux-main\FollociaMvc\obj\Debug\net9.0\FollociaMvc.csproj.AssemblyReference.cache
 D:\atelier-follocia-lux-main\FollociaMvc\obj\Debug\net9.0\Follocia.282FEACB.Up2Date
+D:\atelier-follocia-lux-main\FollociaMvc\obj\Debug\net9.0\compressed\tfzz7p5ezs-w9kc4757ql.gz
+D:\atelier-follocia-lux-main\FollociaMvc\obj\Debug\net9.0\compressed\5z0aucmdr5-r4jd965p8l.gz
+D:\atelier-follocia-lux-main\FollociaMvc\obj\Debug\net9.0\compressed\yrq2ojoys0-3qncexq8aw.gz
+D:\atelier-follocia-lux-main\FollociaMvc\obj\Debug\net9.0\compressed\ij1eyxaapo-1co6hjp51p.gz
 D:\atelier-follocia-lux-main\FollociaMvc\obj\Debug\net9.0\staticwebassets.upToDateCheck.txt
-D:\atelier-follocia-lux-main\FollociaMvc\obj\Debug\net9.0\compressed\5z0aucmdr5-7tsn38p8oi.gz
-D:\atelier-follocia-lux-main\FollociaMvc\obj\Debug\net9.0\compressed\yrq2ojoys0-t4268nihd3.gz

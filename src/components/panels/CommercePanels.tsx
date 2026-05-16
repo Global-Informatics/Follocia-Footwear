@@ -19,6 +19,7 @@ import {
   type CustomerProfile,
 } from "@/lib/commerceStore";
 import type { AuthSession } from "@/components/auth/AuthGateway";
+import { BrandLogo } from "@/components/BrandLogo";
 
 const menu = ["My Orders", "My Wishlist", "My Addresses", "My Wallet", "My Coupons", "Gift Cards", "My Reviews", "Notifications", "My Subscriptions", "My Account"] as const;
 type AccountSection = (typeof menu)[number];
@@ -638,7 +639,9 @@ export function AdminPanel({ onLogout }: { onLogout?: () => void }) {
     <main className="min-h-screen bg-[var(--bone)] text-[var(--ink)]">
       <header className="sticky top-0 z-40 border-b border-[var(--ink)]/10 bg-[var(--bone)]/90 px-6 backdrop-blur-xl">
         <div className="mx-auto flex h-20 max-w-[1500px] items-center justify-between">
-          <a href="/" className="font-display text-2xl tracking-[0.28em]">FOLLOCIA</a>
+          <a href="/" aria-label="Follocia home" className="flex items-center">
+            <BrandLogo compact imageClassName="border border-[var(--ink)]/10" />
+          </a>
           <div className="flex gap-2">
             <a href="/" className="border border-[var(--ink)]/15 px-4 py-3 eyebrow">Storefront</a>
             {onLogout && <button onClick={onLogout} className="bg-[var(--ink)] px-4 py-3 eyebrow text-[var(--bone)]">Logout</button>}
@@ -744,7 +747,9 @@ function LegacyAdminPanel({ onLogout }: { onLogout?: () => void }) {
     <main className="min-h-screen bg-[var(--bone)] text-[var(--ink)]">
       <header className="sticky top-0 z-40 border-b border-[var(--ink)]/10 bg-[var(--bone)]/90 px-6 backdrop-blur-xl">
         <div className="mx-auto flex h-20 max-w-[1500px] items-center justify-between">
-          <a href="/" className="font-display text-2xl tracking-[0.28em]">FOLLOCIA</a>
+          <a href="/" aria-label="Follocia home" className="flex items-center">
+            <BrandLogo compact imageClassName="border border-[var(--ink)]/10" />
+          </a>
           <div className="flex gap-2">
             <a href="/" className="border border-[var(--ink)]/15 px-4 py-3 eyebrow">Storefront</a>
             {onLogout && <button onClick={onLogout} className="bg-[var(--ink)] px-4 py-3 eyebrow text-[var(--bone)]">Logout</button>}

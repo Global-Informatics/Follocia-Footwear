@@ -2,6 +2,7 @@ import { motion, useScroll, useTransform, AnimatePresence } from "framer-motion"
 import { useEffect, useRef, useState } from "react";
 import { Magnetic } from "./Magnetic";
 import { useCart } from "./cart/CartContext";
+import { BrandLogo } from "./BrandLogo";
 
 export function Navigation({ userName, onLogout, onLogin, solid = false }: { userName?: string; onLogout?: () => void; onLogin?: () => void; solid?: boolean }) {
   const baseUrl = import.meta.env.BASE_URL === "/react/" ? "/" : import.meta.env.BASE_URL;
@@ -39,8 +40,8 @@ export function Navigation({ userName, onLogout, onLogin, solid = false }: { use
         className="fixed inset-x-0 top-0 z-[60] backdrop-blur-md transition-colors"
       >
         <div className="mx-auto flex h-20 max-w-[1600px] items-center justify-between px-6 md:px-12">
-          <a href={baseUrl} className={`font-display text-2xl tracking-[0.3em] ${solid ? "text-[var(--ink)]" : "text-[var(--bone)]"}`}>
-            FOLLOCIA
+          <a href={baseUrl} aria-label="Follocia home" className="flex items-center">
+            <BrandLogo compact imageClassName={`border ${solid ? "border-[var(--ink)]/10" : "border-white/20"}`} />
           </a>
           <nav className="hidden items-center gap-10 md:flex">
             {nav.map(([label]) => (

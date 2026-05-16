@@ -14,7 +14,9 @@
 <body>
     <main class="panel-shell">
         <header class="panel-topbar">
-            <a class="brand-mark" asp-controller="Home" asp-action="Index">FOLLOCIA</a>
+            <a class="brand-mark" asp-controller="Home" asp-action="Index" aria-label="Follocia home">
+                <img src="~/images/follocia-logo.jpeg" asp-append-version="true" alt="Follocia logo" />
+            </a>
             <div class="top-actions">
                 <a asp-controller="Account" asp-action="Index">User Panel</a>
                 <a asp-controller="Home" asp-action="Index">Storefront</a>
