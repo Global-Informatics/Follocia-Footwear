@@ -27,10 +27,10 @@ export function Navigation({ userName, onLogout, onLogin, solid = false }: { use
   }, []);
 
   const nav = [
-    ["Collections", "/"],
-    ["Atelier", "/"],
-    ["Journal", "/"],
-    ["Contact", "/"],
+    ["Home", baseUrl],
+    ["Collections", "#/collections"],
+    ["Shop", "#/shop"],
+    ["Contact", "#/contact"],
   ] as const;
 
   return (
@@ -44,8 +44,8 @@ export function Navigation({ userName, onLogout, onLogin, solid = false }: { use
             <BrandLogo compact imageClassName={`border ${solid ? "border-[var(--ink)]/10" : "border-white/20"}`} />
           </a>
           <nav className="hidden items-center gap-10 md:flex">
-            {nav.map(([label]) => (
-              <a key={label} href="#" className={`eyebrow transition-colors hover:text-[var(--gold)] ${solid ? "text-[var(--ink)]/80" : "text-[var(--bone)]/80"}`}>
+            {nav.map(([label, href]) => (
+              <a key={label} href={href} className={`eyebrow transition-colors hover:text-[var(--gold)] ${solid ? "text-[var(--ink)]/80" : "text-[var(--bone)]/80"}`}>
                 {label}
               </a>
             ))}
@@ -94,6 +94,10 @@ export function Navigation({ userName, onLogout, onLogin, solid = false }: { use
             <button
               aria-label="Wishlist"
               data-cursor="hover"
+              onClick={() => {
+                if (userName) window.location.hash = "/account/my-wishlist";
+                else onLogin?.();
+              }}
               className={`relative hidden transition-colors hover:text-[var(--gold)] md:block ${solid ? "text-[var(--ink)]/80" : "text-[var(--bone)]/80"}`}
             >
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
@@ -156,8 +160,8 @@ export function Navigation({ userName, onLogout, onLogin, solid = false }: { use
           exit={{ opacity: 0 }}
           className="fixed inset-0 z-[55] flex flex-col items-center justify-center gap-8 bg-[var(--ink)] md:hidden"
         >
-          {nav.map(([label]) => (
-            <a key={label} href="#" onClick={() => setOpen(false)} className="font-display text-4xl text-[var(--bone)]">
+          {nav.map(([label, href]) => (
+            <a key={label} href={href} onClick={() => setOpen(false)} className="font-display text-4xl text-[var(--bone)]">
               {label}
             </a>
           ))}

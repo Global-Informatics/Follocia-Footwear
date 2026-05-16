@@ -148,7 +148,7 @@ export function FeaturedCollections() {
                 The Current <em className="italic text-[var(--gold)]">Atelier</em>.
               </h2>
             </div>
-            <a href="#" className="eyebrow text-[var(--ink)] underline-offset-8 hover:underline">
+            <a href="#/shop" className="eyebrow text-[var(--ink)] underline-offset-8 hover:underline">
               View all editions →
             </a>
           </div>

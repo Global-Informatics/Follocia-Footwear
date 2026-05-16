@@ -18,6 +18,7 @@ import { AccountPanel, AdminPanel } from "@/components/panels/CommercePanels";
 import { AuthGateway, clearAuthSession, readAuthSession } from "@/components/auth/AuthGateway";
 import type { AuthSession } from "@/components/auth/AuthGateway";
 import { syncCommerceFromBackend } from "@/lib/commerceStore";
+import { CollectionsPage, ContactPage, ProductDetailPage, SecureCheckoutPage, ShopPage } from "@/components/pages/ShopPages";
 
 function sectionFromPath(path: string) {
   if (path.includes("my-addresses")) return "My Addresses" as const;
@@ -83,6 +84,10 @@ export function App() {
 
   const wantsAdmin = path.startsWith("/admin");
   const wantsAccount = path.startsWith("/account");
+  const wantsShop = path === "/shop" || path.startsWith("/shop/");
+  const wantsCollections = path.startsWith("/collections");
+  const wantsContact = path.startsWith("/contact");
+  const wantsCheckout = path.startsWith("/checkout");
 
   const logout = () => {
     clearAuthSession();
@@ -120,12 +125,63 @@ export function App() {
     );
   }
 
+  if (wantsCheckout) {
+    return (
+      <CartProvider>
+        <SecureCheckoutPage session={session} onLogout={logout} onLogin={() => setLoginOpen(true)} />
+        {loginOpen && (
+          <div className="fixed inset-0 z-[120] grid place-items-center bg-[var(--ink)]/70 px-4 py-8 backdrop-blur-md">
+            <button onClick={() => setLoginOpen(false)} className="fixed right-6 top-6 z-[121] text-4xl text-[var(--bone)]">x</button>
+            <AuthGateway intent="customer" compact onAuthenticated={(next) => { setSession(next); setLoginOpen(false); }} />
+          </div>
+        )}
+      </CartProvider>
+    );
+  }
+
+  if (wantsShop) {
+    const productId = path.startsWith("/shop/") ? decodeURIComponent(path.replace("/shop/", "")) : "";
+    return (
+      <CartProvider>
+        {productId ? (
+          <ProductDetailPage productId={productId} session={session} onLogout={logout} onLogin={() => setLoginOpen(true)} />
+        ) : (
+          <ShopPage session={session} onLogout={logout} onLogin={() => setLoginOpen(true)} />
+        )}
+        {loginOpen && (
+          <div className="fixed inset-0 z-[120] grid place-items-center bg-[var(--ink)]/70 px-4 py-8 backdrop-blur-md">
+            <button onClick={() => setLoginOpen(false)} className="fixed right-6 top-6 z-[121] text-4xl text-[var(--bone)]">x</button>
+            <AuthGateway intent="customer" compact onAuthenticated={(next) => { setSession(next); setLoginOpen(false); }} />
+          </div>
+        )}
+      </CartProvider>
+    );
+  }
+
+  if (wantsCollections || wantsContact) {
+    return (
+      <CartProvider>
+        {wantsCollections ? (
+          <CollectionsPage session={session} onLogout={logout} onLogin={() => setLoginOpen(true)} />
+        ) : (
+          <ContactPage session={session} onLogout={logout} onLogin={() => setLoginOpen(true)} />
+        )}
+        {loginOpen && (
+          <div className="fixed inset-0 z-[120] grid place-items-center bg-[var(--ink)]/70 px-4 py-8 backdrop-blur-md">
+            <button onClick={() => setLoginOpen(false)} className="fixed right-6 top-6 z-[121] text-4xl text-[var(--bone)]">x</button>
+            <AuthGateway intent="customer" compact onAuthenticated={(next) => { setSession(next); setLoginOpen(false); }} />
+          </div>
+        )}
+      </CartProvider>
+    );
+  }
+
   return (
     <>
       <Storefront session={session} onLogout={logout} onLogin={() => setLoginOpen(true)} />
       {loginOpen && (
         <div className="fixed inset-0 z-[120] grid place-items-center bg-[var(--ink)]/70 px-4 py-8 backdrop-blur-md">
-          <button onClick={() => setLoginOpen(false)} className="fixed right-6 top-6 z-[121] text-4xl text-[var(--bone)]">×</button>
+          <button onClick={() => setLoginOpen(false)} className="fixed right-6 top-6 z-[121] text-4xl text-[var(--bone)]">x</button>
           <AuthGateway
             intent="customer"
             compact

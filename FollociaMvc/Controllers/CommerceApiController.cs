@@ -114,6 +114,7 @@ public class CommerceApiController(FollociaDbContext db) : ControllerBase
         product.PriceAmount = ParseMoney(dto.Price);
         product.CurrencyCode = ParseCurrency(dto.Price);
         product.Tone = dto.Tone;
+        product.ImagePath = dto.Image;
         product.Status = dto.Status;
         product.Produced = dto.Produced;
         product.Reserved = dto.Reserved;
