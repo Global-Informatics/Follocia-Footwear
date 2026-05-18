@@ -1,117 +1,149 @@
-import { motion, useScroll, useTransform } from "framer-motion";
-import { useRef } from "react";
-import heroShoe from "@/assets/hero-shoe.jpg";
+import { motion, AnimatePresence } from "framer-motion";
+import { useState, useEffect } from "react";
+import { SplitText } from "../SplitText";
+
+const SLIDES = [
+  {
+    url: "/images/hero/hero_slide_1.png",
+    title: "The Signature Pump",
+    subtitle: "Edition III · Milan"
+  },
+  {
+    url: "/images/hero/hero_slide_2.png",
+    title: "Summer Collection",
+    subtitle: "Edition IV · Paris"
+  },
+  {
+    url: "/images/hero/hero_slide_3.png",
+    title: "Atelier Gold",
+    subtitle: "Private Reserve"
+  }
+];
 
 export function Hero() {
-  const ref = useRef<HTMLDivElement>(null);
-  const { scrollYProgress } = useScroll({ target: ref, offset: ["start start", "end start"] });
-  const y = useTransform(scrollYProgress, [0, 1], ["0%", "30%"]);
-  const scale = useTransform(scrollYProgress, [0, 1], [1, 1.15]);
-  const titleY = useTransform(scrollYProgress, [0, 1], ["0%", "80%"]);
-  const opacity = useTransform(scrollYProgress, [0, 0.8], [1, 0]);
+  const [currentIndex, setCurrentIndex] = useState(0);
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setCurrentIndex((prev) => (prev + 1) % SLIDES.length);
+    }, 7000); // 7 seconds per slide
+    return () => clearInterval(timer);
+  }, []);
 
   return (
-    <section ref={ref} className="relative h-[110vh] w-full overflow-hidden bg-[var(--ink)] luxe-grain">
-      {/* Background glow */}
-      <motion.div
-        style={{ scale }}
-        className="absolute inset-0"
-      >
-        <div className="absolute left-1/2 top-1/2 h-[80vh] w-[80vh] -translate-x-1/2 -translate-y-1/2 rounded-full bg-[var(--gold)]/15 blur-[120px]" />
-      </motion.div>
-
-      {/* Floating shoe */}
-      <motion.div
-        style={{ y, scale }}
-        initial={{ opacity: 0, scale: 0.85 }}
-        animate={{ opacity: 1, scale: 1 }}
-        transition={{ duration: 1.6, ease: [0.2, 0.8, 0.2, 1] }}
-        className="absolute inset-0 flex items-center justify-center"
-      >
-        <div className="animate-float">
-          <img
-            src={heroShoe}
-            alt="Follocia signature champagne pump"
-            width={1080}
-            height={1920}
-            className="h-[80vh] w-auto select-none object-contain drop-shadow-[0_60px_80px_rgba(0,0,0,0.5)]"
-          />
-        </div>
-      </motion.div>
-
-      {/* Eyebrow top-left */}
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.6, duration: 1 }}
-        className="absolute left-6 top-28 z-10 max-w-xs text-[var(--bone)]/70 md:left-12"
-      >
-        <p className="eyebrow">Maison Follocia · MMXXV</p>
-        <p className="mt-3 text-sm leading-relaxed">
-          Six rare collections per year. Crafted in limited numbers for women who refuse the ordinary.
-        </p>
-      </motion.div>
-
-      {/* Headline */}
-      <motion.div
-        style={{ y: titleY, opacity }}
-        className="relative z-10 mx-auto flex h-full max-w-[1600px] flex-col justify-end px-6 pb-32 md:px-12"
-      >
-        <motion.h1
-          initial={{ opacity: 0, y: 60 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 1.4, ease: [0.2, 0.8, 0.2, 1], delay: 0.2 }}
-          className="font-display text-[clamp(3.5rem,11vw,11rem)] leading-[0.9] tracking-[-0.03em] text-[var(--bone)]"
-        >
-          Limited <em className="font-light italic gradient-gold-text">Edition</em>
-          <br />
-          for the <em className="font-light italic">Few.</em>
-        </motion.h1>
-
+    <section className="relative h-[100svh] min-h-[700px] w-full overflow-hidden bg-[var(--ink)]">
+      {/* Background Images Carousel with Ken Burns Effect */}
+      <AnimatePresence mode="popLayout" initial={false}>
         <motion.div
-          initial={{ opacity: 0, y: 30 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 1, delay: 0.9 }}
-          className="mt-10 flex flex-col items-start gap-6 md:flex-row md:items-center md:justify-between"
+          key={currentIndex}
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: 1.5, ease: "easeInOut" }}
+          className="absolute inset-0"
         >
-          <p className="max-w-md text-base leading-relaxed text-[var(--bone)]/70">
-            Footwear sculpted in Italian ateliers. Released only six times a year. Once gone, never reissued.
-          </p>
-          <div className="flex flex-wrap gap-4">
-            <a
-              href="#collections"
-              className="magnetic-btn group inline-flex items-center gap-3 border border-[var(--bone)]/40 px-8 py-4 eyebrow text-[var(--bone)] transition-colors hover:text-[var(--ink)]"
-            >
-              Explore Collection
-              <span className="transition-transform group-hover:translate-x-1">→</span>
-            </a>
-            <a
-              href="#vip"
-              className="magnetic-btn inline-flex items-center gap-3 bg-[var(--bone)] px-8 py-4 eyebrow text-[var(--ink)]"
-            >
-              Join Early Access
-            </a>
-          </div>
-        </motion.div>
-      </motion.div>
-
-      {/* Scroll indicator */}
-      <motion.div
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ delay: 1.6, duration: 1 }}
-        className="absolute bottom-8 left-1/2 z-10 -translate-x-1/2 text-[var(--bone)]/60"
-      >
-        <div className="flex flex-col items-center gap-3">
-          <span className="eyebrow text-[0.6rem]">Scroll</span>
-          <motion.div
-            animate={{ scaleY: [0.3, 1, 0.3] }}
-            transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
-            style={{ transformOrigin: "top" }}
-            className="h-10 w-px bg-[var(--bone)]/60"
+          <motion.img
+            src={SLIDES[currentIndex].url}
+            alt={SLIDES[currentIndex].title}
+            initial={{ scale: 1.0 }}
+            animate={{ scale: 1.1, x: "-1%", y: "-1%" }}
+            transition={{ duration: 10, ease: "linear" }}
+            className="h-full w-full object-cover opacity-60"
           />
+        </motion.div>
+      </AnimatePresence>
+
+      {/* Cinematic Overlays */}
+      <div className="absolute inset-0 bg-gradient-to-t from-[var(--ink)] via-[var(--ink)]/40 to-[var(--ink)]/80 z-10" />
+      <div className="absolute inset-0 luxe-grain z-10" />
+
+      {/* Content */}
+      <div className="absolute inset-0 z-20 mx-auto flex max-w-[1500px] flex-col justify-end px-6 pb-24 md:px-12 md:pb-32">
+        <div className="flex flex-col md:flex-row md:items-end justify-between gap-12">
+          {/* Left Column: Headlines */}
+          <div className="max-w-2xl">
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.5, duration: 1 }}
+              className="flex items-center gap-3 mb-6"
+            >
+              <div className="h-px w-6 bg-[var(--gold)]/60" />
+              <p className="eyebrow text-[var(--gold)]">Maison Follocia · MMXXV</p>
+            </motion.div>
+
+            <h1 className="font-display text-[clamp(2.5rem,7vw,6.5rem)] leading-[0.9] tracking-[-0.02em] text-[var(--bone)]">
+              <SplitText text="Limited" className="font-display" />
+              <br />
+              <span className="text-[var(--bone)]/60">for the </span>
+              <em className="font-light italic gradient-gold-text">Few.</em>
+            </h1>
+
+            <motion.p
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 1.2, duration: 1 }}
+              className="mt-6 text-xs md:text-sm leading-relaxed text-[var(--bone)]/60 max-w-sm"
+            >
+              Footwear sculpted in Italian ateliers. Released only six times a year. Once gone, never reissued.
+            </motion.p>
+          </div>
+
+          {/* Right Column: Active Video Details & CTAs */}
+          <div className="flex flex-col items-start md:items-end gap-8">
+            <AnimatePresence mode="wait">
+              <motion.div
+                key={currentIndex}
+                initial={{ opacity: 0, y: 5 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -5 }}
+                transition={{ duration: 0.6 }}
+                className="text-left md:text-right"
+              >
+                <p className="eyebrow text-[var(--gold)]">{SLIDES[currentIndex].subtitle}</p>
+                <p className="mt-2 font-display text-2xl text-[var(--bone)]">{SLIDES[currentIndex].title}</p>
+              </motion.div>
+            </AnimatePresence>
+
+            <div className="flex flex-wrap items-center gap-3">
+              <a
+                href="#collections"
+                data-cursor="hover"
+                className="magnetic-btn border border-[var(--bone)]/20 px-6 py-3 text-[10px] uppercase tracking-[0.2em] text-[var(--bone)] transition-colors hover:border-[var(--gold)] hover:bg-[var(--gold)] hover:text-[var(--ink)]"
+              >
+                Explore Collection
+              </a>
+              <a
+                href="#vip"
+                data-cursor="hover"
+                className="magnetic-btn bg-[var(--bone)] px-6 py-3 text-[10px] uppercase tracking-[0.2em] text-[var(--ink)] shadow-[var(--shadow-soft)] hover:shadow-[var(--shadow-gold-glow)]"
+              >
+                VIP Access
+              </a>
+            </div>
+          </div>
         </div>
-      </motion.div>
+      </div>
+
+      {/* Sleek Progress Indicator */}
+      <div className="absolute bottom-10 left-6 right-6 md:left-12 md:right-12 z-20 flex items-center justify-between">
+        <div className="flex gap-2">
+          {SLIDES.map((_, i) => (
+            <button
+              key={i}
+              onClick={() => setCurrentIndex(i)}
+              className="group py-2 relative"
+              aria-label={`Go to slide ${i + 1}`}
+            >
+              <div className={`h-0.5 transition-all duration-500 ease-out ${i === currentIndex ? "w-12 bg-[var(--gold)]" : "w-6 bg-[var(--bone)]/20 group-hover:bg-[var(--bone)]/40"}`} />
+            </button>
+          ))}
+        </div>
+        
+        <div className="eyebrow text-[0.6rem] text-[var(--bone)]/50 tracking-[0.4em]">
+          0{currentIndex + 1} / 0{SLIDES.length}
+        </div>
+      </div>
     </section>
   );
 }

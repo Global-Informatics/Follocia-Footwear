@@ -74,8 +74,11 @@
 
   --gradient-gold: linear-gradient(135deg, oklch(0.88 0.09 85), oklch(0.72 0.13 75));
   --gradient-ink: linear-gradient(180deg, oklch(0.18 0.005 60), oklch(0.08 0.005 60));
+  --gradient-aurora: linear-gradient(135deg, oklch(0.25 0.06 60), oklch(0.18 0.08 80), oklch(0.22 0.05 40));
   --shadow-luxe: 0 30px 80px -30px oklch(0.1 0 0 / 0.45);
   --shadow-soft: 0 10px 40px -20px oklch(0.1 0 0 / 0.25);
+  --shadow-3d: 0 20px 60px -15px oklch(0.1 0 0 / 0.4), 0 8px 20px -8px oklch(0.1 0 0 / 0.2);
+  --shadow-gold-glow: 0 0 40px oklch(0.78 0.12 80 / 0.25), 0 0 80px oklch(0.78 0.12 80 / 0.1);
 
   --chart-1: var(--gold);
   --chart-2: var(--champagne);
@@ -122,6 +125,7 @@
     -webkit-font-smoothing: antialiased;
     background-color: var(--color-background);
     color: var(--color-foreground);
+    scroll-behavior: auto; /* we handle smooth scroll via JS */
   }
 
   body {
@@ -135,9 +139,10 @@
     color: var(--ink);
   }
 
-  ::-webkit-scrollbar { width: 8px; height: 8px; }
+  ::-webkit-scrollbar { width: 6px; height: 6px; }
   ::-webkit-scrollbar-track { background: transparent; }
   ::-webkit-scrollbar-thumb { background: oklch(0.5 0.02 60 / 0.3); border-radius: 4px; }
+  ::-webkit-scrollbar-thumb:hover { background: oklch(0.78 0.12 80 / 0.5); }
 }
 
 @layer utilities {
@@ -153,6 +158,13 @@
     font-weight: 500;
   }
 
+  /* ──────────────────────── 3D & PERSPECTIVE ──────────────────────── */
+  .perspective-1200 { perspective: 1200px; }
+  .perspective-2000 { perspective: 2000px; }
+  .preserve-3d { transform-style: preserve-3d; }
+  .backface-hidden { backface-visibility: hidden; }
+
+  /* ──────────────────────── GRADIENT TEXT ──────────────────────── */
   .gradient-gold-text {
     background: var(--gradient-gold);
     -webkit-background-clip: text;
@@ -160,31 +172,121 @@
     color: transparent;
   }
 
+  /* ──────────────────────── GRAIN OVERLAY ──────────────────────── */
   .luxe-grain::before {
     content: "";
     position: absolute;
     inset: 0;
     pointer-events: none;
-    opacity: 0.06;
+    opacity: 0.04;
     mix-blend-mode: overlay;
-    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2'/></filter><rect width='100%25' height='100%25' filter='url(%23n)'/></svg>");
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='200' height='200'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3'/></filter><rect width='100%25' height='100%25' filter='url(%23n)'/></svg>");
+    z-index: 1;
   }
 
+  /* ──────────────────────── GLASS MORPHISM V2 ──────────────────────── */
   .glass {
     background: oklch(1 0 0 / 0.06);
-    backdrop-filter: blur(18px) saturate(140%);
-    -webkit-backdrop-filter: blur(18px) saturate(140%);
+    backdrop-filter: blur(24px) saturate(160%);
+    -webkit-backdrop-filter: blur(24px) saturate(160%);
+    border: 1px solid oklch(1 0 0 / 0.1);
+  }
+
+  .glass-dark {
+    background: oklch(0.14 0.005 60 / 0.6);
+    backdrop-filter: blur(28px) saturate(180%);
+    -webkit-backdrop-filter: blur(28px) saturate(180%);
     border: 1px solid oklch(1 0 0 / 0.08);
   }
 
+  .glass-gold {
+    background: oklch(0.78 0.12 80 / 0.08);
+    backdrop-filter: blur(20px) saturate(150%);
+    -webkit-backdrop-filter: blur(20px) saturate(150%);
+    border: 1px solid oklch(0.78 0.12 80 / 0.2);
+  }
+
+  /* ──────────────────────── BORDERS ──────────────────────── */
   .hairline { border-color: oklch(1 0 0 / 0.12); }
 
+  .border-gradient {
+    border: 1px solid transparent;
+    background-clip: padding-box;
+    position: relative;
+  }
+  .border-gradient::before {
+    content: "";
+    position: absolute;
+    inset: -1px;
+    border-radius: inherit;
+    background: var(--gradient-gold);
+    z-index: -1;
+    opacity: 0.4;
+    transition: opacity 0.6s ease;
+  }
+  .border-gradient:hover::before {
+    opacity: 0.8;
+  }
+
+  /* ──────────────────────── HOLOGRAPHIC SHINE ──────────────────────── */
+  .holo-shine {
+    position: relative;
+    overflow: hidden;
+  }
+  .holo-shine::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(
+      105deg,
+      transparent 40%,
+      oklch(0.95 0.05 80 / 0.15) 45%,
+      oklch(0.9 0.1 60 / 0.12) 50%,
+      oklch(0.85 0.08 40 / 0.1) 52%,
+      transparent 55%
+    );
+    transform: translateX(-100%);
+    transition: transform 0.8s cubic-bezier(0.2, 0.8, 0.2, 1);
+    pointer-events: none;
+    z-index: 2;
+  }
+  .holo-shine:hover::after {
+    transform: translateX(100%);
+  }
+
+  /* ──────────────────────── CINEMATIC VIGNETTE ──────────────────────── */
+  .vignette::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    background: radial-gradient(ellipse at center, transparent 50%, oklch(0.08 0.005 60 / 0.6) 100%);
+    z-index: 1;
+  }
+
+  /* ──────────────────────── GLOW EFFECTS ──────────────────────── */
+  .gold-glow {
+    box-shadow: var(--shadow-gold-glow);
+  }
+  .gold-glow-text {
+    text-shadow: 0 0 30px oklch(0.78 0.12 80 / 0.4), 0 0 60px oklch(0.78 0.12 80 / 0.15);
+  }
+
+  /* ──────────────────────── MARQUEE ──────────────────────── */
   @keyframes marquee {
     from { transform: translateX(0); }
     to { transform: translateX(-50%); }
   }
-  .animate-marquee { animation: marquee 40s linear infinite; }
+  @keyframes marquee-reverse {
+    from { transform: translateX(-50%); }
+    to { transform: translateX(0); }
+  }
+  .animate-marquee { animation: marquee 35s linear infinite; }
+  .animate-marquee-reverse { animation: marquee-reverse 40s linear infinite; }
+  .animate-marquee:hover,
+  .animate-marquee-reverse:hover { animation-play-state: paused; }
 
+  /* ──────────────────────── SHIMMER ──────────────────────── */
   @keyframes shimmer {
     0% { background-position: -200% 0; }
     100% { background-position: 200% 0; }
@@ -195,20 +297,81 @@
     -webkit-background-clip: text;
     background-clip: text;
     color: transparent;
-    animation: shimmer 6s ease-in-out infinite;
+    animation: shimmer 4s ease-in-out infinite;
   }
 
+  /* ──────────────────────── FLOAT ──────────────────────── */
   @keyframes float {
-    0%, 100% { transform: translateY(0); }
-    50% { transform: translateY(-12px); }
+    0%, 100% { transform: translateY(0) rotate(0deg); }
+    33% { transform: translateY(-10px) rotate(0.5deg); }
+    66% { transform: translateY(-6px) rotate(-0.3deg); }
   }
   .animate-float { animation: float 6s ease-in-out infinite; }
 
+  @keyframes float-slow {
+    0%, 100% { transform: translateY(0) rotate(0deg); }
+    50% { transform: translateY(-20px) rotate(1deg); }
+  }
+  .animate-float-slow { animation: float-slow 10s ease-in-out infinite; }
+
+  /* ──────────────────────── PULSE GLOW ──────────────────────── */
+  @keyframes pulse-glow {
+    0%, 100% { opacity: 0.3; transform: scale(1); }
+    50% { opacity: 0.6; transform: scale(1.05); }
+  }
+  .animate-pulse-glow { animation: pulse-glow 4s ease-in-out infinite; }
+
+  /* ──────────────────────── AURORA GRADIENT ──────────────────────── */
+  @keyframes aurora {
+    0% { background-position: 0% 50%; }
+    25% { background-position: 50% 100%; }
+    50% { background-position: 100% 50%; }
+    75% { background-position: 50% 0%; }
+    100% { background-position: 0% 50%; }
+  }
+  .animate-aurora {
+    background-size: 300% 300%;
+    animation: aurora 12s ease-in-out infinite;
+  }
+
+  /* ──────────────────────── SPIN SLOW ──────────────────────── */
+  @keyframes spin-slow {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+  }
+  .animate-spin-slow { animation: spin-slow 20s linear infinite; }
+
+  /* ──────────────────────── DRAW LINE ──────────────────────── */
+  @keyframes draw-line {
+    from { width: 0; }
+    to { width: 100%; }
+  }
+  .animate-draw-line { animation: draw-line 1.5s cubic-bezier(0.2, 0.8, 0.2, 1) forwards; }
+
+  /* ──────────────────────── UNDERLINE SLIDE ──────────────────────── */
+  .hover-underline {
+    position: relative;
+  }
+  .hover-underline::after {
+    content: "";
+    position: absolute;
+    left: 0;
+    bottom: -2px;
+    height: 1px;
+    width: 0;
+    background: var(--gold);
+    transition: width 0.5s cubic-bezier(0.2, 0.8, 0.2, 1);
+  }
+  .hover-underline:hover::after {
+    width: 100%;
+  }
+
+  /* ──────────────────────── MAGNETIC BUTTON ──────────────────────── */
   .magnetic-btn {
     position: relative;
     isolation: isolate;
     overflow: hidden;
-    transition: color 0.6s cubic-bezier(.2,.8,.2,1);
+    transition: color 0.6s cubic-bezier(.2,.8,.2,1), box-shadow 0.6s ease;
   }
   .magnetic-btn::after {
     content: "";
@@ -220,4 +383,36 @@
     z-index: -1;
   }
   .magnetic-btn:hover::after { transform: translateY(0); }
+  .magnetic-btn:hover { box-shadow: var(--shadow-gold-glow); }
+
+  /* ──────────────────────── CARD 3D ──────────────────────── */
+  .card-3d {
+    transition: transform 0.5s cubic-bezier(0.2, 0.8, 0.2, 1), box-shadow 0.5s ease;
+    transform-style: preserve-3d;
+  }
+  .card-3d:hover {
+    box-shadow: var(--shadow-3d);
+  }
+
+  /* ──────────────────────── CLIP REVEAL ──────────────────────── */
+  @keyframes clip-reveal-left {
+    from { clip-path: inset(0 100% 0 0); }
+    to { clip-path: inset(0 0 0 0); }
+  }
+  @keyframes clip-reveal-up {
+    from { clip-path: inset(100% 0 0 0); }
+    to { clip-path: inset(0 0 0 0); }
+  }
+
+  /* ──────────────────────── GRADIENT BORDER ANIMATED ──────────────────────── */
+  @keyframes border-rotate {
+    from { --angle: 0deg; }
+    to { --angle: 360deg; }
+  }
+
+  /* ──────────────────────── FADE EDGES (for marquee) ──────────────────────── */
+  .fade-edges {
+    mask-image: linear-gradient(90deg, transparent 0%, black 8%, black 92%, transparent 100%);
+    -webkit-mask-image: linear-gradient(90deg, transparent 0%, black 8%, black 92%, transparent 100%);
+  }
 }

@@ -26,8 +26,11 @@ function Card({ item, i, onQuick }: { item: QuickItem; i: number; onQuick: (it: 
   const ref = useRef<HTMLDivElement>(null);
   const mx = useMotionValue(0);
   const my = useMotionValue(0);
-  const rx = useSpring(useTransform(my, [-1, 1], [8, -8]), { stiffness: 150, damping: 15 });
-  const ry = useSpring(useTransform(mx, [-1, 1], [-10, 10]), { stiffness: 150, damping: 15 });
+  const rx = useSpring(useTransform(my, [-1, 1], [10, -10]), { stiffness: 150, damping: 15 });
+  const ry = useSpring(useTransform(mx, [-1, 1], [-12, 12]), { stiffness: 150, damping: 15 });
+  // Dynamic shadow based on tilt
+  const shadowX = useSpring(useTransform(mx, [-1, 1], [20, -20]), { stiffness: 100, damping: 20 });
+  const shadowY = useSpring(useTransform(my, [-1, 1], [20, -20]), { stiffness: 100, damping: 20 });
   const { wishlist, toggleWish } = useCart();
   const wished = wishlist.includes(item.id);
 
@@ -39,15 +42,18 @@ function Card({ item, i, onQuick }: { item: QuickItem; i: number; onQuick: (it: 
   const reset = () => { mx.set(0); my.set(0); };
 
   return (
-    <Reveal delay={i * 0.1}>
+    <Reveal delay={i * 0.12} mode="scale-in">
       <motion.div
         ref={ref}
         onMouseMove={onMove}
         onMouseLeave={reset}
         style={{ rotateX: rx, rotateY: ry, transformPerspective: 1200 }}
-        className="group relative"
+        className="group relative card-3d"
+        data-cursor="hover"
+        data-cursor-label="View"
       >
-        <div className="relative overflow-hidden bg-[var(--champagne)]/30">
+        {/* Card with holographic shine */}
+        <div className="relative overflow-hidden bg-[var(--champagne)]/20 holo-shine">
           <div className="aspect-[3/4] w-full overflow-hidden">
             <motion.img
               src={item.image}
@@ -55,44 +61,61 @@ function Card({ item, i, onQuick }: { item: QuickItem; i: number; onQuick: (it: 
               loading="lazy"
               width={1024}
               height={1280}
-              className="h-full w-full object-cover transition-transform duration-[1.2s] ease-[cubic-bezier(.2,.8,.2,1)] group-hover:scale-110"
+              className="h-full w-full object-cover transition-transform duration-[1.4s] ease-[cubic-bezier(.2,.8,.2,1)] group-hover:scale-110"
             />
           </div>
-          <div className="pointer-events-none absolute inset-x-0 bottom-0 h-1/2 bg-gradient-to-t from-[var(--ink)]/70 to-transparent opacity-0 transition-opacity duration-700 group-hover:opacity-100" />
 
+          {/* Gradient overlay */}
+          <div className="pointer-events-none absolute inset-x-0 bottom-0 h-2/3 bg-gradient-to-t from-[var(--ink)]/80 via-[var(--ink)]/20 to-transparent opacity-0 transition-opacity duration-700 group-hover:opacity-100" />
+
+          {/* Edition number */}
           <div className="absolute left-5 top-5 eyebrow text-[var(--bone)] mix-blend-difference">
             № {String(i + 1).padStart(2, "0")}
           </div>
 
+          {/* Wishlist */}
           <button
             onClick={(e) => { e.stopPropagation(); toggleWish(item.id); }}
             aria-label="Wishlist"
             data-cursor="hover"
-            className="absolute right-5 top-5 flex h-10 w-10 items-center justify-center rounded-full border border-[var(--bone)]/40 bg-[var(--ink)]/50 text-[var(--bone)] backdrop-blur-md transition-all hover:scale-110"
+            className="absolute right-5 top-5 flex h-10 w-10 items-center justify-center rounded-full border border-[var(--bone)]/30 bg-[var(--ink)]/40 text-[var(--bone)] backdrop-blur-md transition-all hover:scale-110 hover:border-[var(--gold)]/50 hover:shadow-[0_0_15px_var(--gold)/0.3]"
           >
             <Heart active={wished} />
           </button>
 
-          <div className="absolute inset-x-5 bottom-5 flex translate-y-4 flex-col gap-2 opacity-0 transition-all duration-500 group-hover:translate-y-0 group-hover:opacity-100">
+          {/* Quick view button */}
+          <div className="absolute inset-x-5 bottom-5 flex translate-y-6 flex-col gap-2 opacity-0 transition-all duration-600 ease-[cubic-bezier(.2,.8,.2,1)] group-hover:translate-y-0 group-hover:opacity-100">
             <button
               onClick={() => onQuick(item)}
               data-cursor="hover"
-              className="w-full bg-[var(--bone)] py-3 eyebrow text-[var(--ink)] transition-colors hover:bg-[var(--gold)]"
+              className="w-full bg-[var(--bone)] py-3.5 eyebrow text-[var(--ink)] transition-all hover:bg-[var(--gold)] hover:shadow-[var(--shadow-gold-glow)]"
             >
               Quick View
             </button>
           </div>
 
-          <div className="absolute right-5 bottom-5 rounded-full border border-[var(--bone)]/40 bg-[var(--ink)]/60 px-3 py-1 text-[0.6rem] uppercase tracking-[0.25em] text-[var(--bone)] opacity-100 backdrop-blur-md transition-opacity duration-500 group-hover:opacity-0">
+          {/* Edition badge with pulse */}
+          <motion.div
+            animate={{ boxShadow: ["0 0 0px oklch(0.78 0.12 80 / 0)", "0 0 15px oklch(0.78 0.12 80 / 0.3)", "0 0 0px oklch(0.78 0.12 80 / 0)"] }}
+            transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
+            className="absolute right-5 bottom-5 rounded-full border border-[var(--bone)]/30 bg-[var(--ink)]/60 px-3 py-1.5 text-[0.6rem] uppercase tracking-[0.25em] text-[var(--bone)] backdrop-blur-md transition-opacity duration-500 group-hover:opacity-0"
+          >
             {item.edition}
-          </div>
+          </motion.div>
         </div>
+
+        {/* Card info */}
         <div className="mt-6 flex items-end justify-between">
           <div>
-            <p className="eyebrow text-[var(--ink)]/50">{item.tone}</p>
+            <p className="eyebrow text-[var(--ink)]/45">{item.tone}</p>
             <h3 className="mt-2 font-display text-2xl text-[var(--ink)] md:text-3xl">{item.title}</h3>
           </div>
-          <p className="font-display text-xl text-[var(--ink)]">{item.price}</p>
+          <p className="font-display text-xl text-[var(--gold)]">{item.price}</p>
+        </div>
+
+        {/* Subtle reflection */}
+        <div className="mt-2 h-8 w-full overflow-hidden opacity-[0.03]" style={{ transform: "scaleY(-1)" }}>
+          <div className="aspect-[3/4] w-full bg-[var(--champagne)]/30" />
         </div>
       </motion.div>
     </Reveal>
@@ -139,53 +162,64 @@ export function FeaturedCollections() {
 
   return (
     <section id="collections" className="relative bg-[var(--bone)] px-6 py-32 md:px-12 md:py-48">
+      {/* Section decorative element */}
+      <div className="absolute right-0 top-0 h-full w-px bg-gradient-to-b from-transparent via-[var(--gold)]/10 to-transparent" />
+
       <div className="mx-auto max-w-[1500px]">
-        <Reveal>
+        <Reveal mode="rotate-in">
           <div className="mb-20 flex flex-col items-start justify-between gap-6 md:flex-row md:items-end">
             <div>
-              <p className="eyebrow text-[var(--ink)]/60">— Edition MMXXV / III</p>
+              <div className="flex items-center gap-3">
+                <div className="h-px w-6 bg-[var(--gold)]/50" />
+                <p className="eyebrow text-[var(--ink)]/60">Edition MMXXV / III</p>
+              </div>
               <h2 className="mt-4 font-display text-[clamp(2.5rem,6vw,5.5rem)] leading-[1] tracking-[-0.02em] text-[var(--ink)]">
-                The Current <em className="italic text-[var(--gold)]">Atelier</em>.
+                The Current <em className="italic text-[var(--gold)] gold-glow-text">Atelier</em>.
               </h2>
             </div>
-            <a href="#/shop" className="eyebrow text-[var(--ink)] underline-offset-8 hover:underline">
+            <a href="#/shop" className="eyebrow text-[var(--ink)] hover-underline" data-cursor="hover">
               View all editions →
             </a>
           </div>
         </Reveal>
 
-        <div className="mb-12 grid gap-3 border-y border-[var(--ink)]/10 py-5 md:grid-cols-[1fr_190px_190px]">
-          <label className="grid gap-2 text-sm text-[var(--ink)]/55">
-            Search catalogue
-            <input
-              value={query}
-              onChange={(event) => setQuery(event.target.value)}
-              placeholder="Search by edition, tone, product..."
-              className="h-12 border border-[var(--ink)]/15 bg-white/60 px-4 text-[var(--ink)] outline-none focus:border-[var(--ink)]"
-            />
-          </label>
-          <label className="grid gap-2 text-sm text-[var(--ink)]/55">
-            Filter
-            <select value={status} onChange={(event) => setStatus(event.target.value)} className="h-12 border border-[var(--ink)]/15 bg-white/60 px-4 text-[var(--ink)] outline-none">
-              {["All", "220", "180", "140", "Ready to ship"].map((item) => <option key={item}>{item}</option>)}
-            </select>
-          </label>
-          <label className="grid gap-2 text-sm text-[var(--ink)]/55">
-            Sort
-            <select value={sort} onChange={(event) => setSort(event.target.value)} className="h-12 border border-[var(--ink)]/15 bg-white/60 px-4 text-[var(--ink)] outline-none">
-              {["Recommended", "Price: Low to High", "Price: High to Low"].map((item) => <option key={item}>{item}</option>)}
-            </select>
-          </label>
-        </div>
+        {/* Filters with glass effect */}
+        <Reveal delay={0.1} mode="fade-up">
+          <div className="mb-12 grid gap-3 border-y border-[var(--ink)]/8 py-5 md:grid-cols-[1fr_190px_190px]">
+            <label className="grid gap-2 text-sm text-[var(--ink)]/50">
+              Search catalogue
+              <input
+                value={query}
+                onChange={(event) => setQuery(event.target.value)}
+                placeholder="Search by edition, tone, product..."
+                className="h-12 border border-[var(--ink)]/10 bg-white/60 px-4 text-[var(--ink)] outline-none transition-all duration-500 focus:border-[var(--gold)] focus:shadow-[0_0_20px_oklch(0.78_0.12_80/0.1)]"
+              />
+            </label>
+            <label className="grid gap-2 text-sm text-[var(--ink)]/50">
+              Filter
+              <select value={status} onChange={(event) => setStatus(event.target.value)} className="h-12 border border-[var(--ink)]/10 bg-white/60 px-4 text-[var(--ink)] outline-none">
+                {["All", "220", "180", "140", "Ready to ship"].map((item) => <option key={item}>{item}</option>)}
+              </select>
+            </label>
+            <label className="grid gap-2 text-sm text-[var(--ink)]/50">
+              Sort
+              <select value={sort} onChange={(event) => setSort(event.target.value)} className="h-12 border border-[var(--ink)]/10 bg-white/60 px-4 text-[var(--ink)] outline-none">
+                {["Recommended", "Price: Low to High", "Price: High to Low"].map((item) => <option key={item}>{item}</option>)}
+              </select>
+            </label>
+          </div>
+        </Reveal>
 
-        <div className="grid grid-cols-1 gap-10 md:grid-cols-3 md:gap-8">
+        <div className="grid grid-cols-1 gap-12 md:grid-cols-3 md:gap-10">
           {visibleCatalogue.map((item, i) => <Card key={item.id} item={item} i={i} onQuick={setQuick} />)}
         </div>
         {visibleCatalogue.length === 0 && (
-          <div className="border border-[var(--ink)]/10 py-16 text-center">
-            <p className="font-display text-3xl">No pieces match this search.</p>
-            <button onClick={() => { setQuery(""); setStatus("All"); }} className="mt-5 bg-[var(--ink)] px-6 py-3 eyebrow text-[var(--bone)]">Clear filters</button>
-          </div>
+          <Reveal>
+            <div className="border border-[var(--ink)]/8 py-16 text-center">
+              <p className="font-display text-3xl">No pieces match this search.</p>
+              <button onClick={() => { setQuery(""); setStatus("All"); }} className="mt-5 magnetic-btn bg-[var(--ink)] px-6 py-3 eyebrow text-[var(--bone)]">Clear filters</button>
+            </div>
+          </Reveal>
         )}
       </div>
 
