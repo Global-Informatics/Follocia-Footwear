@@ -222,26 +222,32 @@ export function ShopPage({ session, onLogout, onLogin }: { session: AuthSession 
   return (
     <PageShell session={session} onLogout={onLogout} onLogin={onLogin} darkNav>
       {/* Aurora Hero */}
-      <section className="relative overflow-hidden bg-[var(--ink)] text-[var(--bone)] pt-12 pb-24 lg:pt-24 lg:pb-32 -mt-20">
+      <section className="relative overflow-hidden bg-[var(--ink)] text-[var(--bone)] pt-32 pb-40 -mt-20 flex flex-col items-center justify-center min-h-[60svh]">
         <div className="absolute inset-0 animate-aurora opacity-30" style={{ background: "linear-gradient(135deg, oklch(0.2 0.08 60), oklch(0.12 0.1 80), oklch(0.18 0.06 40))", backgroundSize: "300% 300%" }} />
         <GoldenParticles count={30} className="z-[1] opacity-50" />
         <div className="absolute inset-0 luxe-grain z-[2]" />
         <div className="vignette absolute inset-0 z-[2]" />
         
-        <div className="relative z-10 mx-auto grid max-w-[1500px] gap-10 px-6 md:px-12 lg:grid-cols-[1.1fr_0.9fr] items-end mt-20">
-          <div>
-            <motion.p initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.8 }} className="eyebrow text-[var(--gold)]">Follocia shop</motion.p>
-            <motion.h1 initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 1, delay: 0.2, ease }} className="mt-5 font-display text-[clamp(4rem,9vw,9rem)] leading-[0.85]">
-              Limited pairs,<br/>live inventory.
-            </motion.h1>
-            <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 1, delay: 0.4 }} className="mt-8 max-w-xl text-sm leading-7 text-[var(--bone)]/65">
-              A premium Flipkart-style commerce room for a luxury brand: search, filter, sort, wishlist, quick view, add to bag and dynamic admin-managed inventory.
-            </motion.p>
-          </div>
-          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 1, delay: 0.6 }} className="grid gap-3">
-            {["Bank-style offers: FOLLOCIA10 live at checkout", "White-glove dispatch status in customer account", "Inventory changes update from admin panel"].map((item, i) => (
-              <div key={item} className="glass-dark border border-[var(--gold)]/20 px-5 py-4 text-sm text-[var(--bone)]/80 flex items-center gap-3">
-                <span className="h-1.5 w-1.5 rounded-full bg-[var(--gold)] animate-pulse" />
+        <div className="relative z-10 mx-auto flex flex-col items-center text-center max-w-4xl px-6 md:px-12 mt-10">
+          <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.8 }} className="flex items-center gap-3 mb-6">
+            <div className="h-px w-6 bg-[var(--gold)]/60" />
+            <p className="eyebrow text-[var(--gold)]">The Follocia Atelier</p>
+            <div className="h-px w-6 bg-[var(--gold)]/60" />
+          </motion.div>
+          
+          <motion.h1 initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 1, delay: 0.2, ease }} className="font-display text-[clamp(3rem,6vw,5.5rem)] leading-[0.95] tracking-[-0.01em]">
+            Limited Pairs, <br className="hidden md:block" />
+            <em className="font-light italic gradient-gold-text">Live Inventory.</em>
+          </motion.h1>
+          
+          <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 1, delay: 0.4 }} className="mt-8 max-w-2xl text-[13px] leading-relaxed text-[var(--bone)]/60">
+            A highly curated commerce experience. Browse exclusive editions with live stock synchronization, white-glove dispatch status, and sophisticated filtering.
+          </motion.p>
+
+          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 1, delay: 0.6 }} className="mt-10 flex flex-wrap justify-center gap-3">
+            {["FOLLOCIA10 active at checkout", "White-glove dispatch", "Dynamic inventory mapping"].map((item, i) => (
+              <div key={item} className="flex items-center gap-2 rounded-full border border-[var(--bone)]/10 bg-[var(--ink)]/40 backdrop-blur-md px-4 py-1.5 text-[10px] uppercase tracking-widest text-[var(--bone)]/80">
+                <span className="h-1 w-1 rounded-full bg-[var(--gold)] animate-pulse" />
                 {item}
               </div>
             ))}
