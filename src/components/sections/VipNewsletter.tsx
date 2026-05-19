@@ -52,9 +52,8 @@ export function VipNewsletter() {
         className="absolute left-1/3 top-1/3 h-[50vh] w-[50vh] rounded-full bg-[var(--gold)]/12 blur-[120px] animate-pulse-glow"
       />
       <motion.div
-        style={{ x: orb2X, y: orb2Y }}
+        style={{ x: orb2X, y: orb2Y, animationDelay: "2s" }}
         className="absolute right-1/4 bottom-1/4 h-[35vh] w-[35vh] rounded-full bg-[oklch(0.7_0.1_40)]/8 blur-[100px] animate-pulse-glow"
-        css={{ animationDelay: "2s" }}
       />
 
       {/* 3D Floating decorative shapes */}

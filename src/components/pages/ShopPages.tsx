@@ -710,11 +710,11 @@ export function SecureCheckoutPage({ session, onLogout, onLogin }: { session: Au
                         </div>
                       </div>
                       
-                      {profile.addresses.length > 0 && (
+                      {(profile?.addresses?.length ?? 0) > 0 && (
                         <div>
                           <p className="eyebrow text-[var(--gold)] mb-3">Saved Addresses</p>
                           <div className="grid gap-3">
-                            {profile.addresses.map((address) => (
+                            {profile?.addresses.map((address) => (
                               <label key={address.id} className={`flex gap-4 border p-5 text-sm cursor-pointer transition-all ${selectedAddress === address.id ? "border-[var(--gold)] bg-[var(--gold)]/5" : "border-[var(--ink)]/10 hover:border-[var(--gold)]/50"}`}>
                                 <input type="radio" checked={selectedAddress === address.id} onChange={() => setSelectedAddress(address.id)} className="mt-1 accent-[var(--gold)]" />
                                 <div>

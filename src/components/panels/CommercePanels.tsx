@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState, type ReactNode } from "react";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import {
   COMMERCE_EVENT,
   ensureCustomer,
@@ -1092,10 +1092,43 @@ function LegacyAdminPanel({ onLogout }: { onLogout?: () => void }) {
     { label: "Open queries", value: String(contactQueries.filter((item) => item.status === "Open").length).padStart(2, "0"), delta: "Support desk" },
   ], [customers.length, orders, products, contactQueries]);
 
+  const [draftProduct, setDraftProduct] = useState({
+    title: "",
+    edition: "Edition of 100",
+    tone: "Italian satin",
+    price: "EUR 950",
+    image: products[0]?.image || "",
+    status: "Live",
+    produced: "100",
+    reserved: "0",
+    available: "100",
+  });
+
+  const updateDraftProduct = (field: keyof typeof draftProduct, value: string) => setDraftProduct((current) => ({ ...current, [field]: value }));
+
   const persistProducts = (next: CommerceProduct[]) => {
     setProducts(next);
     saveProducts(next);
     next.forEach((product) => void saveProductRemote(product));
+  };
+
+  const createProduct = () => {
+    if (!draftProduct.title.trim()) return;
+    const nextProduct: CommerceProduct = {
+      id: `atelier-${Date.now()}`,
+      title: draftProduct.title.trim(),
+      edition: draftProduct.edition.trim() || "Edition of 100",
+      tone: draftProduct.tone.trim() || "Italian satin",
+      price: draftProduct.price.trim() || "EUR 950",
+      image: draftProduct.image.trim() || products[0]?.image || "",
+      status: draftProduct.status.trim() || "Live",
+      produced: Number(draftProduct.produced) || 0,
+      reserved: Number(draftProduct.reserved) || 0,
+      available: Number(draftProduct.available) || 0,
+    };
+    persistProducts([nextProduct, ...products]);
+    appendAdminRecord("audit", "Product created", `${nextProduct.title} added to catalogue`, "Logged");
+    setDraftProduct((current) => ({ ...current, title: "", reserved: "0" }));
   };
   const persistOrders = (next: CommerceOrder[]) => {
     setOrders(next);

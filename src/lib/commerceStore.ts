@@ -131,13 +131,13 @@ export function saveProducts(products: CommerceProduct[]) {
 
 export function getOrders() {
   return read<CommerceOrder[]>(ORDERS_KEY, seedOrders).map((order) => ({
-    paymentStatus: "Payment Pending",
-    deliveryStatus: "Order Placed",
-    deliveryEta: "Awaiting confirmation",
-    trackingCode: "",
-    paymentMethod: "Concierge Pay",
-    deliveryAddress: "",
     ...order,
+    paymentStatus: order.paymentStatus || "Payment Pending",
+    deliveryStatus: order.deliveryStatus || "Order Placed",
+    deliveryEta: order.deliveryEta || "Awaiting confirmation",
+    trackingCode: order.trackingCode || "",
+    paymentMethod: order.paymentMethod || "Concierge Pay",
+    deliveryAddress: order.deliveryAddress || "",
   }));
 }
 
