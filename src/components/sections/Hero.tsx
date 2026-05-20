@@ -2,19 +2,21 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useState, useEffect } from "react";
 import { SplitText } from "../SplitText";
 
+const assetUrl = (path: string) => `${import.meta.env.BASE_URL}${path}`.replace(/\/{2,}/g, "/");
+
 const SLIDES = [
   {
-    url: "/images/hero/hero_slide_1.png",
+    url: assetUrl("images/hero/hero_slide_1.png"),
     title: "The Signature Pump",
     subtitle: "Edition III · Milan"
   },
   {
-    url: "/images/hero/hero_slide_2.png",
+    url: assetUrl("images/hero/hero_slide_2.png"),
     title: "Summer Collection",
     subtitle: "Edition IV · Paris"
   },
   {
-    url: "/images/hero/hero_slide_3.png",
+    url: assetUrl("images/hero/hero_slide_3.png"),
     title: "Atelier Gold",
     subtitle: "Private Reserve"
   }

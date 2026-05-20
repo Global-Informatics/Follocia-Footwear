@@ -12,19 +12,31 @@ public class CommerceApiController(FollociaDbContext db) : ControllerBase
     [HttpGet("bootstrap")]
     public async Task<ActionResult<BootstrapDto>> Bootstrap()
     {
-        var products = await db.Products.AsNoTracking().OrderBy(product => product.Id).ToListAsync();
-        var orders = await db.Orders.AsNoTracking().OrderByDescending(order => order.CreatedAtUtc).ToListAsync();
-        var customers = await db.Customers.AsNoTracking()
-            .Include(customer => customer.Addresses)
-            .Include(customer => customer.Wishlist)
-            .Include(customer => customer.Subscriptions)
-            .OrderBy(customer => customer.Name)
-            .ToListAsync();
+        if (!AppDatabaseStatus.IsAvailable)
+        {
+            return DemoBootstrap();
+        }
 
-        return new BootstrapDto(
-            products.Select(ToProduct).ToList(),
-            orders.Select(ToOrder).ToList(),
-            customers.Select(ToCustomer).ToList());
+        try
+        {
+            var products = await db.Products.AsNoTracking().OrderBy(product => product.Id).ToListAsync();
+            var orders = await db.Orders.AsNoTracking().OrderByDescending(order => order.CreatedAtUtc).ToListAsync();
+            var customers = await db.Customers.AsNoTracking()
+                .Include(customer => customer.Addresses)
+                .Include(customer => customer.Wishlist)
+                .Include(customer => customer.Subscriptions)
+                .OrderBy(customer => customer.Name)
+                .ToListAsync();
+
+            return new BootstrapDto(
+                products.Select(ToProduct).ToList(),
+                orders.Select(ToOrder).ToList(),
+                customers.Select(ToCustomer).ToList());
+        }
+        catch
+        {
+            return DemoBootstrap();
+        }
     }
 
     [HttpPost("customers/ensure")]
@@ -248,6 +260,23 @@ public class CommerceApiController(FollociaDbContext db) : ControllerBase
 
     private static AdminRecordDto ToAdminRecord(CommerceAdminRecord record) =>
         new(record.Id, record.Module, record.Title, record.Meta, record.Status);
+
+    private static BootstrapDto DemoBootstrap() =>
+        new(
+            [
+                new ProductDto("atelier-01", "Atelier 01 - Lumiere", "Edition of 220", "EUR 1,480", "Ivory Calfskin", "/react/assets/collection-1.jpg", "Live", 220, 184, 36),
+                new ProductDto("atelier-02", "Atelier 02 - Noir Suspendu", "Edition of 180", "EUR 1,640", "Patent Obsidian", "/react/assets/collection-2.jpg", "Live", 180, 168, 12),
+                new ProductDto("atelier-03", "Atelier 03 - Or Liquide", "Edition of 140", "EUR 1,820", "Brushed Champagne", "/react/assets/collection-3.jpg", "Private Preview", 140, 121, 19),
+                new ProductDto("atelier-04", "Atelier 04 - Rosso Vow", "Edition of 80", "EUR 2,120", "Rosso Patent", "/react/assets/atelier.jpg", "Draft", 80, 0, 80)
+            ],
+            [
+                new OrderDto("RSV-1048", "vip-002", "Camille R.", "camille@example.com", "Atelier 03 - Or Liquide", "38", "EUR 1,820", "Concierge Review", "Payment Pending", "Order Placed", "Concierge will confirm within 24h", "", "Concierge Pay", "", "Today"),
+                new OrderDto("RSV-1047", "vip-001", "Ananya Sharma", "client@follocia.com", "Atelier 02 - Noir Suspendu", "39", "EUR 1,640", "Fitting Booked", "Payment Pending", "Order Placed", "Concierge will confirm within 24h", "", "Concierge Pay", "", "Today"),
+                new OrderDto("RSV-1031", "vip-001", "Ananya Sharma", "client@follocia.com", "Atelier 01 - Lumiere", "38", "EUR 1,480", "Certificate Ready", "Payment Captured", "Delivered", "Delivered", "", "Concierge Pay", "", "Delivered")
+            ],
+            [
+                new CustomerDto("vip-001", "Ananya Sharma", "client@follocia.com", "Ananya", "Sharma", "", "Private Atelier", "MMXXIV", [], ["atelier-03", "atelier-01"], [])
+            ]);
 
     private static decimal ParseMoney(string value) => decimal.TryParse(new string(value.Where(character => char.IsDigit(character) || character == '.').ToArray()), out var amount) ? amount : 0;
 
