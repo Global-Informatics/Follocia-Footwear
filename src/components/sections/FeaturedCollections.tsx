@@ -6,7 +6,7 @@ import { QuickView, type QuickItem } from "../cart/QuickView";
 import c1 from "@/assets/collection-1.jpg";
 import c2 from "@/assets/collection-2.jpg";
 import c3 from "@/assets/collection-3.jpg";
-import { COMMERCE_EVENT, getProducts, syncCommerceFromBackend } from "@/lib/commerceStore";
+import { COMMERCE_EVENT, getProducts, productPrimaryImage, syncCommerceFromBackend } from "@/lib/commerceStore";
 
 const items: QuickItem[] = [
   { id: "atelier-01", title: "Atelier 01 — Lumière", edition: "Edition of 220", price: "€ 1,480", image: c1, tone: "Ivory Calfskin" },
@@ -130,7 +130,7 @@ export function FeaturedCollections() {
   const [catalogue, setCatalogue] = useState<QuickItem[]>(() =>
     getProducts()
       .filter((item) => item.status !== "Draft")
-      .map((item) => ({ id: item.id, title: item.title, edition: item.edition, tone: item.tone, price: item.price, image: item.image })),
+      .map((item) => ({ id: item.id, title: item.title, edition: item.edition, tone: item.tone, price: item.price, image: productPrimaryImage(item) })),
   );
 
   useEffect(() => {
@@ -138,7 +138,7 @@ export function FeaturedCollections() {
       setCatalogue(
         getProducts()
           .filter((item) => item.status !== "Draft")
-          .map((item) => ({ id: item.id, title: item.title, edition: item.edition, tone: item.tone, price: item.price, image: item.image })),
+          .map((item) => ({ id: item.id, title: item.title, edition: item.edition, tone: item.tone, price: item.price, image: productPrimaryImage(item) })),
       );
     window.addEventListener(COMMERCE_EVENT, sync);
     void syncCommerceFromBackend();

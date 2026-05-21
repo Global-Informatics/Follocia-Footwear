@@ -24,7 +24,7 @@ public class CommerceProduct
     [MaxLength(100)]
     public string Tone { get; set; } = "";
 
-    [MaxLength(260)]
+    [MaxLength(4000)]
     public string ImagePath { get; set; } = "";
 
     [MaxLength(40)]

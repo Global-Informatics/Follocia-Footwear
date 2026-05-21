@@ -11,6 +11,8 @@ import {
   createOrdersFromCartRemote,
   ensureCustomer,
   getProducts,
+  productImages,
+  productPrimaryImage,
   saveCustomerRemote,
   syncCommerceFromBackend,
   upsertCustomer,
@@ -100,6 +102,7 @@ function ProductCard({ product, index }: { product: CommerceProduct; index: numb
   const ry = useSpring(useTransform(mx, [-1, 1], [-6, 6]), { stiffness: 150, damping: 20 });
   
   const urgencyBadge = product.available <= 12 && product.available > 0 ? `Only ${product.available} left` : null;
+  const primaryImage = productPrimaryImage(product);
 
   return (
     <>
@@ -123,7 +126,7 @@ function ProductCard({ product, index }: { product: CommerceProduct; index: numb
             <a href={productPath(product)} className="block aspect-[4/5] overflow-hidden">
               <motion.img 
                 style={{ translateZ: 30 }}
-                src={product.image} alt={product.title} loading="lazy" 
+                src={primaryImage} alt={product.title} loading="lazy" 
                 className="h-full w-full object-cover transition-transform duration-1000 ease-out group-hover:scale-110" 
               />
             </a>
@@ -155,7 +158,7 @@ function ProductCard({ product, index }: { product: CommerceProduct; index: numb
             {/* Quick Actions */}
             <div className="absolute inset-x-4 bottom-4 z-10 grid translate-y-8 gap-2 opacity-0 transition-all duration-500 ease-[cubic-bezier(0.2,0.8,0.2,1)] group-hover:translate-y-0 group-hover:opacity-100" style={{ transform: "translateZ(50px)" }}>
               <button onClick={() => setQuickOpen(true)} className="bg-white/95 backdrop-blur-sm px-4 py-3 text-xs font-semibold uppercase tracking-[0.2em] transition-colors hover:bg-[var(--gold)] hover:text-[var(--ink)]">Quick View</button>
-              <button onClick={() => add({ id: `${product.id}-38`, title: product.title, price: product.price, image: product.image, tone: product.tone, size: "38" })} className="bg-[var(--ink)]/95 backdrop-blur-sm px-4 py-3 text-xs font-semibold uppercase tracking-[0.2em] text-[var(--bone)] transition-colors hover:bg-[var(--gold)] hover:text-[var(--ink)]">Add Size 38</button>
+              <button onClick={() => add({ id: `${product.id}-38`, title: product.title, price: product.price, image: primaryImage, tone: product.tone, size: "38" })} className="bg-[var(--ink)]/95 backdrop-blur-sm px-4 py-3 text-xs font-semibold uppercase tracking-[0.2em] text-[var(--bone)] transition-colors hover:bg-[var(--gold)] hover:text-[var(--ink)]">Add Size 38</button>
             </div>
           </div>
           
@@ -180,7 +183,7 @@ function ProductCard({ product, index }: { product: CommerceProduct; index: numb
           </div>
         </motion.div>
       </motion.article>
-      <QuickView item={quickOpen ? { id: product.id, title: product.title, edition: product.edition, tone: product.tone, price: product.price, image: product.image } : null} onClose={() => setQuickOpen(false)} />
+      <QuickView item={quickOpen ? { id: product.id, title: product.title, edition: product.edition, tone: product.tone, price: product.price, image: primaryImage } : null} onClose={() => setQuickOpen(false)} />
     </>
   );
 }
@@ -348,6 +351,7 @@ export function ProductDetailPage({ productId, session, onLogout, onLogin }: { p
   const [size, setSize] = useState("");
   const [openPanel, setOpenPanel] = useState("Product Details");
   const [added, setAdded] = useState(false);
+  const [activeImage, setActiveImage] = useState("");
   const imgRef = useRef<HTMLDivElement>(null);
   const mx = useMotionValue(0), my = useMotionValue(0);
   const rx = useSpring(useTransform(my, [-1, 1], [4, -4]), { stiffness: 100, damping: 20 });
@@ -362,6 +366,10 @@ export function ProductDetailPage({ productId, session, onLogout, onLogin }: { p
 
   const product = products.find((item) => item.id === productId || slugify(item.title) === productId);
   const related = products.filter((item) => item.id !== product?.id).slice(0, 3);
+
+  useEffect(() => {
+    if (product) setActiveImage(productPrimaryImage(product));
+  }, [product?.id, product?.image, product?.images]);
 
   if (!product) {
     return (
@@ -378,6 +386,8 @@ export function ProductDetailPage({ productId, session, onLogout, onLogin }: { p
   }
 
   const wished = wishlist.includes(product.id);
+  const gallery = productImages(product);
+  const displayImage = activeImage || productPrimaryImage(product);
 
   return (
     <PageShell session={session} onLogout={onLogout} onLogin={onLogin}>
@@ -394,15 +404,15 @@ export function ProductDetailPage({ productId, session, onLogout, onLogin }: { p
             style={{ rotateX: rx, rotateY: ry, transformPerspective: 1200 }}
             className="relative aspect-[4/5] overflow-hidden bg-[var(--champagne)]/30 holo-shine shadow-[var(--shadow-soft)] cursor-crosshair"
           >
-            <motion.img initial={{ scale: 1.1 }} animate={{ scale: 1 }} transition={{ duration: 1.2, ease }} src={product.image} alt={product.title} className="h-full w-full object-cover" />
+            <motion.img initial={{ scale: 1.1 }} animate={{ scale: 1 }} transition={{ duration: 1.2, ease }} src={displayImage} alt={product.title} className="h-full w-full object-cover" />
             <div className="absolute left-0 top-0 h-16 w-px bg-gradient-to-b from-[var(--gold)]/40 to-transparent" />
             <div className="absolute left-0 top-0 h-px w-16 bg-gradient-to-r from-[var(--gold)]/40 to-transparent" />
           </motion.div>
           <div className="grid grid-cols-3 gap-4">
-            {[product.image, ...related.slice(0, 2).map((item) => item.image)].map((image, index) => (
-              <motion.div key={`${image}-${index}`} whileHover={{ scale: 1.02 }} className="aspect-square overflow-hidden bg-[var(--champagne)]/30 border border-[var(--ink)]/5 cursor-pointer">
+            {(gallery.length ? gallery : [productPrimaryImage(product), ...related.slice(0, 2).map(productPrimaryImage)]).slice(0, 5).map((image, index) => (
+              <motion.button type="button" key={`${image}-${index}`} onClick={() => setActiveImage(image)} whileHover={{ scale: 1.02 }} className={`aspect-square overflow-hidden bg-[var(--champagne)]/30 border cursor-pointer ${displayImage === image ? "border-[var(--gold)]" : "border-[var(--ink)]/5"}`}>
                 <img src={image} alt="" className="h-full w-full object-cover transition-transform duration-500 hover:scale-110" />
-              </motion.div>
+              </motion.button>
             ))}
           </div>
         </div>
@@ -448,7 +458,7 @@ export function ProductDetailPage({ productId, session, onLogout, onLogin }: { p
             whileTap={{ scale: 0.98 }}
             onClick={() => { 
               if (!size) return;
-              add({ id: `${product.id}-${size}`, title: product.title, price: product.price, image: product.image, tone: product.tone, size }, 1);
+              add({ id: `${product.id}-${size}`, title: product.title, price: product.price, image: productPrimaryImage(product), tone: product.tone, size }, 1);
               setAdded(true);
               setTimeout(() => setAdded(false), 2000);
             }} 
@@ -533,7 +543,7 @@ export function CollectionsPage({ session, onLogout, onLogin }: { session: AuthS
             >
               <div className={`overflow-hidden relative bg-[var(--champagne)]/30 ${index % 2 !== 0 ? 'md:order-2' : ''}`}>
                 <motion.div whileHover={{ scale: 1.05 }} transition={{ duration: 1.5, ease: "easeOut" }} className="aspect-[4/3] w-full">
-                  <img src={product.image} alt={product.title} className="h-full w-full object-cover" />
+                  <img src={productPrimaryImage(product)} alt={product.title} className="h-full w-full object-cover" />
                 </motion.div>
                 <div className="absolute inset-0 bg-black/20 opacity-0 transition-opacity duration-500 group-hover:opacity-100 flex items-center justify-center backdrop-blur-sm">
                   <span className="bg-white/90 px-6 py-3 eyebrow text-[var(--ink)]">View Collection</span>

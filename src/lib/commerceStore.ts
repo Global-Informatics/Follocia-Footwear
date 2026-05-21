@@ -11,6 +11,7 @@ export type CommerceProduct = {
   tone: string;
   price: string;
   image: string;
+  images?: string[];
   status: string;
   produced: number;
   reserved: number;
@@ -71,10 +72,10 @@ export const COMMERCE_EVENT = "follocia-commerce-change";
 const API_ROOT = "/api/commerce";
 
 export const seedProducts: CommerceProduct[] = [
-  { id: "atelier-01", title: "Atelier 01 - Lumiere", edition: "Edition of 220", price: "EUR 1,480", image: c1, tone: "Ivory Calfskin", status: "Live", produced: 220, reserved: 184, available: 36 },
-  { id: "atelier-02", title: "Atelier 02 - Noir Suspendu", edition: "Edition of 180", price: "EUR 1,640", image: c2, tone: "Patent Obsidian", status: "Live", produced: 180, reserved: 168, available: 12 },
-  { id: "atelier-03", title: "Atelier 03 - Or Liquide", edition: "Edition of 140", price: "EUR 1,820", image: c3, tone: "Brushed Champagne", status: "Private Preview", produced: 140, reserved: 121, available: 19 },
-  { id: "atelier-04", title: "Atelier 04 - Rosso Vow", edition: "Edition of 80", price: "EUR 2,120", image: atelier, tone: "Rosso Patent", status: "Draft", produced: 80, reserved: 0, available: 80 },
+  { id: "atelier-01", title: "Atelier 01 - Lumiere", edition: "Edition of 220", price: "EUR 1,480", image: c1, images: [c1], tone: "Ivory Calfskin", status: "Live", produced: 220, reserved: 184, available: 36 },
+  { id: "atelier-02", title: "Atelier 02 - Noir Suspendu", edition: "Edition of 180", price: "EUR 1,640", image: c2, images: [c2], tone: "Patent Obsidian", status: "Live", produced: 180, reserved: 168, available: 12 },
+  { id: "atelier-03", title: "Atelier 03 - Or Liquide", edition: "Edition of 140", price: "EUR 1,820", image: c3, images: [c3], tone: "Brushed Champagne", status: "Private Preview", produced: 140, reserved: 121, available: 19 },
+  { id: "atelier-04", title: "Atelier 04 - Rosso Vow", edition: "Edition of 80", price: "EUR 2,120", image: atelier, images: [atelier], tone: "Rosso Patent", status: "Draft", produced: 80, reserved: 0, available: 80 },
 ];
 
 const seedOrders: CommerceOrder[] = [
@@ -121,12 +122,26 @@ function write<T>(key: string, value: T) {
   window.dispatchEvent(new CustomEvent(COMMERCE_EVENT));
 }
 
+export function productImages(product: CommerceProduct) {
+  const gallery = [...(product.images ?? []), product.image].filter(Boolean);
+  return Array.from(new Set(gallery)).slice(0, 5);
+}
+
+export function productPrimaryImage(product: CommerceProduct) {
+  return productImages(product)[0] || "";
+}
+
+function normalizeProduct(product: CommerceProduct): CommerceProduct {
+  const images = productImages(product);
+  return { ...product, image: images[0] || product.image || "", images };
+}
+
 export function getProducts() {
-  return read<CommerceProduct[]>(PRODUCTS_KEY, seedProducts);
+  return read<CommerceProduct[]>(PRODUCTS_KEY, seedProducts).map(normalizeProduct);
 }
 
 export function saveProducts(products: CommerceProduct[]) {
-  write(PRODUCTS_KEY, products);
+  write(PRODUCTS_KEY, products.map(normalizeProduct));
 }
 
 export function getOrders() {
@@ -200,7 +215,7 @@ async function api<T>(path: string, init?: RequestInit): Promise<T | null> {
 export async function syncCommerceFromBackend() {
   const data = await api<{ products: CommerceProduct[]; orders: CommerceOrder[]; customers: CustomerProfile[] }>("/bootstrap");
   if (!data) return false;
-  localStorage.setItem(PRODUCTS_KEY, JSON.stringify(data.products));
+  localStorage.setItem(PRODUCTS_KEY, JSON.stringify(data.products.map(normalizeProduct)));
   localStorage.setItem(ORDERS_KEY, JSON.stringify(data.orders));
   localStorage.setItem(CUSTOMERS_KEY, JSON.stringify(data.customers));
   window.dispatchEvent(new CustomEvent(COMMERCE_EVENT));
@@ -225,11 +240,34 @@ export async function saveCustomerRemote(profile: CustomerProfile) {
   });
 }
 
+export async function deleteCustomerRemote(id: string) {
+  await api(`/customers/${encodeURIComponent(id)}`, {
+    method: "DELETE",
+  });
+}
+
 export async function saveProductRemote(product: CommerceProduct) {
   await api(`/products/${encodeURIComponent(product.id)}`, {
     method: "PUT",
-    body: JSON.stringify(product),
+    body: JSON.stringify(normalizeProduct(product)),
   });
+}
+
+export async function uploadProductImages(files: File[]) {
+  if (!files.length) return [];
+  const form = new FormData();
+  files.slice(0, 5).forEach((file) => form.append("files", file));
+  try {
+    const response = await fetch(`${API_ROOT}/product-images`, {
+      method: "POST",
+      body: form,
+    });
+    if (!response.ok) return [];
+    const data = (await response.json()) as { images?: string[] };
+    return data.images ?? [];
+  } catch {
+    return [];
+  }
 }
 
 export async function saveOrderRemote(order: CommerceOrder) {

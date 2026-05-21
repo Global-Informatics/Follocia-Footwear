@@ -2,16 +2,21 @@ import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   COMMERCE_EVENT,
+  deleteCustomerRemote,
   ensureCustomer,
   getCustomers,
   getOrders,
   getProducts,
+  productImages,
+  productPrimaryImage,
   saveCustomerRemote,
+  saveCustomers,
   saveOrderRemote,
   saveProductRemote,
   saveOrders,
   saveProducts,
   syncCommerceFromBackend,
+  uploadProductImages,
   upsertCustomer,
   type CommerceAddress,
   type CommerceOrder,
@@ -301,7 +306,7 @@ export function AccountPanel({ session, initialSection = "My Orders" }: { sessio
                     <span className="text-xs uppercase tracking-[0.1em] text-[var(--gold)] underline">View</span>
                   </div>
                   <div className="overflow-hidden bg-[var(--champagne)]/30">
-                    <img src={product.image} alt={product.title} className="aspect-[4/5] w-full object-cover transition-transform duration-500 group-hover:scale-110" />
+                    <img src={productPrimaryImage(product)} alt={product.title} className="aspect-[4/5] w-full object-cover transition-transform duration-500 group-hover:scale-110" />
                   </div>
                   <div className="flex flex-col justify-center">
                     <p className="eyebrow text-[var(--ink)]/50">{product.edition}</p>
@@ -676,12 +681,73 @@ function AdminField({ label, value, onChange, placeholder }: { label: string; va
   );
 }
 
+function ProductImagePicker({ images, onChange }: { images: string[]; onChange: (images: string[]) => void }) {
+  const [busy, setBusy] = useState(false);
+  const slots = images.slice(0, 5);
+  const acceptFiles = async (fileList: FileList | File[]) => {
+    const files = Array.from(fileList).filter((file) => file.type.startsWith("image/")).slice(0, 5 - slots.length);
+    if (!files.length) return;
+    setBusy(true);
+    const uploaded = await uploadProductImages(files);
+    if (uploaded.length) onChange([...slots, ...uploaded].slice(0, 5));
+    setBusy(false);
+  };
+
+  return (
+    <div className="grid gap-3">
+      <div
+        onDragOver={(event) => event.preventDefault()}
+        onDrop={(event) => {
+          event.preventDefault();
+          void acceptFiles(event.dataTransfer.files);
+        }}
+        className="grid min-h-[132px] place-items-center border border-dashed border-[var(--gold)]/50 bg-white/50 px-5 py-6 text-center transition-colors hover:bg-white"
+      >
+        <label className="grid cursor-pointer gap-2 text-xs uppercase tracking-[0.16em] text-[var(--ink)]/55">
+          <span className="font-medium text-[var(--ink)]">{busy ? "Uploading images..." : "Select or drag product photos"}</span>
+          <span>{slots.length}/5 uploaded</span>
+          <input
+            type="file"
+            accept="image/*"
+            multiple
+            className="sr-only"
+            onChange={(event) => {
+              if (event.target.files) void acceptFiles(event.target.files);
+              event.currentTarget.value = "";
+            }}
+          />
+        </label>
+      </div>
+      {slots.length > 0 && (
+        <div className="grid grid-cols-5 gap-2">
+          {slots.map((image, index) => (
+            <div key={`${image}-${index}`} className="group relative aspect-square overflow-hidden border border-[var(--ink)]/10 bg-[var(--champagne)]/30">
+              <img src={image} alt="" className="h-full w-full object-cover" />
+              <button
+                type="button"
+                onClick={() => onChange(slots.filter((_, itemIndex) => itemIndex !== index))}
+                className="absolute inset-x-1 bottom-1 bg-white/90 px-1 py-1 text-[9px] uppercase tracking-widest opacity-0 transition-opacity group-hover:opacity-100"
+              >
+                Remove
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 type AdminRecord = { id: string; title: string; meta: string; status: string };
 
 function readAdminRecords(key: string, seed: AdminRecord[]) {
   if (typeof window === "undefined") return seed;
   try {
-    return JSON.parse(localStorage.getItem(key) || "") as AdminRecord[];
+    const existing = JSON.parse(localStorage.getItem(key) || "") as AdminRecord[];
+    const missingSeeds = seed.filter((seedRecord) => !existing.some((record) => record.id === seedRecord.id));
+    const merged = missingSeeds.length ? [...existing, ...missingSeeds] : existing;
+    if (missingSeeds.length) localStorage.setItem(key, JSON.stringify(merged));
+    return merged;
   } catch {
     localStorage.setItem(key, JSON.stringify(seed));
     return seed;
@@ -754,6 +820,7 @@ const adminSectionCopy: Record<AdminSection, { label: string; title: string; cop
   contact: { label: "Contact", title: "Client concierge", copy: "Sizing questions, delivery requests and service follow-ups." },
   audit: { label: "Audit", title: "Audit log", copy: "Operational changes kept visible for the client demo." },
 };
+const productStatuses = ["Live", "Private Preview", "Draft"] as const;
 
 function getAdminSectionFromHash() {
   if (typeof window === "undefined") return "dashboard" as AdminSection;
@@ -777,13 +844,22 @@ export function AdminPanel({ onLogout }: { onLogout?: () => void }) {
     { id: "review-3", title: "3.0 / 5", meta: "Waiting for dispatch update", status: "Review" },
   ]));
   const [banners, setBanners] = useState<AdminRecord[]>(() => readAdminRecords("follocia_admin_banners", [
-    { id: "banner-1", title: "Hero drop banner", meta: "Homepage first viewport", status: "Live" },
-    { id: "banner-2", title: "VIP access strip", meta: "Navigation and checkout", status: "Live" },
+    { id: "banner-home-hero", title: "Home hero banner", meta: "Homepage first viewport", status: "Live" },
+    { id: "banner-shop-strip", title: "Shop offer strip", meta: "Shop listing top strip", status: "Live" },
+    { id: "banner-collection", title: "Collection banner", meta: "Collection landing highlight", status: "Live" },
+    { id: "banner-product-note", title: "Product detail note", meta: "Product detail availability message", status: "Live" },
+    { id: "banner-checkout-trust", title: "Checkout trust banner", meta: "Checkout assurance copy", status: "Live" },
   ]));
   const [cmsPages, setCmsPages] = useState<AdminRecord[]>(() => readAdminRecords("follocia_admin_cms", [
-    { id: "cms-1", title: "About atelier", meta: "Brand story page", status: "Published" },
-    { id: "cms-2", title: "Care guide", meta: "Post-purchase care", status: "Published" },
-    { id: "cms-3", title: "Return policy", meta: "Customer support", status: "Draft" },
+    { id: "cms-home", title: "Home page", meta: "Hero, featured products and atelier story", status: "Published" },
+    { id: "cms-shop", title: "Shop page", meta: "Catalogue listing, filters and product cards", status: "Published" },
+    { id: "cms-collections", title: "Collections page", meta: "Featured edits and seasonal drops", status: "Published" },
+    { id: "cms-product-detail", title: "Product detail page", meta: "Gallery, sizing, price and reservation copy", status: "Published" },
+    { id: "cms-checkout", title: "Checkout page", meta: "Payment, shipping and confirmation content", status: "Published" },
+    { id: "cms-account", title: "Account page", meta: "Profile, orders, wishlist and addresses", status: "Published" },
+    { id: "cms-contact", title: "Contact page", meta: "Concierge, sizing and service enquiries", status: "Published" },
+    { id: "cms-care-guide", title: "Care guide", meta: "Post-purchase care", status: "Published" },
+    { id: "cms-return-policy", title: "Return policy", meta: "Customer support", status: "Draft" },
   ]));
   const [contactQueries, setContactQueries] = useState<AdminRecord[]>(() => readAdminRecords("follocia_admin_contact", [
     { id: "contact-1", title: "Sizing query from Mumbai", meta: "Customer asked for 38/39 fitting help", status: "Open" },
@@ -803,10 +879,17 @@ export function AdminPanel({ onLogout }: { onLogout?: () => void }) {
     tone: "Italian satin",
     price: "EUR 950",
     image: getProducts()[0]?.image || "",
+    images: [] as string[],
     status: "Live",
     produced: "100",
     reserved: "0",
     available: "100",
+  });
+  const [draftCustomer, setDraftCustomer] = useState({
+    name: "",
+    email: "",
+    phone: "",
+    tier: "Private Atelier",
   });
 
   const metrics = useMemo(() => [
@@ -821,16 +904,19 @@ export function AdminPanel({ onLogout }: { onLogout?: () => void }) {
     saveProducts(next);
     next.forEach((product) => void saveProductRemote(product));
   };
-  const updateDraftProduct = (field: keyof typeof draftProduct, value: string) => setDraftProduct((current) => ({ ...current, [field]: value }));
+  const updateDraftProduct = (field: Exclude<keyof typeof draftProduct, "images">, value: string) => setDraftProduct((current) => ({ ...current, [field]: value }));
+  const updateDraftImages = (images: string[]) => setDraftProduct((current) => ({ ...current, image: images[0] || "", images }));
   const createProduct = () => {
     if (!draftProduct.title.trim()) return;
+    const images = draftProduct.images.length ? draftProduct.images : [draftProduct.image.trim() || products[0]?.image || ""].filter(Boolean);
     const nextProduct: CommerceProduct = {
       id: `atelier-${Date.now()}`,
       title: draftProduct.title.trim(),
       edition: draftProduct.edition.trim() || "Edition of 100",
       tone: draftProduct.tone.trim() || "Italian satin",
       price: draftProduct.price.trim() || "EUR 950",
-      image: draftProduct.image.trim() || products[0]?.image || "",
+      image: images[0] || "",
+      images,
       status: draftProduct.status.trim() || "Live",
       produced: Number(draftProduct.produced) || 0,
       reserved: Number(draftProduct.reserved) || 0,
@@ -838,16 +924,61 @@ export function AdminPanel({ onLogout }: { onLogout?: () => void }) {
     };
     persistProducts([nextProduct, ...products]);
     appendAdminRecord("audit", "Product created", `${nextProduct.title} added to catalogue`, "Logged");
-    setDraftProduct((current) => ({ ...current, title: "", reserved: "0" }));
+    setDraftProduct((current) => ({ ...current, title: "", reserved: "0", image: "", images: [] }));
   };
   const archiveProduct = (product: CommerceProduct) => {
     persistProducts(products.map((item) => item.id === product.id ? { ...item, status: "Draft", available: 0 } : item));
     appendAdminRecord("audit", "Product removed from storefront", `${product.title} moved to Draft`, "Logged");
   };
+  const publishProduct = (product: CommerceProduct) => {
+    persistProducts(products.map((item) => item.id === product.id ? { ...item, status: "Live", available: item.available > 0 ? item.available : Math.max(item.produced - item.reserved, 1) } : item));
+    appendAdminRecord("audit", "Product published", `${product.title} is visible on storefront`, "Logged");
+  };
   const persistOrders = (next: CommerceOrder[]) => {
     setOrders(next);
     saveOrders(next);
     next.forEach((order) => void saveOrderRemote(order));
+  };
+  const persistCustomers = (next: CustomerProfile[]) => {
+    setCustomers(next);
+    saveCustomers(next);
+  };
+  const updateCustomer = (customer: CustomerProfile, patch: Partial<CustomerProfile>) => {
+    const nextName = (patch.name ?? customer.name).trim();
+    const [firstName, ...rest] = nextName.split(" ");
+    const nextCustomer = {
+      ...customer,
+      ...patch,
+      name: nextName,
+      firstName: patch.name === undefined ? customer.firstName : firstName || nextName,
+      lastName: patch.name === undefined ? customer.lastName : rest.join(" "),
+    };
+    persistCustomers(customers.map((item) => item.id === customer.id ? nextCustomer : item));
+    void saveCustomerRemote(nextCustomer);
+  };
+  const createCustomer = () => {
+    if (!draftCustomer.name.trim() || !draftCustomer.email.trim()) return;
+    const [firstName, ...rest] = draftCustomer.name.trim().split(" ");
+    const nextCustomer: CustomerProfile = {
+      id: `customer-${Date.now()}`,
+      name: draftCustomer.name.trim(),
+      email: draftCustomer.email.trim(),
+      firstName: firstName || draftCustomer.name.trim(),
+      lastName: rest.join(" "),
+      phone: draftCustomer.phone.trim(),
+      tier: draftCustomer.tier.trim() || "Private Atelier",
+      memberSince: "MMXXVI",
+      addresses: [],
+      wishlist: [],
+      subscriptions: [],
+    };
+    persistCustomers([nextCustomer, ...customers]);
+    void saveCustomerRemote(nextCustomer);
+    setDraftCustomer({ name: "", email: "", phone: "", tier: "Private Atelier" });
+  };
+  const deleteCustomer = (customer: CustomerProfile) => {
+    persistCustomers(customers.filter((item) => item.id !== customer.id));
+    void deleteCustomerRemote(customer.id);
   };
   const openSection = (section: AdminSection) => {
     setActiveSection(section);
@@ -872,29 +1003,17 @@ export function AdminPanel({ onLogout }: { onLogout?: () => void }) {
   }, []);
 
   const dashboardPanel = (
-    <div className="grid gap-5">
-      <section className="grid gap-8 bg-[var(--ink)] p-8 text-[var(--bone)] lg:grid-cols-[1.35fr_0.65fr]">
-        <div>
-          <p className="eyebrow text-[var(--gold)]">Maison operations</p>
-          <h2 className="mt-4 max-w-3xl font-display text-6xl leading-none">Premium commerce dashboard.</h2>
-          <p className="mt-5 max-w-xl text-sm leading-6 text-[var(--bone)]/62">Orders, product CMS, customers, offers, reviews, banners, content, analytics, newsletter, concierge and audit are split into real working modules.</p>
-        </div>
-        <div className="grid gap-3 border border-[var(--bone)]/12 p-5">
-          <p className="eyebrow text-[var(--bone)]/45">Demo readiness</p>
-          <strong className="font-display text-5xl">Live</strong>
-          <span className="text-sm text-[var(--bone)]/60">Backend API, LocalDB persistence and local fallback are connected.</span>
-        </div>
-      </section>
+    <div className="grid gap-4">
       <div className="grid gap-4 md:grid-cols-4">
-        {metrics.map((metric) => <article key={metric.label} className="border border-[var(--ink)]/10 bg-white p-5"><p className="eyebrow text-[var(--ink)]/45">{metric.label}</p><strong className="mt-4 block font-display text-4xl">{metric.value}</strong><small className={metric.tone === "warn" ? "text-red-800" : "text-emerald-800"}>{metric.delta}</small></article>)}
+        {metrics.map((metric) => <article key={metric.label} className="border border-[var(--ink)]/10 bg-white p-4"><p className="eyebrow text-[var(--ink)]/45">{metric.label}</p><strong className="mt-3 block font-display text-3xl">{metric.value}</strong><small className={metric.tone === "warn" ? "text-red-800" : "text-emerald-800"}>{metric.delta}</small></article>)}
       </div>
-      <div className="grid gap-5 xl:grid-cols-[1.2fr_0.8fr]">
+      <div className="grid gap-4 xl:grid-cols-[1.2fr_0.8fr]">
         <AdminCard id="dashboard-orders" title="Latest Orders">
           <AdminMiniList items={orders.slice(0, 5).map((order) => `${order.id} - ${order.customer} - ${order.status}`)} />
         </AdminCard>
-        <AdminCard id="dashboard-actions" title="Quick Actions">
-          <div className="grid gap-3 md:grid-cols-2">
-            {(["orders", "inventory", "customers", "coupons"] as AdminSection[]).map((section) => <button key={section} onClick={() => openSection(section)} className="border border-[var(--ink)]/15 bg-white px-4 py-4 text-left"><span className="eyebrow text-[var(--ink)]/45">Open</span><strong className="mt-2 block font-display text-2xl">{adminSectionCopy[section].label}</strong></button>)}
+        <AdminCard id="dashboard-actions" title="Storefront Controls">
+          <div className="grid gap-2">
+            {(["inventory", "banners", "cms", "coupons", "reviews", "contact"] as AdminSection[]).map((section) => <button key={section} onClick={() => openSection(section)} className="flex items-center justify-between border border-[var(--ink)]/10 bg-white px-4 py-3 text-left text-sm"><span>{adminSectionCopy[section].label}</span><span className="text-[var(--gold)]">Open</span></button>)}
           </div>
         </AdminCard>
       </div>
@@ -941,34 +1060,42 @@ export function AdminPanel({ onLogout }: { onLogout?: () => void }) {
             <AdminField label="Edition" value={draftProduct.edition} onChange={(value) => updateDraftProduct("edition", value)} />
             <AdminField label="Tone / material" value={draftProduct.tone} onChange={(value) => updateDraftProduct("tone", value)} />
             <AdminField label="Price" value={draftProduct.price} onChange={(value) => updateDraftProduct("price", value)} />
-            <AdminField label="Status" value={draftProduct.status} onChange={(value) => updateDraftProduct("status", value)} />
+            <label className="grid gap-2 text-[10px] uppercase tracking-[0.2em] text-[var(--ink)]/50">
+              Status
+              <select value={draftProduct.status} onChange={(event) => updateDraftProduct("status", event.target.value)} className="border border-[var(--ink)]/10 bg-white/50 px-4 py-3 text-sm normal-case tracking-normal text-[var(--ink)] outline-none focus:border-[var(--gold)]">
+                {productStatuses.map((status) => <option key={status}>{status}</option>)}
+              </select>
+            </label>
             <AdminField label="Produced" value={draftProduct.produced} onChange={(value) => updateDraftProduct("produced", value)} />
             <AdminField label="Reserved" value={draftProduct.reserved} onChange={(value) => updateDraftProduct("reserved", value)} />
             <AdminField label="Available" value={draftProduct.available} onChange={(value) => updateDraftProduct("available", value)} />
-            <label className="grid gap-1 text-xs uppercase tracking-[0.22em] text-[var(--ink)]/45 md:col-span-3">
-              Image URL
-              <input value={draftProduct.image} onChange={(event) => updateDraftProduct("image", event.target.value)} className="border border-[var(--ink)]/15 bg-white px-3 py-2 text-sm normal-case tracking-normal text-[var(--ink)] outline-none focus:border-[var(--gold)]" />
-            </label>
+            <div className="md:col-span-3">
+              <ProductImagePicker images={draftProduct.images} onChange={updateDraftImages} />
+            </div>
           </div>
         </section>
         {products.map((product) => (
           <article key={product.id} className="grid gap-5 border border-[var(--ink)]/10 bg-white p-5 xl:grid-cols-[150px_1fr]">
-            <img src={product.image} alt={product.title} className="aspect-[3/4] w-full object-cover" />
+            <img src={productPrimaryImage(product)} alt={product.title} className="aspect-[3/4] w-full object-cover" />
             <div className="grid gap-3 md:grid-cols-3">
               <AdminField label="Title" value={product.title} onChange={(value) => persistProducts(products.map((item) => item.id === product.id ? { ...item, title: value } : item))} />
               <AdminField label="Edition" value={product.edition} onChange={(value) => persistProducts(products.map((item) => item.id === product.id ? { ...item, edition: value } : item))} />
               <AdminField label="Tone / material" value={product.tone} onChange={(value) => persistProducts(products.map((item) => item.id === product.id ? { ...item, tone: value } : item))} />
               <AdminField label="Price" value={product.price} onChange={(value) => persistProducts(products.map((item) => item.id === product.id ? { ...item, price: value } : item))} />
-              <AdminField label="Status" value={product.status} onChange={(value) => persistProducts(products.map((item) => item.id === product.id ? { ...item, status: value } : item))} />
+              <label className="grid gap-2 text-[10px] uppercase tracking-[0.2em] text-[var(--ink)]/50">
+                Status
+                <select value={product.status} onChange={(event) => persistProducts(products.map((item) => item.id === product.id ? { ...item, status: event.target.value } : item))} className="border border-[var(--ink)]/10 bg-white/50 px-4 py-3 text-sm normal-case tracking-normal text-[var(--ink)] outline-none focus:border-[var(--gold)]">
+                  {productStatuses.map((status) => <option key={status}>{status}</option>)}
+                </select>
+              </label>
               <AdminField label="Produced" value={product.produced} onChange={(value) => persistProducts(products.map((item) => item.id === product.id ? { ...item, produced: Number(value) || 0 } : item))} />
               <AdminField label="Reserved" value={product.reserved} onChange={(value) => persistProducts(products.map((item) => item.id === product.id ? { ...item, reserved: Number(value) || 0 } : item))} />
               <AdminField label="Available" value={product.available} onChange={(value) => persistProducts(products.map((item) => item.id === product.id ? { ...item, available: Number(value) || 0 } : item))} />
-              <label className="grid gap-1 text-xs uppercase tracking-[0.22em] text-[var(--ink)]/45 md:col-span-3">
-                Image URL
-                <input value={product.image} onChange={(event) => persistProducts(products.map((item) => item.id === product.id ? { ...item, image: event.target.value } : item))} className="border border-[var(--ink)]/15 bg-white px-3 py-2 text-sm normal-case tracking-normal text-[var(--ink)] outline-none focus:border-[var(--gold)]" />
-              </label>
-              <button onClick={() => archiveProduct(product)} className="border border-[var(--ink)] px-4 py-3 text-xs uppercase tracking-[0.18em] md:col-span-3">
-                Move to Draft
+              <div className="md:col-span-3">
+                <ProductImagePicker images={productImages(product)} onChange={(images) => persistProducts(products.map((item) => item.id === product.id ? { ...item, image: images[0] || "", images } : item))} />
+              </div>
+              <button onClick={() => product.status === "Draft" ? publishProduct(product) : archiveProduct(product)} className="border border-[var(--ink)] px-4 py-3 text-xs uppercase tracking-[0.18em] md:col-span-3">
+                {product.status === "Draft" ? "Publish to Storefront" : "Move to Draft"}
               </button>
             </div>
           </article>
@@ -979,11 +1106,30 @@ export function AdminPanel({ onLogout }: { onLogout?: () => void }) {
 
   const customersPanel = (
     <AdminCard id="customers" title="Customer Ecosystem">
-      <div className="overflow-x-auto">
-        <table className="w-full min-w-[860px] bg-white text-left text-sm">
-          <thead className="eyebrow text-[var(--ink)]/45"><tr><th className="p-4">Name</th><th>Email</th><th>Tier</th><th>Phone</th><th>Addresses</th><th>Wishlist</th><th>Orders</th></tr></thead>
-          <tbody>{customers.map((customer) => <tr key={customer.id} className="border-t border-[var(--ink)]/10"><td className="p-4 font-medium">{customer.name}</td><td>{customer.email}</td><td>{customer.tier}</td><td>{customer.phone || "Not added"}</td><td>{customer.addresses.length}</td><td>{customer.wishlist.length}</td><td>{orders.filter((order) => order.customerId === customer.id).length}</td></tr>)}</tbody>
-        </table>
+      <div className="grid gap-4">
+        <section className="grid gap-3 border border-[var(--ink)]/10 bg-[var(--bone)]/35 p-4 md:grid-cols-[1fr_1fr_160px_180px_auto]">
+          <input value={draftCustomer.name} onChange={(event) => setDraftCustomer((current) => ({ ...current, name: event.target.value }))} placeholder="Customer name" className="border border-[var(--ink)]/10 bg-white px-4 py-3 text-sm outline-none focus:border-[var(--gold)]" />
+          <input value={draftCustomer.email} onChange={(event) => setDraftCustomer((current) => ({ ...current, email: event.target.value }))} placeholder="Email" className="border border-[var(--ink)]/10 bg-white px-4 py-3 text-sm outline-none focus:border-[var(--gold)]" />
+          <input value={draftCustomer.phone} onChange={(event) => setDraftCustomer((current) => ({ ...current, phone: event.target.value }))} placeholder="Phone" className="border border-[var(--ink)]/10 bg-white px-4 py-3 text-sm outline-none focus:border-[var(--gold)]" />
+          <select value={draftCustomer.tier} onChange={(event) => setDraftCustomer((current) => ({ ...current, tier: event.target.value }))} className="border border-[var(--ink)]/10 bg-white px-4 py-3 text-sm outline-none focus:border-[var(--gold)]">
+            {["Private Atelier", "VIP", "Collector", "New Client"].map((tier) => <option key={tier}>{tier}</option>)}
+          </select>
+          <button onClick={createCustomer} className="bg-[var(--ink)] px-5 py-3 text-xs uppercase tracking-[0.16em] text-[var(--bone)]">Add</button>
+        </section>
+        <div className="grid gap-3">
+          {customers.map((customer) => (
+            <article key={customer.id} className="grid gap-3 border border-[var(--ink)]/10 bg-white p-4 lg:grid-cols-[1fr_1fr_150px_150px_110px]">
+              <input value={customer.name} onChange={(event) => updateCustomer(customer, { name: event.target.value })} className="border border-[var(--ink)]/10 px-3 py-2 text-sm outline-none focus:border-[var(--gold)]" />
+              <input value={customer.email} onChange={(event) => updateCustomer(customer, { email: event.target.value })} className="border border-[var(--ink)]/10 px-3 py-2 text-sm outline-none focus:border-[var(--gold)]" />
+              <input value={customer.phone} onChange={(event) => updateCustomer(customer, { phone: event.target.value })} placeholder="Phone" className="border border-[var(--ink)]/10 px-3 py-2 text-sm outline-none focus:border-[var(--gold)]" />
+              <select value={customer.tier} onChange={(event) => updateCustomer(customer, { tier: event.target.value })} className="border border-[var(--ink)]/10 px-3 py-2 text-sm outline-none focus:border-[var(--gold)]">
+                {["Private Atelier", "VIP", "Collector", "New Client"].map((tier) => <option key={tier}>{tier}</option>)}
+              </select>
+              <button onClick={() => deleteCustomer(customer)} className="border border-red-200 px-3 py-2 text-xs uppercase tracking-[0.12em] text-red-700">Delete</button>
+              <p className="text-xs text-[var(--ink)]/50 lg:col-span-5">{customer.addresses.length} addresses · {customer.wishlist.length} wishlist · {orders.filter((order) => order.customerId === customer.id).length} orders</p>
+            </article>
+          ))}
+        </div>
       </div>
     </AdminCard>
   );
@@ -1017,31 +1163,50 @@ export function AdminPanel({ onLogout }: { onLogout?: () => void }) {
 
   return (
     <main className="min-h-screen bg-[var(--bone)] text-[var(--ink)]">
-      <header className="sticky top-0 z-40 border-b border-[var(--ink)]/10 bg-[var(--bone)]/90 px-6 backdrop-blur-xl">
-        <div className="mx-auto flex h-20 max-w-[1500px] items-center justify-between">
-          <a href="/" aria-label="Follocia home" className="flex items-center">
+      <header className="sticky top-0 z-40 border-b border-[var(--ink)]/10 bg-[var(--bone)]/95 px-4 backdrop-blur-xl">
+        <div className="mx-auto flex h-16 max-w-[1500px] items-center justify-between gap-4">
+          <a href="/" aria-label="Follocia home" className="flex shrink-0 items-center">
             <BrandLogo compact imageClassName="border border-[var(--ink)]/10" />
           </a>
-          <div className="flex gap-2">
-            <a href="/" className="border border-[var(--ink)]/15 px-4 py-3 eyebrow">Storefront</a>
-            {onLogout && <button onClick={onLogout} className="bg-[var(--ink)] px-4 py-3 eyebrow text-[var(--bone)]">Logout</button>}
+          <nav className="hidden flex-1 items-center gap-1 overflow-x-auto md:flex">
+            {adminSections.map((section) => (
+              <button key={section} onClick={() => openSection(section)} className={`whitespace-nowrap px-3 py-2 text-[11px] uppercase tracking-[0.12em] transition-colors ${activeSection === section ? "bg-[var(--ink)] text-[var(--bone)]" : "text-[var(--ink)]/60 hover:bg-white"}`}>
+                {adminSectionCopy[section].label}
+              </button>
+            ))}
+          </nav>
+          <div className="flex shrink-0 gap-2">
+            <a href="/" className="border border-[var(--ink)]/15 px-4 py-2 text-[11px] uppercase tracking-[0.14em]">Storefront</a>
+            {onLogout && <button onClick={onLogout} className="bg-[var(--ink)] px-4 py-2 text-[11px] uppercase tracking-[0.14em] text-[var(--bone)]">Logout</button>}
           </div>
         </div>
       </header>
-      <div className="mx-auto grid max-w-[1500px] gap-5 p-5 lg:grid-cols-[270px_1fr]">
-        <aside className="border border-[var(--ink)]/10 bg-[var(--ink)] p-6 text-[var(--bone)] lg:sticky lg:top-24 lg:h-[calc(100vh-7rem)]">
-          <h1 className="font-display text-5xl">Admin</h1>
-          <p className="mt-4 text-sm text-[var(--bone)]/60">Manage storefront, products, orders, customers and profile ecosystem from one place.</p>
-          <nav className="mt-10 grid gap-2 eyebrow text-[var(--bone)]/70">
-            {adminSections.map((section) => <button key={section} onClick={() => openSection(section)} className={`border px-4 py-3 text-left transition-colors ${activeSection === section ? "border-[var(--gold)]/60 bg-[var(--bone)] text-[var(--ink)]" : "border-transparent hover:border-[var(--gold)]/40"}`}>{adminSectionCopy[section].label}</button>)}
-          </nav>
-        </aside>
-        <section className="grid gap-5">
-          <header className="border border-[var(--ink)]/10 bg-[var(--ivory)] p-6">
-            <p className="eyebrow text-[var(--gold)]">{adminSectionCopy[activeSection].label}</p>
-            <h2 className="mt-2 font-display text-5xl leading-none">{adminSectionCopy[activeSection].title}</h2>
-            <p className="mt-3 max-w-2xl text-sm text-[var(--ink)]/55">{adminSectionCopy[activeSection].copy}</p>
+      <div className="mx-auto grid max-w-[1500px] gap-4 p-4 md:p-6">
+        <nav className="flex gap-2 overflow-x-auto md:hidden">
+          {adminSections.map((section) => (
+            <button key={section} onClick={() => openSection(section)} className={`whitespace-nowrap border px-3 py-2 text-[11px] uppercase tracking-[0.12em] ${activeSection === section ? "border-[var(--ink)] bg-[var(--ink)] text-[var(--bone)]" : "border-[var(--ink)]/10 bg-white"}`}>
+              {adminSectionCopy[section].label}
+            </button>
+          ))}
+        </nav>
+        <section className="grid gap-4">
+          <header className="border border-[var(--ink)]/10 bg-white p-5">
+            <div className="flex flex-wrap items-end justify-between gap-3">
+              <div>
+                <p className="eyebrow text-[var(--gold)]">{adminSectionCopy[activeSection].label}</p>
+                <h1 className="mt-1 font-display text-4xl leading-none">{adminSectionCopy[activeSection].title}</h1>
+              </div>
+              <p className="max-w-xl text-sm text-[var(--ink)]/55">{adminSectionCopy[activeSection].copy}</p>
+            </div>
           </header>
+          <nav className="grid gap-2 md:grid-cols-4 xl:grid-cols-6">
+            {(["inventory", "orders", "customers", "banners", "cms", "contact"] as AdminSection[]).map((section) => (
+              <button key={section} onClick={() => openSection(section)} className="border border-[var(--ink)]/10 bg-white px-4 py-3 text-left text-sm">
+                <span className="block text-[10px] uppercase tracking-[0.16em] text-[var(--ink)]/40">Manage</span>
+                <strong className="font-medium">{adminSectionCopy[section].label}</strong>
+              </button>
+            ))}
+          </nav>
           {panels[activeSection]}
         </section>
       </div>
@@ -1098,13 +1263,15 @@ function LegacyAdminPanel({ onLogout }: { onLogout?: () => void }) {
     tone: "Italian satin",
     price: "EUR 950",
     image: products[0]?.image || "",
+    images: [] as string[],
     status: "Live",
     produced: "100",
     reserved: "0",
     available: "100",
   });
 
-  const updateDraftProduct = (field: keyof typeof draftProduct, value: string) => setDraftProduct((current) => ({ ...current, [field]: value }));
+  const updateDraftProduct = (field: Exclude<keyof typeof draftProduct, "images">, value: string) => setDraftProduct((current) => ({ ...current, [field]: value }));
+  const updateDraftImages = (images: string[]) => setDraftProduct((current) => ({ ...current, image: images[0] || "", images }));
 
   const persistProducts = (next: CommerceProduct[]) => {
     setProducts(next);
@@ -1114,13 +1281,15 @@ function LegacyAdminPanel({ onLogout }: { onLogout?: () => void }) {
 
   const createProduct = () => {
     if (!draftProduct.title.trim()) return;
+    const images = draftProduct.images.length ? draftProduct.images : [draftProduct.image.trim() || products[0]?.image || ""].filter(Boolean);
     const nextProduct: CommerceProduct = {
       id: `atelier-${Date.now()}`,
       title: draftProduct.title.trim(),
       edition: draftProduct.edition.trim() || "Edition of 100",
       tone: draftProduct.tone.trim() || "Italian satin",
       price: draftProduct.price.trim() || "EUR 950",
-      image: draftProduct.image.trim() || products[0]?.image || "",
+      image: images[0] || "",
+      images,
       status: draftProduct.status.trim() || "Live",
       produced: Number(draftProduct.produced) || 0,
       reserved: Number(draftProduct.reserved) || 0,
@@ -1128,7 +1297,7 @@ function LegacyAdminPanel({ onLogout }: { onLogout?: () => void }) {
     };
     persistProducts([nextProduct, ...products]);
     appendAdminRecord("audit", "Product created", `${nextProduct.title} added to catalogue`, "Logged");
-    setDraftProduct((current) => ({ ...current, title: "", reserved: "0" }));
+    setDraftProduct((current) => ({ ...current, title: "", reserved: "0", image: "", images: [] }));
   };
   const persistOrders = (next: CommerceOrder[]) => {
     setOrders(next);
@@ -1299,7 +1468,7 @@ function LegacyAdminPanel({ onLogout }: { onLogout?: () => void }) {
                   <AdminField label="Reserved" value={draftProduct.reserved} onChange={(value) => updateDraftProduct("reserved", value)} />
                   <AdminField label="Available" value={draftProduct.available} onChange={(value) => updateDraftProduct("available", value)} />
                   <div className="md:col-span-3 lg:col-span-4">
-                    <AdminField label="Image URL" value={draftProduct.image} onChange={(value) => updateDraftProduct("image", value)} />
+                    <ProductImagePicker images={draftProduct.images} onChange={updateDraftImages} />
                   </div>
                 </div>
               </section>
@@ -1315,7 +1484,7 @@ function LegacyAdminPanel({ onLogout }: { onLogout?: () => void }) {
                       className="group grid gap-6 border border-[var(--ink)]/5 bg-white/60 backdrop-blur-md p-5 shadow-[var(--shadow-soft)] hover:shadow-[var(--shadow-luxe)] transition-all xl:grid-cols-[120px_1fr]"
                     >
                       <div className="relative overflow-hidden aspect-[3/4] w-full border border-[var(--ink)]/10">
-                        <img src={product.image} alt={product.title} className="absolute inset-0 w-full h-full object-cover transform group-hover:scale-105 transition-transform duration-700" />
+                        <img src={productPrimaryImage(product)} alt={product.title} className="absolute inset-0 w-full h-full object-cover transform group-hover:scale-105 transition-transform duration-700" />
                         <div className="absolute inset-0 bg-[var(--ink)]/10 group-hover:bg-transparent transition-colors duration-500" />
                       </div>
                       <div className="grid gap-4 md:grid-cols-3">
@@ -1480,12 +1649,12 @@ function AdminCrudList({
 
 function AdminCard({ id, title, children }: { id: string; title: string; children: ReactNode }) {
   return (
-    <section id={id} className="glass relative overflow-hidden border border-[var(--gold)]/20 bg-white/60 p-6 md:p-8 shadow-[var(--shadow-soft)] scroll-mt-32">
-      <div className="mb-8 flex items-center justify-between border-b border-[var(--gold)]/20 pb-5">
-        <h2 className="font-display text-4xl text-[var(--ink)]">{title}</h2>
-        <span className="text-xs uppercase tracking-[0.2em] text-[var(--gold)]">Manage Module</span>
+    <section id={id} className="border border-[var(--ink)]/10 bg-white p-4 shadow-[var(--shadow-soft)] scroll-mt-24 md:p-5">
+      <div className="mb-4 flex items-center justify-between border-b border-[var(--ink)]/10 pb-3">
+        <h2 className="font-display text-3xl text-[var(--ink)]">{title}</h2>
+        <span className="text-[10px] uppercase tracking-[0.16em] text-[var(--gold)]">CRUD</span>
       </div>
-      <div className="relative z-10">
+      <div>
         {children}
       </div>
     </section>

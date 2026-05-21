@@ -6,6 +6,14 @@
     <ImplicitUsings>enable</ImplicitUsings>
   </PropertyGroup>
 
+  <PropertyGroup Condition="'$(Configuration)' == 'Debug'">
+    <UseAppHost>false</UseAppHost>
+  </PropertyGroup>
+
+  <Target Name="StopLockedDebugHost" BeforeTargets="CoreCompile" Condition="'$(Configuration)' == 'Debug' and '$(DesignTimeBuild)' != 'true'">
+    <Exec IgnoreExitCode="true" Command="powershell -NoProfile -ExecutionPolicy Bypass -Command &quot;$projectBin = '$(TargetDir)'; Get-CimInstance Win32_Process | Where-Object { $_.Name -in @('dotnet.exe','FollociaMvc.exe') -and ($_.CommandLine -like '*FollociaMvc.dll*' -or ($_.ExecutablePath -and $_.ExecutablePath -like ($projectBin + '*'))) } | ForEach-Object { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }&quot;" />
+  </Target>
+
   <ItemGroup>
     <PackageReference Include="Microsoft.EntityFrameworkCore.SqlServer" Version="9.0.9" />
   </ItemGroup>

@@ -1,4 +1,3 @@
-D:\atelier-follocia-lux-main\FollociaMvc\bin\Debug\net9.0\FollociaMvc.exe
 D:\atelier-follocia-lux-main\FollociaMvc\bin\Debug\net9.0\FollociaMvc.dll
 D:\atelier-follocia-lux-main\FollociaMvc\obj\codex-build\appsettings.Development.json
 D:\atelier-follocia-lux-main\FollociaMvc\obj\codex-build\appsettings.json
@@ -158,6 +157,6 @@ D:\atelier-follocia-lux-main\FollociaMvc\bin\Debug\net9.0\FollociaMvc.runtimecon
 D:\atelier-follocia-lux-main\FollociaMvc\bin\Debug\net9.0\FollociaMvc.pdb
 D:\atelier-follocia-lux-main\FollociaMvc\obj\Debug\net9.0\FollociaMvc.genruntimeconfig.cache
 D:\atelier-follocia-lux-main\FollociaMvc\obj\Debug\net9.0\ref\FollociaMvc.dll
-D:\atelier-follocia-lux-main\FollociaMvc\obj\Debug\net9.0\compressed\yrq2ojoys0-dpgydtjni8.gz
+D:\atelier-follocia-lux-main\FollociaMvc\obj\Debug\net9.0\compressed\5z0aucmdr5-5fhs6fkaqp.gz
+D:\atelier-follocia-lux-main\FollociaMvc\obj\Debug\net9.0\compressed\yrq2ojoys0-cmvoooj8e0.gz
 D:\atelier-follocia-lux-main\FollociaMvc\obj\Debug\net9.0\staticwebassets.upToDateCheck.txt
-D:\atelier-follocia-lux-main\FollociaMvc\obj\Debug\net9.0\compressed\5z0aucmdr5-siq8coliov.gz

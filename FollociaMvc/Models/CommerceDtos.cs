@@ -1,6 +1,6 @@
 namespace FollociaMvc.Models;
 
-public record ProductDto(string Id, string Title, string Edition, string Price, string Tone, string Image, string Status, int Produced, int Reserved, int Available);
+public record ProductDto(string Id, string Title, string Edition, string Price, string Tone, string Image, IReadOnlyList<string>? Images, string Status, int Produced, int Reserved, int Available);
 
 public record OrderDto(
     string Id,

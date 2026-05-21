@@ -77,7 +77,11 @@ public class CommerceApiController(FollociaDbContext db) : ControllerBase
             .Include(item => item.Subscriptions)
             .FirstOrDefaultAsync(item => item.Id == id);
 
-        if (customer is null) return NotFound();
+        if (customer is null)
+        {
+            customer = new CommerceCustomer { Id = id };
+            db.Customers.Add(customer);
+        }
 
         customer.Name = dto.Name;
         customer.Email = dto.Email;
@@ -115,18 +119,33 @@ public class CommerceApiController(FollociaDbContext db) : ControllerBase
         return NoContent();
     }
 
+    [HttpDelete("customers/{id}")]
+    public async Task<IActionResult> DeleteCustomer(string id)
+    {
+        var customer = await db.Customers.FindAsync(id);
+        if (customer is null) return NotFound();
+
+        db.Customers.Remove(customer);
+        await db.SaveChangesAsync();
+        return NoContent();
+    }
+
     [HttpPut("products/{id}")]
     public async Task<IActionResult> SaveProduct(string id, ProductDto dto)
     {
         var product = await db.Products.FindAsync(id);
-        if (product is null) return NotFound();
+        if (product is null)
+        {
+            product = new CommerceProduct { Id = id };
+            db.Products.Add(product);
+        }
 
         product.Title = dto.Title;
         product.Edition = dto.Edition;
         product.PriceAmount = ParseMoney(dto.Price);
         product.CurrencyCode = ParseCurrency(dto.Price);
         product.Tone = dto.Tone;
-        product.ImagePath = dto.Image;
+        product.ImagePath = SerializeImages(dto.Images, dto.Image);
         product.Status = dto.Status;
         product.Produced = dto.Produced;
         product.Reserved = dto.Reserved;
@@ -134,6 +153,34 @@ public class CommerceApiController(FollociaDbContext db) : ControllerBase
         product.UpdatedAtUtc = DateTime.UtcNow;
         await db.SaveChangesAsync();
         return NoContent();
+    }
+
+    [HttpPost("product-images")]
+    [RequestSizeLimit(25_000_000)]
+    public async Task<ActionResult<object>> UploadProductImages([FromForm] List<IFormFile> files)
+    {
+        if (files.Count == 0) return BadRequest();
+
+        var uploadsRoot = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "react", "uploads", "products");
+        Directory.CreateDirectory(uploadsRoot);
+
+        var allowed = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { ".jpg", ".jpeg", ".png", ".webp", ".gif" };
+        var urls = new List<string>();
+        foreach (var file in files.Take(5))
+        {
+            if (file.Length == 0 || !file.ContentType.StartsWith("image/", StringComparison.OrdinalIgnoreCase)) continue;
+
+            var extension = Path.GetExtension(file.FileName);
+            if (!allowed.Contains(extension)) continue;
+
+            var fileName = Guid.NewGuid().ToString("N")[..12] + extension.ToLowerInvariant();
+            var path = Path.Combine(uploadsRoot, fileName);
+            await using var stream = System.IO.File.Create(path);
+            await file.CopyToAsync(stream);
+            urls.Add($"/react/uploads/products/{fileName}");
+        }
+
+        return new { images = urls };
     }
 
     [HttpPut("orders/{id}")]
@@ -223,8 +270,11 @@ public class CommerceApiController(FollociaDbContext db) : ControllerBase
         return NoContent();
     }
 
-    private static ProductDto ToProduct(CommerceProduct product) =>
-        new(product.Id, product.Title, product.Edition, $"{product.CurrencyCode} {product.PriceAmount:N0}", product.Tone, product.ImagePath, product.Status, product.Produced, product.Reserved, product.Available);
+    private static ProductDto ToProduct(CommerceProduct product)
+    {
+        var images = DeserializeImages(product.ImagePath);
+        return new(product.Id, product.Title, product.Edition, $"{product.CurrencyCode} {product.PriceAmount:N0}", product.Tone, images.FirstOrDefault() ?? product.ImagePath, images, product.Status, product.Produced, product.Reserved, product.Available);
+    }
 
     private static OrderDto ToOrder(CommerceOrder order) =>
         new(
@@ -264,10 +314,10 @@ public class CommerceApiController(FollociaDbContext db) : ControllerBase
     private static BootstrapDto DemoBootstrap() =>
         new(
             [
-                new ProductDto("atelier-01", "Atelier 01 - Lumiere", "Edition of 220", "EUR 1,480", "Ivory Calfskin", "/react/assets/collection-1.jpg", "Live", 220, 184, 36),
-                new ProductDto("atelier-02", "Atelier 02 - Noir Suspendu", "Edition of 180", "EUR 1,640", "Patent Obsidian", "/react/assets/collection-2.jpg", "Live", 180, 168, 12),
-                new ProductDto("atelier-03", "Atelier 03 - Or Liquide", "Edition of 140", "EUR 1,820", "Brushed Champagne", "/react/assets/collection-3.jpg", "Private Preview", 140, 121, 19),
-                new ProductDto("atelier-04", "Atelier 04 - Rosso Vow", "Edition of 80", "EUR 2,120", "Rosso Patent", "/react/assets/atelier.jpg", "Draft", 80, 0, 80)
+                new ProductDto("atelier-01", "Atelier 01 - Lumiere", "Edition of 220", "EUR 1,480", "Ivory Calfskin", "/react/assets/collection-1.jpg", ["/react/assets/collection-1.jpg"], "Live", 220, 184, 36),
+                new ProductDto("atelier-02", "Atelier 02 - Noir Suspendu", "Edition of 180", "EUR 1,640", "Patent Obsidian", "/react/assets/collection-2.jpg", ["/react/assets/collection-2.jpg"], "Live", 180, 168, 12),
+                new ProductDto("atelier-03", "Atelier 03 - Or Liquide", "Edition of 140", "EUR 1,820", "Brushed Champagne", "/react/assets/collection-3.jpg", ["/react/assets/collection-3.jpg"], "Private Preview", 140, 121, 19),
+                new ProductDto("atelier-04", "Atelier 04 - Rosso Vow", "Edition of 80", "EUR 2,120", "Rosso Patent", "/react/assets/atelier.jpg", ["/react/assets/atelier.jpg"], "Draft", 80, 0, 80)
             ],
             [
                 new OrderDto("RSV-1048", "vip-002", "Camille R.", "camille@example.com", "Atelier 03 - Or Liquide", "38", "EUR 1,820", "Concierge Review", "Payment Pending", "Order Placed", "Concierge will confirm within 24h", "", "Concierge Pay", "", "Today"),
@@ -286,5 +336,16 @@ public class CommerceApiController(FollociaDbContext db) : ControllerBase
         if (clean.StartsWith("EUR", StringComparison.OrdinalIgnoreCase) || clean.StartsWith("€")) return "EUR";
         if (clean.StartsWith("INR", StringComparison.OrdinalIgnoreCase) || clean.StartsWith("₹")) return "INR";
         return "EUR";
+    }
+    private static List<string> DeserializeImages(string value) =>
+        value.Split('|', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).Take(5).ToList();
+
+    private static string SerializeImages(IReadOnlyList<string>? images, string fallback)
+    {
+        var gallery = (images is { Count: > 0 } ? images : new[] { fallback })
+            .Where(image => !string.IsNullOrWhiteSpace(image))
+            .Distinct()
+            .Take(5);
+        return string.Join('|', gallery);
     }
 }
