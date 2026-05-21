@@ -8,7 +8,7 @@ export default defineConfig({
   plugins: [react(), tailwindcss(), tsConfigPaths({ projects: ["./tsconfig.json"] })],
   build: {
     outDir: "FollociaMvc/wwwroot/react",
-    emptyOutDir: true,
+    emptyOutDir: false,
     rollupOptions: {
       input: "index.html",
       output: {

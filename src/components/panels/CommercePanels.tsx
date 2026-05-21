@@ -803,7 +803,7 @@ async function saveAdminRecordsRemote(module: string, records: AdminRecord[]) {
   }
 }
 
-const adminSections = ["dashboard", "orders", "inventory", "customers", "coupons", "reviews", "banners", "cms", "analytics", "newsletter", "contact", "audit"] as const;
+const adminSections = ["dashboard", "orders", "inventory", "customers", "drops", "vip", "stories", "seo", "coupons", "reviews", "banners", "cms", "analytics", "newsletter", "contact", "audit"] as const;
 type AdminSection = (typeof adminSections)[number];
 
 const adminSectionCopy: Record<AdminSection, { label: string; title: string; copy: string }> = {
@@ -811,6 +811,10 @@ const adminSectionCopy: Record<AdminSection, { label: string; title: string; cop
   orders: { label: "Orders", title: "Order operations", copy: "Payment, delivery, tracking, address and concierge status controls." },
   inventory: { label: "Inventory", title: "Product studio", copy: "Catalogue copy, prices, stock, reservations and visible product states." },
   customers: { label: "Customers", title: "Customer ecosystem", copy: "Buyers, tiers, addresses, wishlist intent and account signals." },
+  drops: { label: "Drops", title: "Drop calendar", copy: "Launch windows, waitlists, VIP previews and closed collection moments." },
+  vip: { label: "VIP Access", title: "Private atelier access", copy: "Invite-only customer/product mapping and concierge access rules." },
+  stories: { label: "Stories", title: "Product storytelling", copy: "Craft notes, material origin, size guidance and collector copy." },
+  seo: { label: "SEO", title: "Search and social preview", copy: "Page titles, descriptions, share cards and discoverability records." },
   coupons: { label: "Coupons", title: "Coupon desk", copy: "Private-drop offers, cart recovery codes and VIP access benefits." },
   reviews: { label: "Reviews", title: "Review moderation", copy: "Publish, pause and review customer feedback before storefront use." },
   banners: { label: "Banners", title: "Homepage banners", copy: "Hero slots, VIP strips and seasonal storefront placements." },
@@ -820,7 +824,7 @@ const adminSectionCopy: Record<AdminSection, { label: string; title: string; cop
   contact: { label: "Contact", title: "Client concierge", copy: "Sizing questions, delivery requests and service follow-ups." },
   audit: { label: "Audit", title: "Audit log", copy: "Operational changes kept visible for the client demo." },
 };
-const productStatuses = ["Live", "Private Preview", "Draft"] as const;
+const productStatuses = ["Live", "Private Preview", "Coming Soon", "Sold Out", "Draft"] as const;
 
 function getAdminSectionFromHash() {
   if (typeof window === "undefined") return "dashboard" as AdminSection;
@@ -833,6 +837,27 @@ export function AdminPanel({ onLogout }: { onLogout?: () => void }) {
   const [products, setProducts] = useState<CommerceProduct[]>(() => getProducts());
   const [orders, setOrders] = useState<CommerceOrder[]>(() => getOrders());
   const [customers, setCustomers] = useState<CustomerProfile[]>(() => getCustomers());
+  const [drops, setDrops] = useState<AdminRecord[]>(() => readAdminRecords("follocia_admin_drops", [
+    { id: "drop-atelier-iv", title: "Atelier IV Preview", meta: "VIP preview opens Friday, public release Monday", status: "VIP Preview" },
+    { id: "drop-restock-alert", title: "Size 38 Restock Watch", meta: "Notify wishlist clients before public stock update", status: "Scheduled" },
+    { id: "drop-archive", title: "Archive Access Weekend", meta: "Private appointments for past edition collectors", status: "Planning" },
+  ]));
+  const [vipAccess, setVipAccess] = useState<AdminRecord[]>(() => readAdminRecords("follocia_admin_vip", [
+    { id: "vip-private-preview", title: "Private Preview Access", meta: "Private Atelier and VIP customers see preview pieces first", status: "Active" },
+    { id: "vip-concierge-hold", title: "Concierge 24h Hold", meta: "VIP customers can reserve one size for concierge review", status: "Active" },
+    { id: "vip-early-drop", title: "Early Drop Link", meta: "Share secret drop links with selected customers", status: "Ready" },
+  ]));
+  const [storyBlocks, setStoryBlocks] = useState<AdminRecord[]>(() => readAdminRecords("follocia_admin_stories", [
+    { id: "story-craft", title: "Craft Note", meta: "Hand-lasted construction, numbered editions and atelier finishing", status: "Published" },
+    { id: "story-material", title: "Material Origin", meta: "Italian leather, satin and patent finishes selected per drop", status: "Published" },
+    { id: "story-size", title: "Size Confidence", meta: "Fits true to size; concierge recommends half-size review for narrow feet", status: "Published" },
+    { id: "story-care", title: "Care Promise", meta: "Care kit, restoration guidance and post-purchase check-in", status: "Published" },
+  ]));
+  const [seoRecords, setSeoRecords] = useState<AdminRecord[]>(() => readAdminRecords("follocia_admin_seo", [
+    { id: "seo-home", title: "Follocia - Private Luxury Footwear Atelier", meta: "Limited-edition handcrafted footwear with concierge reservations.", status: "Live" },
+    { id: "seo-shop", title: "Shop Limited Follocia Editions", meta: "Browse live stock, private previews and numbered atelier pieces.", status: "Live" },
+    { id: "seo-product", title: "Follocia Product Detail", meta: "Product gallery, sizing confidence, reservations and craft story.", status: "Live" },
+  ]));
   const [coupons, setCoupons] = useState<AdminRecord[]>(() => readAdminRecords("follocia_admin_coupons", [
     { id: "coupon-1", title: "FOLLOCIA10", meta: "10% off - Live editions", status: "Active" },
     { id: "coupon-2", title: "ATELIERCARE", meta: "Free care kit - Delivered orders", status: "Active" },
@@ -992,7 +1017,7 @@ export function AdminPanel({ onLogout }: { onLogout?: () => void }) {
       setCustomers(getCustomers());
     };
     void syncCommerceFromBackend();
-    void syncAdminRecordsFromBackend({ coupons: setCoupons, reviews: setReviews, banners: setBanners, cms: setCmsPages, newsletter: setNewsletter, contact: setContactQueries, audit: setAudit });
+    void syncAdminRecordsFromBackend({ drops: setDrops, vip: setVipAccess, stories: setStoryBlocks, seo: setSeoRecords, coupons: setCoupons, reviews: setReviews, banners: setBanners, cms: setCmsPages, newsletter: setNewsletter, contact: setContactQueries, audit: setAudit });
     window.addEventListener(COMMERCE_EVENT, sync);
     const onHashChange = () => setActiveSection(getAdminSectionFromHash());
     window.addEventListener("hashchange", onHashChange);
@@ -1011,12 +1036,20 @@ export function AdminPanel({ onLogout }: { onLogout?: () => void }) {
         <AdminCard id="dashboard-orders" title="Latest Orders">
           <AdminMiniList items={orders.slice(0, 5).map((order) => `${order.id} - ${order.customer} - ${order.status}`)} />
         </AdminCard>
-        <AdminCard id="dashboard-actions" title="Storefront Controls">
-          <div className="grid gap-2">
-            {(["inventory", "banners", "cms", "coupons", "reviews", "contact"] as AdminSection[]).map((section) => <button key={section} onClick={() => openSection(section)} className="flex items-center justify-between border border-[var(--ink)]/10 bg-white px-4 py-3 text-left text-sm"><span>{adminSectionCopy[section].label}</span><span className="text-[var(--gold)]">Open</span></button>)}
-          </div>
+        <AdminCard id="dashboard-actions" title="Command Alerts">
+          <AdminMiniList items={[
+            `${products.filter((product) => product.available <= 12 && product.status !== "Draft").length} low-stock product alerts`,
+            `${customers.reduce((sum, customer) => sum + customer.wishlist.length, 0)} wishlist intent signals`,
+            `${contactQueries.filter((item) => item.status === "Open").length} open concierge requests`,
+            `${drops.filter((item) => item.status !== "Closed").length} drop records ready`,
+          ]} />
         </AdminCard>
       </div>
+      <AdminCard id="dashboard-controls" title="Storefront Controls">
+          <div className="grid gap-2">
+            {(["inventory", "drops", "vip", "stories", "seo", "banners", "cms", "coupons", "reviews", "contact"] as AdminSection[]).map((section) => <button key={section} onClick={() => openSection(section)} className="flex items-center justify-between border border-[var(--ink)]/10 bg-white px-4 py-3 text-left text-sm"><span>{adminSectionCopy[section].label}</span><span className="text-[var(--gold)]">Open</span></button>)}
+          </div>
+      </AdminCard>
     </div>
   );
 
@@ -1151,6 +1184,10 @@ export function AdminPanel({ onLogout }: { onLogout?: () => void }) {
     orders: ordersPanel,
     inventory: inventoryPanel,
     customers: customersPanel,
+    drops: <AdminCard id="drops" title="Drop Calendar"><AdminCrudList storageKey="follocia_admin_drops" records={drops} onChange={setDrops} titlePlaceholder="Drop name" metaPlaceholder="Launch window, waitlist or access note" /></AdminCard>,
+    vip: <AdminCard id="vip" title="VIP Access Rules"><AdminCrudList storageKey="follocia_admin_vip" records={vipAccess} onChange={setVipAccess} titlePlaceholder="Access rule" metaPlaceholder="Customer tier, product or secret-link rule" /></AdminCard>,
+    stories: <AdminCard id="stories" title="Product Story Blocks"><AdminCrudList storageKey="follocia_admin_stories" records={storyBlocks} onChange={setStoryBlocks} titlePlaceholder="Story block" metaPlaceholder="Craft, material, fit, care or styling copy" /></AdminCard>,
+    seo: <AdminCard id="seo" title="SEO & Social Preview"><AdminCrudList storageKey="follocia_admin_seo" records={seoRecords} onChange={setSeoRecords} titlePlaceholder="Page or product title" metaPlaceholder="SEO description or share preview" /></AdminCard>,
     coupons: <AdminCard id="coupons" title="Coupons"><AdminCrudList storageKey="follocia_admin_coupons" records={coupons} onChange={setCoupons} titlePlaceholder="Coupon code" metaPlaceholder="Benefit and scope" /></AdminCard>,
     reviews: <AdminCard id="reviews" title="Reviews & Ratings"><AdminCrudList storageKey="follocia_admin_reviews" records={reviews} onChange={setReviews} titlePlaceholder="Rating" metaPlaceholder="Review text" /></AdminCard>,
     banners: <AdminCard id="banners" title="Banners"><AdminCrudList storageKey="follocia_admin_banners" records={banners} onChange={setBanners} titlePlaceholder="Banner title" metaPlaceholder="Placement" /></AdminCard>,
@@ -1199,8 +1236,8 @@ export function AdminPanel({ onLogout }: { onLogout?: () => void }) {
               <p className="max-w-xl text-sm text-[var(--ink)]/55">{adminSectionCopy[activeSection].copy}</p>
             </div>
           </header>
-          <nav className="grid gap-2 md:grid-cols-4 xl:grid-cols-6">
-            {(["inventory", "orders", "customers", "banners", "cms", "contact"] as AdminSection[]).map((section) => (
+          <nav className="grid gap-2 md:grid-cols-4 xl:grid-cols-8">
+            {(["inventory", "orders", "customers", "drops", "vip", "stories", "seo", "contact"] as AdminSection[]).map((section) => (
               <button key={section} onClick={() => openSection(section)} className="border border-[var(--ink)]/10 bg-white px-4 py-3 text-left text-sm">
                 <span className="block text-[10px] uppercase tracking-[0.16em] text-[var(--ink)]/40">Manage</span>
                 <strong className="font-medium">{adminSectionCopy[section].label}</strong>

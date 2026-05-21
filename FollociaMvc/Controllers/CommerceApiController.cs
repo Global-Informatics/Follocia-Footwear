@@ -161,7 +161,7 @@ public class CommerceApiController(FollociaDbContext db) : ControllerBase
     {
         if (files.Count == 0) return BadRequest();
 
-        var uploadsRoot = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "react", "uploads", "products");
+        var uploadsRoot = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "uploads", "products");
         Directory.CreateDirectory(uploadsRoot);
 
         var allowed = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { ".jpg", ".jpeg", ".png", ".webp", ".gif" };
@@ -177,7 +177,7 @@ public class CommerceApiController(FollociaDbContext db) : ControllerBase
             var path = Path.Combine(uploadsRoot, fileName);
             await using var stream = System.IO.File.Create(path);
             await file.CopyToAsync(stream);
-            urls.Add($"/react/uploads/products/{fileName}");
+            urls.Add($"/uploads/products/{fileName}");
         }
 
         return new { images = urls };

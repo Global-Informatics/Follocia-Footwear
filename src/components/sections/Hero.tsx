@@ -50,13 +50,13 @@ export function Hero() {
             initial={{ scale: 1.0 }}
             animate={{ scale: 1.1, x: "-1%", y: "-1%" }}
             transition={{ duration: 10, ease: "linear" }}
-            className="h-full w-full object-cover opacity-60"
+            className="h-full w-full object-cover opacity-80"
           />
         </motion.div>
       </AnimatePresence>
 
       {/* Cinematic Overlays */}
-      <div className="absolute inset-0 bg-gradient-to-t from-[var(--ink)] via-[var(--ink)]/40 to-[var(--ink)]/80 z-10" />
+      <div className="absolute inset-0 bg-gradient-to-t from-[var(--ink)]/65 via-[var(--ink)]/20 to-[var(--ink)]/45 z-10" />
       <div className="absolute inset-0 luxe-grain z-10" />
 
       {/* Content */}

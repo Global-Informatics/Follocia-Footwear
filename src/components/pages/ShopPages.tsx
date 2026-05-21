@@ -51,6 +51,38 @@ function liveProducts() {
   return getProducts().filter((product) => product.status !== "Draft");
 }
 
+type StorefrontRecord = { id: string; title: string; meta: string; status: string };
+
+function readStorefrontRecords(module: string, seed: StorefrontRecord[] = []) {
+  if (typeof window === "undefined") return seed;
+  try {
+    const existing = JSON.parse(localStorage.getItem(`follocia_admin_${module}`) || "[]") as StorefrontRecord[];
+    return existing.length ? existing : seed;
+  } catch {
+    return seed;
+  }
+}
+
+function activeRecords(module: string, seed: StorefrontRecord[] = []) {
+  return readStorefrontRecords(module, seed).filter((record) => !["Draft", "Paused", "Closed"].includes(record.status));
+}
+
+function stockMood(product: CommerceProduct) {
+  if (product.status === "Coming Soon") return "Coming soon";
+  if (product.status === "Sold Out" || product.available <= 0) return "Sold out";
+  if (product.available <= 6) return "Final pairs";
+  if (product.available <= 12) return "Low stock";
+  return "Available";
+}
+
+function sizeConfidence(product: CommerceProduct, selectedSize: string) {
+  if (!selectedSize) return "Select a size for atelier guidance.";
+  const sizeNumber = Number(selectedSize);
+  if (product.tone.toLowerCase().includes("patent") && sizeNumber <= 37) return "Patent finish can feel structured. Concierge suggests reviewing half-size comfort.";
+  if (product.tone.toLowerCase().includes("satin")) return "Satin edition fits true to size with a softer instep feel.";
+  return "Fits true to size. Concierge can confirm against your usual European size.";
+}
+
 function addressLine(address: CommerceAddress) {
   return `${address.firstName} ${address.lastName}, ${address.address}${address.address2 ? `, ${address.address2}` : ""}, ${address.city}, ${address.region} ${address.zip}, ${address.country}, ${address.phone}`.replace(/\s+/g, " ").trim();
 }
@@ -103,6 +135,7 @@ function ProductCard({ product, index }: { product: CommerceProduct; index: numb
   
   const urgencyBadge = product.available <= 12 && product.available > 0 ? `Only ${product.available} left` : null;
   const primaryImage = productPrimaryImage(product);
+  const mood = stockMood(product);
 
   return (
     <>
@@ -134,7 +167,7 @@ function ProductCard({ product, index }: { product: CommerceProduct; index: numb
             {/* Badges */}
             <div className="absolute left-4 top-4 z-10 flex flex-col gap-2" style={{ transform: "translateZ(40px)" }}>
               <div className="bg-white/90 backdrop-blur-sm px-3 py-1.5 text-[0.62rem] font-semibold uppercase tracking-[0.18em] text-[var(--ink)] shadow-sm">
-                {product.status}
+                {mood}
               </div>
               {urgencyBadge && (
                 <div className="bg-[var(--gold)]/90 backdrop-blur-sm px-3 py-1.5 text-[0.62rem] font-semibold uppercase tracking-[0.18em] text-[var(--ink)] shadow-sm animate-pulse">
@@ -195,6 +228,8 @@ export function ShopPage({ session, onLogout, onLogin }: { session: AuthSession 
   const [tone, setTone] = useState("All");
   const [stock, setStock] = useState("All");
   const [sort, setSort] = useState("Featured");
+  const dropRecords = activeRecords("drops", [{ id: "drop-default", title: "Private Drop Open", meta: "VIP preview and concierge reservations are available now.", status: "Live" }]);
+  const vipRecords = activeRecords("vip", [{ id: "vip-default", title: "Private Atelier Mode", meta: "Members receive early access, holds and size support.", status: "Active" }]);
 
   useEffect(() => {
     const sync = () => setProducts(liveProducts());
@@ -322,6 +357,27 @@ export function ShopPage({ session, onLogout, onLogin }: { session: AuthSession 
           <span className="h-px flex-1 bg-gradient-to-r from-[var(--ink)]/10 mx-6" />
         </div>
 
+        <section className="mb-10 grid gap-4 border border-[var(--ink)]/10 bg-white p-5 md:grid-cols-[1fr_1fr_1fr]">
+          <div>
+            <p className="eyebrow text-[var(--gold)]">Private atelier mode</p>
+            <h2 className="mt-2 font-display text-3xl">Access before catalogue.</h2>
+          </div>
+          {dropRecords.slice(0, 1).map((record) => (
+            <div key={record.id} className="border-l border-[var(--ink)]/10 pl-4">
+              <p className="text-xs uppercase tracking-[0.18em] text-[var(--ink)]/45">{record.status}</p>
+              <strong className="mt-2 block text-sm">{record.title}</strong>
+              <p className="mt-1 text-sm text-[var(--ink)]/55">{record.meta}</p>
+            </div>
+          ))}
+          {vipRecords.slice(0, 1).map((record) => (
+            <div key={record.id} className="border-l border-[var(--ink)]/10 pl-4">
+              <p className="text-xs uppercase tracking-[0.18em] text-[var(--ink)]/45">{record.status}</p>
+              <strong className="mt-2 block text-sm">{record.title}</strong>
+              <p className="mt-1 text-sm text-[var(--ink)]/55">{record.meta}</p>
+            </div>
+          ))}
+        </section>
+
         <div className="grid gap-x-8 gap-y-16 md:grid-cols-2 xl:grid-cols-3">
           <AnimatePresence mode="popLayout">
             {visible.map((product, index) => (
@@ -371,6 +427,19 @@ export function ProductDetailPage({ productId, session, onLogout, onLogin }: { p
     if (product) setActiveImage(productPrimaryImage(product));
   }, [product?.id, product?.image, product?.images]);
 
+  const storyRecords = activeRecords("stories", [
+    { id: "story-craft", title: "Craft Note", meta: "Hand-lasted construction, numbered editions and atelier finishing.", status: "Published" },
+    { id: "story-size", title: "Size Confidence", meta: "Fits true to size; concierge can review your usual size.", status: "Published" },
+    { id: "story-care", title: "Care Promise", meta: "Care kit, restoration guidance and post-purchase check-in.", status: "Published" },
+  ]);
+  const dropRecords = activeRecords("drops", [{ id: "drop-default", title: "Private drop window", meta: "VIP holds and concierge reservations are open.", status: "Live" }]);
+  const seoRecord = activeRecords("seo").find((record) => record.id.includes("product")) || null;
+
+  useEffect(() => {
+    if (!product || typeof document === "undefined") return;
+    document.title = seoRecord?.title || `${product.title} - Follocia`;
+  }, [product?.id, seoRecord?.title]);
+
   if (!product) {
     return (
       <PageShell session={session} onLogout={onLogout} onLogin={onLogin}>
@@ -388,6 +457,7 @@ export function ProductDetailPage({ productId, session, onLogout, onLogin }: { p
   const wished = wishlist.includes(product.id);
   const gallery = productImages(product);
   const displayImage = activeImage || productPrimaryImage(product);
+  const confidence = sizeConfidence(product, size);
 
   return (
     <PageShell session={session} onLogout={onLogout} onLogin={onLogin}>
@@ -451,6 +521,10 @@ export function ProductDetailPage({ productId, session, onLogout, onLogin }: { p
               {!size && <motion.p initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }} className="mt-3 text-sm text-[var(--gold)]">Please select a size to continue</motion.p>}
             </AnimatePresence>
             <p className="mt-4 text-xs tracking-wide text-[var(--ink)]/55">Italian sizing. Fits true to size.</p>
+            <div className="mt-4 border border-[var(--ink)]/10 bg-[var(--bone)]/45 p-4 text-sm text-[var(--ink)]/65">
+              <strong className="block text-xs uppercase tracking-[0.16em] text-[var(--gold)]">Size confidence</strong>
+              <span className="mt-2 block">{confidence}</span>
+            </div>
           </div>
 
           <motion.button 
@@ -467,14 +541,41 @@ export function ProductDetailPage({ productId, session, onLogout, onLogin }: { p
             {added ? <><motion.span initial={{ scale: 0 }} animate={{ scale: 1 }} className="inline-block mr-2">✓</motion.span> Added to Bag</> : size ? "Reserve Pair →" : "Select Size First"}
           </motion.button>
 
+          <div className="mt-3 grid gap-3 sm:grid-cols-2">
+            <button
+              onClick={() => {
+                void saveContactQuery(session?.user.name || "Guest", session?.user.email || "guest@follocia.local", "Concierge reservation", `${product.title}${size ? ` size ${size}` : ""}`);
+              }}
+              className="border border-[var(--ink)] px-5 py-4 text-xs uppercase tracking-[0.16em] transition-colors hover:border-[var(--gold)] hover:text-[var(--gold)]"
+            >
+              Ask stylist
+            </button>
+            <button
+              onClick={() => {
+                void saveContactQuery(session?.user.name || "Guest", session?.user.email || "guest@follocia.local", "24h hold request", `${product.title}${size ? ` size ${size}` : ""}`);
+              }}
+              className="border border-[var(--gold)] bg-[var(--gold)]/10 px-5 py-4 text-xs uppercase tracking-[0.16em] transition-colors hover:bg-[var(--gold)] hover:text-[var(--ink)]"
+            >
+              Request 24h hold
+            </button>
+          </div>
+
           <div className="mt-12 flex items-center gap-4 text-xs tracking-wide text-[var(--ink)]/60">
             <span className="flex items-center gap-2"><div className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" /> Dispatches within 48 hours</span>
             <span>·</span>
             <span>Complimentary returns</span>
           </div>
 
+          <section className="mt-10 grid gap-3 border border-[var(--ink)]/10 bg-[var(--bone)]/35 p-5">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <p className="eyebrow text-[var(--gold)]">Drop signal</p>
+              <span className="text-xs uppercase tracking-[0.16em] text-[var(--ink)]/45">{stockMood(product)}</span>
+            </div>
+            {dropRecords.slice(0, 1).map((record) => <p key={record.id} className="text-sm text-[var(--ink)]/65"><strong>{record.title}:</strong> {record.meta}</p>)}
+          </section>
+
           <div className="mt-12 border-t border-[var(--ink)]/10">
-            {["Product Details", "Delivery & Returns", "Book An Appointment", "Contact Us"].map((panel) => (
+            {["Product Details", "Craft Story", "Delivery & Returns", "Book An Appointment", "Contact Us"].map((panel) => (
               <div key={panel} className="border-b border-[var(--ink)]/10">
                 <button onClick={() => setOpenPanel(openPanel === panel ? "" : panel)} className="flex w-full items-center justify-between py-5 text-sm font-semibold uppercase tracking-[0.1em]">
                   {panel}
@@ -483,9 +584,15 @@ export function ProductDetailPage({ productId, session, onLogout, onLogin }: { p
                 <AnimatePresence>
                   {openPanel === panel && (
                     <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="overflow-hidden">
-                      <p className="pb-6 text-sm leading-relaxed text-[var(--ink)]/65">
-                        Hand-lasted limited edition footwear with secure checkout, complimentary delivery and concierge support. Each pair takes 32 hours to construct using traditional Florentine techniques.
-                      </p>
+                      {panel === "Craft Story" ? (
+                        <div className="grid gap-3 pb-6">
+                          {storyRecords.slice(0, 4).map((record) => <p key={record.id} className="text-sm leading-relaxed text-[var(--ink)]/65"><strong className="text-[var(--ink)]">{record.title}:</strong> {record.meta}</p>)}
+                        </div>
+                      ) : (
+                        <p className="pb-6 text-sm leading-relaxed text-[var(--ink)]/65">
+                          Hand-lasted limited edition footwear with secure checkout, complimentary delivery and concierge support. Each pair takes 32 hours to construct using traditional Florentine techniques.
+                        </p>
+                      )}
                     </motion.div>
                   )}
                 </AnimatePresence>
@@ -816,6 +923,11 @@ export function SecureCheckoutPage({ session, onLogout, onLogin }: { session: Au
 
             <motion.aside initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }} className="h-fit glass border border-[var(--ink)]/10 bg-white/80 p-8 shadow-[var(--shadow-soft)] lg:sticky lg:top-28 backdrop-blur-xl">
               <div className="flex items-center justify-between border-b border-[var(--ink)]/10 pb-6"><h2 className="font-display text-2xl">Order Summary</h2><a href="#/shop" className="text-sm underline text-[var(--gold)] hover:text-[var(--ink)] transition-colors">Edit Bag</a></div>
+              <div className="mt-5 grid gap-3 border border-[var(--gold)]/25 bg-[var(--gold)]/5 p-4 text-xs uppercase tracking-[0.14em] text-[var(--ink)]/60">
+                <span>Secure authorization before capture</span>
+                <span>White-glove dispatch updates in account</span>
+                <span>Concierge support for size and delivery</span>
+              </div>
               
               <div className="mt-6 grid gap-6 max-h-[40vh] overflow-y-auto pr-2">
                 {items.map((item) => (
