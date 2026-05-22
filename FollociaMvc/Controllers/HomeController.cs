@@ -20,7 +20,17 @@ public class HomeController : Controller
 
     public IActionResult Privacy()
     {
-        return View();
+        return View("Index");
+    }
+
+    public IActionResult Terms()
+    {
+        return View("Index");
+    }
+
+    public IActionResult Cookies()
+    {
+        return View("Index");
     }
 
     [ResponseCache(Duration = 0, Location = ResponseCacheLocation.None, NoStore = true)]

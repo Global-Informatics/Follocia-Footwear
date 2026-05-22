@@ -43,7 +43,7 @@ export function Footer() {
         <div className="grid grid-cols-2 gap-12 border-b border-[var(--bone)]/8 pb-16 md:grid-cols-12">
           {/* Logo section */}
           <Reveal className="col-span-2 md:col-span-5" mode="fade-up">
-            <BrandLogo imageClassName="h-24 w-24 border border-white/10" />
+            <BrandLogo imageClassName="h-40 w-40" />
             <p className="mt-6 max-w-xs text-sm leading-relaxed text-[var(--bone)]/50">
               Limited edition women's footwear. Sculpted in Florence. Worn by the few.
             </p>
@@ -102,8 +102,12 @@ export function Footer() {
             <div>© MMXXV Maison Follocia · Firenze</div>
           </Reveal>
           <div className="flex items-center gap-8">
-            {["Privacy", "Terms", "Cookies"].map((x) => (
-              <a key={x} href="#" className="hover-underline hover:text-[var(--gold)] transition-colors" data-cursor="hover">{x}</a>
+            {[
+              { label: "Privacy", href: "/privacy" },
+              { label: "Terms", href: "/terms" },
+              { label: "Cookies", href: "/cookies" },
+            ].map((x) => (
+              <a key={x.label} href={x.href} className="hover-underline hover:text-[var(--gold)] transition-colors" data-cursor="hover">{x.label}</a>
             ))}
 
             {/* Back to top */}

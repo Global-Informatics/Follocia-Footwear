@@ -1,4 +1,4 @@
-import logo from "@/assets/follocia-logo.jpeg";
+import logo from "@/assets/follocia-logo-new.png";
 
 type BrandLogoProps = {
   className?: string;
@@ -12,7 +12,7 @@ export function BrandLogo({ className = "", imageClassName = "", compact = false
       <img
         src={logo}
         alt="Follocia logo"
-        className={`block bg-white object-contain ${compact ? "h-12 w-12" : "h-16 w-16"} ${imageClassName}`}
+        className={`block bg-transparent object-contain ${compact ? "h-24 w-24" : "h-32 w-32"} ${imageClassName}`}
       />
     </span>
   );

@@ -19,6 +19,8 @@ import { AuthGateway, clearAuthSession, readAuthSession } from "@/components/aut
 import type { AuthSession } from "@/components/auth/AuthGateway";
 import { syncCommerceFromBackend } from "@/lib/commerceStore";
 import { CollectionsPage, ContactPage, ProductDetailPage, SecureCheckoutPage, ShopPage } from "@/components/pages/ShopPages";
+import { LegalPage } from "@/components/pages/LegalPage";
+import { legalSlugFromPath } from "@/lib/legalPages";
 
 function sectionFromPath(path: string) {
   if (path.includes("my-addresses")) return "My Addresses" as const;
@@ -88,6 +90,7 @@ export function App() {
   const wantsCollections = path.startsWith("/collections");
   const wantsContact = path.startsWith("/contact");
   const wantsCheckout = path.startsWith("/checkout");
+  const legalSlug = legalSlugFromPath(path);
 
   const logout = () => {
     clearAuthSession();
@@ -148,6 +151,21 @@ export function App() {
         ) : (
           <ShopPage session={session} onLogout={logout} onLogin={() => setLoginOpen(true)} />
         )}
+        {loginOpen && (
+          <div className="fixed inset-0 z-[120] grid place-items-center bg-[var(--ink)]/70 px-4 py-8 backdrop-blur-md">
+            <button onClick={() => setLoginOpen(false)} className="fixed right-6 top-6 z-[121] text-4xl text-[var(--bone)]">x</button>
+            <AuthGateway intent="customer" compact onAuthenticated={(next) => { setSession(next); setLoginOpen(false); }} />
+          </div>
+        )}
+      </CartProvider>
+    );
+  }
+
+  if (legalSlug) {
+    return (
+      <CartProvider>
+        <LegalPage slug={legalSlug} session={session} onLogout={logout} onLogin={() => setLoginOpen(true)} />
+        <CartDrawer session={session} onLogin={() => setLoginOpen(true)} />
         {loginOpen && (
           <div className="fixed inset-0 z-[120] grid place-items-center bg-[var(--ink)]/70 px-4 py-8 backdrop-blur-md">
             <button onClick={() => setLoginOpen(false)} className="fixed right-6 top-6 z-[121] text-4xl text-[var(--bone)]">x</button>

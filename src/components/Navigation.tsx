@@ -55,9 +55,9 @@ export function Navigation({ userName, onLogout, onLogin, solid = false }: { use
           className="absolute bottom-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-[var(--gold)]/20 to-transparent"
         />
 
-        <div className="mx-auto flex h-20 max-w-[1600px] items-center justify-between px-6 md:px-12">
+        <div className="mx-auto flex h-28 max-w-[1600px] items-center justify-between px-6 md:px-12">
           <a href={baseUrl} aria-label="Follocia home" className="flex items-center" data-cursor="hover">
-            <BrandLogo compact imageClassName={`border ${solid ? "border-[var(--ink)]/10" : "border-white/20"}`} />
+            <BrandLogo compact />
           </a>
 
           {/* Desktop nav with animated underline */}

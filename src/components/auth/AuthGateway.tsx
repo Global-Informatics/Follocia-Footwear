@@ -79,7 +79,7 @@ export function AuthGateway({ intent = "customer", compact = false, onAuthentica
         {/* Left brand panel */}
         <motion.div initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 1, ease }} className={compact ? "hidden" : "flex min-h-[45vh] flex-col justify-between"}>
           <a href={import.meta.env.BASE_URL === "/react/" ? "/" : import.meta.env.BASE_URL} aria-label="Follocia home" className="w-fit">
-            <BrandLogo imageClassName="h-24 w-24 border border-white/10" />
+            <BrandLogo imageClassName="h-40 w-40" />
           </a>
           <div className="max-w-4xl">
             <motion.p initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.3, duration: 0.8 }} className="eyebrow text-[var(--gold)]">{copy.eyebrow}</motion.p>

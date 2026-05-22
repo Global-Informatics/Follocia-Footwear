@@ -25,6 +25,7 @@ import {
 } from "@/lib/commerceStore";
 import type { AuthSession } from "@/components/auth/AuthGateway";
 import { BrandLogo } from "@/components/BrandLogo";
+import { defaultLegalRecords, legalPageConfig, type LegalSlug } from "@/lib/legalPages";
 
 const menu = ["My Orders", "My Wishlist", "My Addresses", "My Wallet", "My Coupons", "Gift Cards", "My Reviews", "Notifications", "My Subscriptions", "My Account"] as const;
 type AccountSection = (typeof menu)[number];
@@ -803,7 +804,7 @@ async function saveAdminRecordsRemote(module: string, records: AdminRecord[]) {
   }
 }
 
-const adminSections = ["dashboard", "orders", "inventory", "customers", "drops", "vip", "stories", "seo", "coupons", "reviews", "banners", "cms", "analytics", "newsletter", "contact", "audit"] as const;
+const adminSections = ["dashboard", "orders", "inventory", "customers", "drops", "vip", "stories", "seo", "coupons", "reviews", "banners", "cms", "legal", "analytics", "newsletter", "contact", "audit"] as const;
 type AdminSection = (typeof adminSections)[number];
 
 const adminSectionCopy: Record<AdminSection, { label: string; title: string; copy: string }> = {
@@ -819,6 +820,7 @@ const adminSectionCopy: Record<AdminSection, { label: string; title: string; cop
   reviews: { label: "Reviews", title: "Review moderation", copy: "Publish, pause and review customer feedback before storefront use." },
   banners: { label: "Banners", title: "Homepage banners", copy: "Hero slots, VIP strips and seasonal storefront placements." },
   cms: { label: "CMS", title: "Content pages", copy: "Atelier story, policies, care guides and client-facing pages." },
+  legal: { label: "Legal", title: "Legal page studio", copy: "Privacy policy, terms and cookie content published to ecommerce footer pages." },
   analytics: { label: "Analytics", title: "Performance room", copy: "Conversion, revenue, cart recovery and wishlist movement." },
   newsletter: { label: "Newsletter", title: "Audience segments", copy: "Private drop audiences and high-intent customer campaigns." },
   contact: { label: "Contact", title: "Client concierge", copy: "Sizing questions, delivery requests and service follow-ups." },
@@ -886,6 +888,7 @@ export function AdminPanel({ onLogout }: { onLogout?: () => void }) {
     { id: "cms-care-guide", title: "Care guide", meta: "Post-purchase care", status: "Published" },
     { id: "cms-return-policy", title: "Return policy", meta: "Customer support", status: "Draft" },
   ]));
+  const [legalPages, setLegalPages] = useState<AdminRecord[]>(() => readAdminRecords("follocia_admin_legal", defaultLegalRecords));
   const [contactQueries, setContactQueries] = useState<AdminRecord[]>(() => readAdminRecords("follocia_admin_contact", [
     { id: "contact-1", title: "Sizing query from Mumbai", meta: "Customer asked for 38/39 fitting help", status: "Open" },
     { id: "contact-2", title: "Delivery request from Delhi", meta: "White-glove delivery timing", status: "Open" },
@@ -1017,7 +1020,7 @@ export function AdminPanel({ onLogout }: { onLogout?: () => void }) {
       setCustomers(getCustomers());
     };
     void syncCommerceFromBackend();
-    void syncAdminRecordsFromBackend({ drops: setDrops, vip: setVipAccess, stories: setStoryBlocks, seo: setSeoRecords, coupons: setCoupons, reviews: setReviews, banners: setBanners, cms: setCmsPages, newsletter: setNewsletter, contact: setContactQueries, audit: setAudit });
+    void syncAdminRecordsFromBackend({ drops: setDrops, vip: setVipAccess, stories: setStoryBlocks, seo: setSeoRecords, coupons: setCoupons, reviews: setReviews, banners: setBanners, cms: setCmsPages, legal: setLegalPages, newsletter: setNewsletter, contact: setContactQueries, audit: setAudit });
     window.addEventListener(COMMERCE_EVENT, sync);
     const onHashChange = () => setActiveSection(getAdminSectionFromHash());
     window.addEventListener("hashchange", onHashChange);
@@ -1047,7 +1050,7 @@ export function AdminPanel({ onLogout }: { onLogout?: () => void }) {
       </div>
       <AdminCard id="dashboard-controls" title="Storefront Controls">
           <div className="grid gap-2">
-            {(["inventory", "drops", "vip", "stories", "seo", "banners", "cms", "coupons", "reviews", "contact"] as AdminSection[]).map((section) => <button key={section} onClick={() => openSection(section)} className="flex items-center justify-between border border-[var(--ink)]/10 bg-white px-4 py-3 text-left text-sm"><span>{adminSectionCopy[section].label}</span><span className="text-[var(--gold)]">Open</span></button>)}
+            {(["inventory", "drops", "vip", "stories", "seo", "banners", "cms", "legal", "coupons", "reviews", "contact"] as AdminSection[]).map((section) => <button key={section} onClick={() => openSection(section)} className="flex items-center justify-between border border-[var(--ink)]/10 bg-white px-4 py-3 text-left text-sm"><span>{adminSectionCopy[section].label}</span><span className="text-[var(--gold)]">Open</span></button>)}
           </div>
       </AdminCard>
     </div>
@@ -1179,6 +1182,12 @@ export function AdminPanel({ onLogout }: { onLogout?: () => void }) {
     </div>
   );
 
+  const legalPanel = (
+    <AdminCard id="legal" title="Privacy, Terms & Cookies">
+      <LegalPagesEditor records={legalPages} onChange={setLegalPages} />
+    </AdminCard>
+  );
+
   const panels: Record<AdminSection, ReactNode> = {
     dashboard: dashboardPanel,
     orders: ordersPanel,
@@ -1192,6 +1201,7 @@ export function AdminPanel({ onLogout }: { onLogout?: () => void }) {
     reviews: <AdminCard id="reviews" title="Reviews & Ratings"><AdminCrudList storageKey="follocia_admin_reviews" records={reviews} onChange={setReviews} titlePlaceholder="Rating" metaPlaceholder="Review text" /></AdminCard>,
     banners: <AdminCard id="banners" title="Banners"><AdminCrudList storageKey="follocia_admin_banners" records={banners} onChange={setBanners} titlePlaceholder="Banner title" metaPlaceholder="Placement" /></AdminCard>,
     cms: <AdminCard id="cms" title="CMS Pages"><AdminCrudList storageKey="follocia_admin_cms" records={cmsPages} onChange={setCmsPages} titlePlaceholder="Page title" metaPlaceholder="Page purpose" /></AdminCard>,
+    legal: legalPanel,
     analytics: analyticsPanel,
     newsletter: <AdminCard id="newsletter" title="Newsletter"><AdminCrudList storageKey="follocia_admin_newsletter" records={newsletter} onChange={setNewsletter} titlePlaceholder="Segment" metaPlaceholder="Audience note" /></AdminCard>,
     contact: <AdminCard id="contact" title="Contact Queries"><AdminCrudList storageKey="follocia_admin_contact" records={contactQueries} onChange={setContactQueries} titlePlaceholder="Query title" metaPlaceholder="Query detail" /></AdminCard>,
@@ -1203,7 +1213,7 @@ export function AdminPanel({ onLogout }: { onLogout?: () => void }) {
       <header className="sticky top-0 z-40 border-b border-[var(--ink)]/10 bg-[var(--bone)]/95 px-4 backdrop-blur-xl">
         <div className="mx-auto flex h-16 max-w-[1500px] items-center justify-between gap-4">
           <a href="/" aria-label="Follocia home" className="flex shrink-0 items-center">
-            <BrandLogo compact imageClassName="border border-[var(--ink)]/10" />
+            <BrandLogo compact />
           </a>
           <nav className="hidden flex-1 items-center gap-1 overflow-x-auto md:flex">
             {adminSections.map((section) => (
@@ -1237,7 +1247,7 @@ export function AdminPanel({ onLogout }: { onLogout?: () => void }) {
             </div>
           </header>
           <nav className="grid gap-2 md:grid-cols-4 xl:grid-cols-8">
-            {(["inventory", "orders", "customers", "drops", "vip", "stories", "seo", "contact"] as AdminSection[]).map((section) => (
+            {(["inventory", "orders", "customers", "drops", "vip", "stories", "seo", "legal"] as AdminSection[]).map((section) => (
               <button key={section} onClick={() => openSection(section)} className="border border-[var(--ink)]/10 bg-white px-4 py-3 text-left text-sm">
                 <span className="block text-[10px] uppercase tracking-[0.16em] text-[var(--ink)]/40">Manage</span>
                 <strong className="font-medium">{adminSectionCopy[section].label}</strong>
@@ -1601,6 +1611,69 @@ function LegacyAdminPanel({ onLogout }: { onLogout?: () => void }) {
         </section>
       </div>
     </main>
+  );
+}
+
+function LegalPagesEditor({ records, onChange }: { records: AdminRecord[]; onChange: (records: AdminRecord[]) => void }) {
+  const [active, setActive] = useState<LegalSlug>("privacy");
+  const [draftTitle, setDraftTitle] = useState("");
+  const [draftMeta, setDraftMeta] = useState("");
+  const persist = (next: AdminRecord[]) => {
+    onChange(next);
+    saveAdminRecords("follocia_admin_legal", next);
+    void saveAdminRecordsRemote("legal", next);
+  };
+  const pageRecords = records.filter((record) => record.id.startsWith(`${active}-`));
+
+  return (
+    <div className="grid gap-5">
+      <div className="grid gap-2 md:grid-cols-3">
+        {(Object.keys(legalPageConfig) as LegalSlug[]).map((slug) => (
+          <button
+            key={slug}
+            onClick={() => setActive(slug)}
+            className={`border px-4 py-3 text-left transition-colors ${active === slug ? "border-[var(--ink)] bg-[var(--ink)] text-[var(--bone)]" : "border-[var(--ink)]/10 bg-white hover:border-[var(--gold)]"}`}
+          >
+            <span className="block text-[10px] uppercase tracking-[0.16em] opacity-55">Footer page</span>
+            <strong className="font-display text-2xl">{legalPageConfig[slug].label}</strong>
+          </button>
+        ))}
+      </div>
+      <section className="grid gap-3 border border-[var(--ink)]/10 bg-[var(--bone)]/35 p-4">
+        <div className="grid gap-3 md:grid-cols-[0.8fr_1.4fr_auto]">
+          <input value={draftTitle} onChange={(event) => setDraftTitle(event.target.value)} placeholder={`${legalPageConfig[active].label} section title`} className="border border-[var(--ink)]/10 bg-white px-4 py-3 text-sm outline-none focus:border-[var(--gold)]" />
+          <input value={draftMeta} onChange={(event) => setDraftMeta(event.target.value)} placeholder="Policy paragraph shown on public page" className="border border-[var(--ink)]/10 bg-white px-4 py-3 text-sm outline-none focus:border-[var(--gold)]" />
+          <button
+            onClick={() => {
+              if (!draftTitle.trim()) return;
+              persist([...records, { id: `${active}-${Date.now()}`, title: draftTitle.trim(), meta: draftMeta.trim() || "Add policy copy here.", status: "Published" }]);
+              setDraftTitle("");
+              setDraftMeta("");
+            }}
+            className="bg-[var(--ink)] px-5 py-3 text-xs uppercase tracking-[0.16em] text-[var(--bone)]"
+          >
+            Add Section
+          </button>
+        </div>
+        <p className="text-xs leading-6 text-[var(--ink)]/55">
+          Public URL: <a href={`/${active}`} className="text-[var(--gold)] underline">/{active}</a>. Use Published for live sections, Draft or Paused to hide a section.
+        </p>
+      </section>
+      <div className="grid gap-3">
+        {pageRecords.map((record) => (
+          <article key={record.id} className="grid gap-3 border border-[var(--ink)]/10 bg-white p-4">
+            <div className="grid gap-3 md:grid-cols-[1fr_160px_auto]">
+              <input value={record.title} onChange={(event) => persist(records.map((item) => item.id === record.id ? { ...item, title: event.target.value } : item))} className="border border-[var(--ink)]/10 px-3 py-2 text-sm font-medium outline-none focus:border-[var(--gold)]" />
+              <select value={record.status} onChange={(event) => persist(records.map((item) => item.id === record.id ? { ...item, status: event.target.value } : item))} className="border border-[var(--ink)]/10 bg-white px-3 py-2 text-sm outline-none focus:border-[var(--gold)]">
+                {["Published", "Draft", "Paused", "Review"].map((status) => <option key={status}>{status}</option>)}
+              </select>
+              <button onClick={() => persist(records.filter((item) => item.id !== record.id))} className="border border-red-200 px-4 py-2 text-xs uppercase tracking-[0.14em] text-red-700">Delete</button>
+            </div>
+            <textarea value={record.meta} onChange={(event) => persist(records.map((item) => item.id === record.id ? { ...item, meta: event.target.value } : item))} rows={4} className="w-full resize-y border border-[var(--ink)]/10 px-3 py-3 text-sm leading-6 outline-none focus:border-[var(--gold)]" />
+          </article>
+        ))}
+      </div>
+    </div>
   );
 }
 

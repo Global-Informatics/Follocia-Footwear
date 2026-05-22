@@ -79,7 +79,7 @@ export function Loader() {
               transition={{ duration: 1.8, ease: [0.2, 0.8, 0.2, 1] }}
               style={{ perspective: 1200 }}
             >
-              <BrandLogo imageClassName="h-28 w-28 border border-white/10 md:h-36 md:w-36" />
+              <BrandLogo imageClassName="h-40 w-40 md:h-52 md:w-52" />
             </motion.div>
 
             {/* Brand name */}

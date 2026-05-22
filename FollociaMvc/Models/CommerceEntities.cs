@@ -218,7 +218,7 @@ public class CommerceAdminRecord
     [MaxLength(180)]
     public string Title { get; set; } = "";
 
-    [MaxLength(500)]
+    [MaxLength(4000)]
     public string Meta { get; set; } = "";
 
     [MaxLength(40)]
