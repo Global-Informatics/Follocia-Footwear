@@ -14,7 +14,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("FollociaMvc")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+cfb9c79d338fd6458a2488e16f1c370f9ce3c2a5")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+cf53389dc0fdc6cba90d95311f0ccdd2c9fd2ffc")]
 [assembly: System.Reflection.AssemblyProductAttribute("FollociaMvc")]
 [assembly: System.Reflection.AssemblyTitleAttribute("FollociaMvc")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

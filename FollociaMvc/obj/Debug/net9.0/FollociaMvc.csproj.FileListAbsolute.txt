@@ -78,7 +78,6 @@ D:\atelier-follocia-lux-main\FollociaMvc\obj\Debug\net9.0\scopedcss\bundle\Follo
 D:\atelier-follocia-lux-main\FollociaMvc\obj\Debug\net9.0\scopedcss\projectbundle\FollociaMvc.bundle.scp.css
 D:\atelier-follocia-lux-main\FollociaMvc\obj\Debug\net9.0\compressed\ogui9h2icv-drj5e7iln2.gz
 D:\atelier-follocia-lux-main\FollociaMvc\obj\Debug\net9.0\compressed\t86kpdrt5t-gtcclvmuhq.gz
-D:\atelier-follocia-lux-main\FollociaMvc\obj\Debug\net9.0\compressed\tfzz7p5ezs-w9kc4757ql.gz
 D:\atelier-follocia-lux-main\FollociaMvc\obj\Debug\net9.0\compressed\uupf5me5yk-qj7jkio31n.gz
 D:\atelier-follocia-lux-main\FollociaMvc\obj\Debug\net9.0\compressed\czfl3u3yba-61n19gt1b8.gz
 D:\atelier-follocia-lux-main\FollociaMvc\obj\Debug\net9.0\compressed\rltp1hujil-965zwawjaj.gz
@@ -141,7 +140,6 @@ D:\atelier-follocia-lux-main\FollociaMvc\obj\Debug\net9.0\compressed\h0wzzy7ngi-
 D:\atelier-follocia-lux-main\FollociaMvc\obj\Debug\net9.0\compressed\h1dotler57-muycvpuwrr.gz
 D:\atelier-follocia-lux-main\FollociaMvc\obj\Debug\net9.0\compressed\8xywa2b9lk-87fc7y1x7t.gz
 D:\atelier-follocia-lux-main\FollociaMvc\obj\Debug\net9.0\compressed\vf1s5x79bl-mlv21k5csn.gz
-D:\atelier-follocia-lux-main\FollociaMvc\obj\Debug\net9.0\compressed\ij1eyxaapo-1co6hjp51p.gz
 D:\atelier-follocia-lux-main\FollociaMvc\obj\Debug\net9.0\compressed\o4qqbhldmj-7yqj0iy6p2.gz
 D:\atelier-follocia-lux-main\FollociaMvc\obj\Debug\net9.0\compressed\nl12od1ckk-7yqj0iy6p2.gz
 D:\atelier-follocia-lux-main\FollociaMvc\obj\Debug\net9.0\staticwebassets.build.json
@@ -157,6 +155,8 @@ D:\atelier-follocia-lux-main\FollociaMvc\bin\Debug\net9.0\FollociaMvc.runtimecon
 D:\atelier-follocia-lux-main\FollociaMvc\bin\Debug\net9.0\FollociaMvc.pdb
 D:\atelier-follocia-lux-main\FollociaMvc\obj\Debug\net9.0\FollociaMvc.genruntimeconfig.cache
 D:\atelier-follocia-lux-main\FollociaMvc\obj\Debug\net9.0\ref\FollociaMvc.dll
-D:\atelier-follocia-lux-main\FollociaMvc\obj\Debug\net9.0\compressed\5z0aucmdr5-5fhs6fkaqp.gz
-D:\atelier-follocia-lux-main\FollociaMvc\obj\Debug\net9.0\compressed\yrq2ojoys0-cmvoooj8e0.gz
 D:\atelier-follocia-lux-main\FollociaMvc\obj\Debug\net9.0\staticwebassets.upToDateCheck.txt
+D:\atelier-follocia-lux-main\FollociaMvc\obj\Debug\net9.0\compressed\tfzz7p5ezs-by0awd5f01.gz
+D:\atelier-follocia-lux-main\FollociaMvc\obj\Debug\net9.0\compressed\5z0aucmdr5-ijrg5cua0a.gz
+D:\atelier-follocia-lux-main\FollociaMvc\obj\Debug\net9.0\compressed\yrq2ojoys0-0byci5jyhp.gz
+D:\atelier-follocia-lux-main\FollociaMvc\obj\Debug\net9.0\compressed\ij1eyxaapo-mxuqvvpysy.gz
