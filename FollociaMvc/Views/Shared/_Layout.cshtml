@@ -3,15 +3,180 @@
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>@ViewData["Title"]</title>
-    <meta name="description" content="Maison Follocia releases six rare collections of women's footwear per year, hand-sculpted in Florence. Numbered, never reissued." />
-    <meta property="og:title" content="Follocia - Limited Edition Footwear" />
-    <meta property="og:description" content="Six rare editions per year. Sculpted in Florence. Worn by the few." />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <title>@ViewData["Title"] - Maison Follocia | Limited Edition Footwear</title>
+    <meta name="description" content="Maison Follocia releases six rare collections of women's footwear per year, hand-sculpted in Florence." />
+    <link rel="icon" type="image/png" href="~/images/follocia-logo-new.png" asp-append-version="true" />
+    
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;0,700;1,400&family=Montserrat:wght@200;300;400;500;600;700&display=swap" rel="stylesheet">
+
+    <!-- Site CSS -->
     <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
 </head>
-<body>
-    @RenderBody()
+<body class="follocia-dark-theme">
+    <div id="site-header-sentinel"></div>
+    
+    <!-- Header Navigation -->
+    <header class="follocia-navbar" id="main-header">
+        <div class="nav-container">
+            <div class="nav-brand">
+                <a asp-controller="Home" asp-action="Index" class="brand-link" aria-label="Maison Follocia Home">
+                    <img src="~/images/follocia-logo-new.png" alt="Follocia Logo" class="brand-logo" asp-append-version="true" />
+                    <div class="brand-text">
+                        <span class="brand-name">FOLLOCIA</span>
+                        <span class="brand-tagline">FLORENCE · MMXXV</span>
+                    </div>
+                </a>
+            </div>
+
+            <nav class="nav-links" aria-label="Main Navigation">
+                <a asp-controller="Home" asp-action="Index" class="@(ViewContext.RouteData.Values["Action"]?.ToString() == "Index" ? "active" : "")">HOME</a>
+                <a asp-controller="Home" asp-action="Collections" class="@(ViewContext.RouteData.Values["Action"]?.ToString() == "Collections" ? "active" : "")">COLLECTIONS</a>
+                <a asp-controller="Home" asp-action="Shop" class="@(ViewContext.RouteData.Values["Action"]?.ToString() == "Shop" ? "active" : "")">SHOP</a>
+                <a asp-controller="Home" asp-action="Contact" class="@(ViewContext.RouteData.Values["Action"]?.ToString() == "Contact" ? "active" : "")">CONTACT</a>
+            </nav>
+
+            <div class="nav-actions">
+                <button type="button" class="btn-vip-nav" onclick="openVipModal()">
+                    <span class="vip-dot"></span> VIP ACCESS
+                </button>
+
+                <a asp-controller="Account" asp-action="Index" class="icon-nav-btn" title="Private Account" aria-label="User Account">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+                </a>
+
+                <a asp-controller="Admin" asp-action="Index" class="icon-nav-btn" title="Admin Control Panel" aria-label="Admin Panel">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg>
+                </a>
+
+                <button type="button" class="cart-trigger-btn" onclick="toggleCartDrawer()" aria-label="Open Shopping Bag">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"></path><line x1="3" y1="6" x2="21" y2="6"></line><path d="M16 10a4 4 0 0 1-8 0"></path></svg>
+                    <span class="cart-badge-count" id="cartBadgeCount">0</span>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content Body -->
+    <main role="main" class="follocia-main-wrapper">
+        @RenderBody()
+    </main>
+
+    <!-- Footer -->
+    <footer class="follocia-footer">
+        <div class="footer-container">
+            <div class="footer-grid">
+                <div class="footer-col brand-col">
+                    <img src="~/images/follocia-logo-new.png" alt="Follocia" class="footer-logo" asp-append-version="true" />
+                    <p class="footer-tagline">MAISON FOLLOCIA · FLORENCE</p>
+                    <p class="footer-desc">Sculpted footwear released in rare editions six times per year. Handcrafted in Italian ateliers for the discerning few.</p>
+                </div>
+
+                <div class="footer-col">
+                    <h4>NAVIGATION</h4>
+                    <ul>
+                        <li><a asp-controller="Home" asp-action="Index">Home</a></li>
+                        <li><a asp-controller="Home" asp-action="Collections">Collections</a></li>
+                        <li><a asp-controller="Home" asp-action="Shop">Shop Catalog</a></li>
+                        <li><a asp-controller="Home" asp-action="Contact">Private Concierge</a></li>
+                    </ul>
+                </div>
+
+                <div class="footer-col">
+                    <h4>PANELS</h4>
+                    <ul>
+                        <li><a asp-controller="Account" asp-action="Index">Private Client Atelier</a></li>
+                        <li><a asp-controller="Admin" asp-action="Index">Admin Control Room</a></li>
+                        <li><a href="javascript:void(0)" onclick="openVipModal()">VIP Access Pass</a></li>
+                    </ul>
+                </div>
+
+                <div class="footer-col">
+                    <h4>ATELIER</h4>
+                    <p>Via de' Tornabuoni, 14<br />50123 Firenze FI, Italy</p>
+                    <p>concierge@follocia.com</p>
+                    <p>+39 055 289 4021</p>
+                </div>
+            </div>
+
+            <div class="footer-bottom">
+                <p>&copy; MMXXV Maison Follocia. All Rights Reserved. Sculpted in Florence.</p>
+                <div class="footer-legal">
+                    <a href="#terms">Terms of Reserve</a> · 
+                    <a href="#privacy">Privacy & Confidentiality</a> · 
+                    <a href="#certificate">Authenticity Verification</a>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <!-- Slide-Over Cart Drawer Modal -->
+    <div class="cart-drawer-overlay" id="cartDrawerOverlay" onclick="closeCartDrawer(event)">
+        <div class="cart-drawer-panel" onclick="event.stopPropagation()">
+            <div class="cart-drawer-header">
+                <h3>YOUR BAG <span id="cartDrawerCount">(0)</span></h3>
+                <button type="button" class="close-btn" onclick="toggleCartDrawer()">&times;</button>
+            </div>
+            
+            <div class="cart-drawer-body" id="cartDrawerItems">
+                <!-- Items dynamically rendered by site.js -->
+                <div class="empty-cart-state">
+                    <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"></path><line x1="3" y1="6" x2="21" y2="6"></line><path d="M16 10a4 4 0 0 1-8 0"></path></svg>
+                    <p>Your bag is currently empty.</p>
+                    <a asp-controller="Home" asp-action="Shop" class="btn-gold-outline" onclick="toggleCartDrawer()">EXPLORE CATALOG</a>
+                </div>
+            </div>
+
+            <div class="cart-drawer-footer" id="cartDrawerFooter" style="display:none;">
+                <div class="subtotal-row">
+                    <span>Subtotal</span>
+                    <strong id="cartSubtotalAmount">EUR 0</strong>
+                </div>
+                <p class="tax-note">White-glove courier shipping and certificate of authenticity included.</p>
+                <button type="button" class="btn-gold-solid btn-full" onclick="proceedToCheckout()">PROCEED TO RESERVATION</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Quick View Modal -->
+    <div class="modal-overlay" id="quickViewModal" onclick="closeQuickViewModal(event)">
+        <div class="modal-card quickview-card" onclick="event.stopPropagation()">
+            <button type="button" class="modal-close-btn" onclick="closeQuickViewModal()">&times;</button>
+            <div class="quickview-grid" id="quickViewContent">
+                <!-- Dynamically populated by JS -->
+            </div>
+        </div>
+    </div>
+
+    <!-- VIP Access Modal -->
+    <div class="modal-overlay" id="vipModal" onclick="closeVipModal(event)">
+        <div class="modal-card vip-card" onclick="event.stopPropagation()">
+            <button type="button" class="modal-close-btn" onclick="closeVipModal()">&times;</button>
+            <div class="vip-modal-header">
+                <span class="eyebrow-tag">PRIVATE RESERVE</span>
+                <h2>VIP Invitation Access</h2>
+                <p>Gain 72-hour priority reservation rights before rare edition public drops.</p>
+            </div>
+            <form onsubmit="handleVipFormSubmit(event)" class="vip-form">
+                <div class="form-group">
+                    <label>Full Name</label>
+                    <input type="text" id="vipNameInput" required placeholder="e.g. Lady Camille Dupont" />
+                </div>
+                <div class="form-group">
+                    <label>Private Email Address</label>
+                    <input type="email" id="vipEmailInput" required placeholder="name@domain.com" />
+                </div>
+                <button type="submit" class="btn-gold-solid btn-full">REQUEST PRIVATE PASS</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Toast Notification -->
+    <div id="toastNotification" class="toast-notification"></div>
+
+    <!-- Site Scripts -->
     <script src="~/js/site.js" asp-append-version="true"></script>
     @await RenderSectionAsync("Scripts", required: false)
 </body>

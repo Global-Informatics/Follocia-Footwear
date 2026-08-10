@@ -1,0 +1,79 @@
+@model FollociaMvc.Models.ContactFormModel
+@{
+    ViewData["Title"] = "Private Concierge | Maison Follocia";
+}
+
+<div class="page-banner">
+    <div class="section-container">
+        <span class="eyebrow-tag">PRIVATE CONCIERGE</span>
+        <h1>Boutique Appointments & Fitting Inquiries</h1>
+        <p>Connect with our private concierge team for bespoke fittings, size consultations, or atelier visits in Florence.</p>
+    </div>
+</div>
+
+<section class="contact-section">
+    <div class="section-container">
+        <div class="contact-grid">
+            <div class="contact-info-col">
+                <div class="info-card-gold">
+                    <h3>Atelier Florence</h3>
+                    <p>Via de' Tornabuoni, 14<br />50123 Firenze FI, Italy</p>
+                    <p><strong>Concierge Direct:</strong> +39 055 289 4021</p>
+                    <p><strong>Private Email:</strong> concierge@follocia.com</p>
+                    <p><strong>Boutique Hours:</strong> By Appointment Only (Mon–Sat)</p>
+                </div>
+
+                <div class="info-card">
+                    <h4>White-Glove Support</h4>
+                    <p>Our concierge handles individual sizing adjustments, certificate verification, and private delivery logistics for all reserved editions.</p>
+                </div>
+            </div>
+
+            <div class="contact-form-col">
+                @if (Model.SuccessMessage)
+                {
+                    <div class="alert-success-gold">
+                        <h3>Inquiry Received</h3>
+                        <p>Thank you for connecting with Maison Follocia. Our Private Concierge team will reach out to you within 24 hours.</p>
+                    </div>
+                }
+
+                <form asp-controller="Home" asp-action="SubmitContact" method="post" class="luxury-form">
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label asp-for="Name">Full Name</label>
+                            <input asp-for="Name" required placeholder="e.g. Lady Camille Dupont" class="input-gold" />
+                        </div>
+                        <div class="form-group">
+                            <label asp-for="Email">Email Address</label>
+                            <input asp-for="Email" type="email" required placeholder="name@domain.com" class="input-gold" />
+                        </div>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label asp-for="Phone">Phone / WhatsApp</label>
+                            <input asp-for="Phone" placeholder="+39 ..." class="input-gold" />
+                        </div>
+                        <div class="form-group">
+                            <label asp-for="Subject">Inquiry Subject</label>
+                            <select asp-for="Subject" class="input-gold">
+                                <option value="Private Concierge Fitting">Private Concierge Fitting</option>
+                                <option value="Edition Reservation Assistance">Edition Reservation Assistance</option>
+                                <option value="Atelier Visit Request">Atelier Visit Request</option>
+                                <option value="Bespoke Order Consultation">Bespoke Order Consultation</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label asp-for="Message">Message & Preferred Fitting Dates</label>
+                        <textarea asp-for="Message" rows="5" placeholder="Share your inquiry details..." class="input-gold"></textarea>
+                    </div>
+
+                    <button type="submit" class="btn-gold-solid btn-full">SEND CONCIERGE INQUIRY</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</section>
