@@ -40,5 +40,16 @@ obj/
 **/obj/
 *.csproj.user
 
+# EF Core Migrations & Local Database Files
+**/Migrations/
+**/Migrations/**
+*.mdf
+*.ldf
+*.db
+*.sqlite
+*.sqlite3
+appsettings.Local.json
+
 # Local generated static build
 docs/
+
