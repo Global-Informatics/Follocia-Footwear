@@ -1,5 +1,5 @@
 {
-  "version": 3,
+  "version": 4,
   "targets": {
     "net9.0": {
       "Azure.Core/1.38.0": {
@@ -2746,25 +2746,25 @@
     ]
   },
   "packageFolders": {
-    "C:\\Users\\Nitish_uxzrb24\\.nuget\\packages\\": {},
+    "C:\\Users\\ManishaKumari\\.nuget\\packages\\": {},
     "C:\\Program Files\\DevExpress 24.2\\Components\\Offline Packages": {},
     "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages": {}
   },
   "project": {
     "version": "1.0.0",
     "restore": {
-      "projectUniqueName": "D:\\atelier-follocia-lux-main\\FollociaMvc\\FollociaMvc.csproj",
+      "projectUniqueName": "C:\\Users\\ManishaKumari\\Desktop\\follocia\\FollociaMvc\\FollociaMvc.csproj",
       "projectName": "FollociaMvc",
-      "projectPath": "D:\\atelier-follocia-lux-main\\FollociaMvc\\FollociaMvc.csproj",
-      "packagesPath": "C:\\Users\\Nitish_uxzrb24\\.nuget\\packages\\",
-      "outputPath": "D:\\atelier-follocia-lux-main\\FollociaMvc\\obj\\",
+      "projectPath": "C:\\Users\\ManishaKumari\\Desktop\\follocia\\FollociaMvc\\FollociaMvc.csproj",
+      "packagesPath": "C:\\Users\\ManishaKumari\\.nuget\\packages\\",
+      "outputPath": "C:\\Users\\ManishaKumari\\Desktop\\follocia\\FollociaMvc\\obj\\",
       "projectStyle": "PackageReference",
       "fallbackFolders": [
         "C:\\Program Files\\DevExpress 24.2\\Components\\Offline Packages",
         "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages"
       ],
       "configFilePaths": [
-        "C:\\Users\\Nitish_uxzrb24\\AppData\\Roaming\\NuGet\\NuGet.Config",
+        "C:\\Users\\ManishaKumari\\AppData\\Roaming\\NuGet\\NuGet.Config",
         "C:\\Program Files (x86)\\NuGet\\Config\\DevExpress 24.2.config",
         "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.FallbackLocation.config",
         "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.Offline.config"
@@ -2779,6 +2779,7 @@
       },
       "frameworks": {
         "net9.0": {
+          "framework": "net9.0",
           "targetAlias": "net9.0",
           "projectReferences": {}
         }
@@ -2793,10 +2794,11 @@
         "auditLevel": "low",
         "auditMode": "direct"
       },
-      "SdkAnalysisLevel": "9.0.300"
+      "SdkAnalysisLevel": "10.0.300"
     },
     "frameworks": {
       "net9.0": {
+        "framework": "net9.0",
         "targetAlias": "net9.0",
         "dependencies": {
           "Microsoft.EntityFrameworkCore.SqlServer": {
@@ -2823,7 +2825,7 @@
             "privateAssets": "all"
           }
         },
-        "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\9.0.316/PortableRuntimeIdentifierGraph.json"
+        "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\10.0.302/PortableRuntimeIdentifierGraph.json"
       }
     }
   }
