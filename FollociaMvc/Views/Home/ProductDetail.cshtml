@@ -1,0 +1,93 @@
+@model FollociaMvc.Models.ProductDetailViewModel
+@{
+    ViewData["Title"] = $"{Model.Product.Title} | Maison Follocia";
+}
+
+<div class="product-detail-section">
+    <div class="section-container">
+        <div class="detail-grid">
+            
+            <!-- Product Gallery Column -->
+            <div class="gallery-col">
+                <div class="main-image-wrap">
+                    <span class="status-badge @(Model.Product.Status.ToLower().Replace(" ", "-"))">@Model.Product.Status</span>
+                    <img id="detailMainImg" src="@Model.Product.Image" alt="@Model.Product.Title" class="detail-main-img" />
+                </div>
+            </div>
+
+            <!-- Product Specs Column -->
+            <div class="specs-col">
+                <div class="specs-header">
+                    <span class="eyebrow-tag">@Model.Product.Edition · @Model.Product.Tone</span>
+                    <h1>@Model.Product.Title</h1>
+                    <div class="price-row">
+                        <span class="detail-price">@Model.Product.Price</span>
+                        <span class="detail-stock-badge">Only @Model.Product.Available pairs remaining</span>
+                    </div>
+                </div>
+
+                <div class="specs-description">
+                    <p>Hand-sculpted in Florence using hand-carved wooden lasts and premium Italian calfskin. Features an architectural heel design structured for maximum balance and weight distribution.</p>
+                </div>
+
+                <div class="size-selection-box">
+                    <label>Select Size (EU):</label>
+                    <div class="size-chips">
+                        <button type="button" class="size-chip active">36</button>
+                        <button type="button" class="size-chip">37</button>
+                        <button type="button" class="size-chip">38</button>
+                        <button type="button" class="size-chip">39</button>
+                        <button type="button" class="size-chip">40</button>
+                        <button type="button" class="size-chip">41</button>
+                    </div>
+                </div>
+
+                <div class="detail-actions">
+                    <button type="button" class="btn-gold-solid btn-full" onclick="addToCart('@Model.Product.Id', '@Model.Product.Title', '@Model.Product.Price', '@Model.Product.Image', '@Model.Product.Edition')">+ ADD TO BAG</button>
+                    <button type="button" class="btn-gold-outline btn-full" onclick="openVipModal()">RESERVE VIA CONCIERGE</button>
+                </div>
+
+                <div class="guarantee-box">
+                    <div class="guarantee-item">
+                        <span>📜</span>
+                        <div>
+                            <strong>Physical Parchment Certificate</strong>
+                            <p>Hand-signed by Florence master craftsman with edition serial number.</p>
+                        </div>
+                    </div>
+                    <div class="guarantee-item">
+                        <span>✈️</span>
+                        <div>
+                            <strong>Insured White-Glove Express Shipping</strong>
+                            <p>Delivered in signature velvet-lined wooden presentation box.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Related Editions -->
+        @if (Model.RelatedProducts.Any())
+        {
+            <div class="related-section">
+                <h3>Other Rare Editions</h3>
+                <div class="product-cards-grid">
+                    @foreach (var prod in Model.RelatedProducts)
+                    {
+                        <article class="product-card">
+                            <div class="card-image-wrap">
+                                <img src="@prod.Image" alt="@prod.Title" class="card-img" />
+                            </div>
+                            <div class="card-body">
+                                <h3 class="card-title"><a asp-controller="Home" asp-action="ProductDetail" asp-route-id="@prod.Id">@prod.Title</a></h3>
+                                <div class="card-footer-row">
+                                    <span class="card-price">@prod.Price</span>
+                                </div>
+                            </div>
+                        </article>
+                    }
+                </div>
+            </div>
+        }
+    </div>
+</div>

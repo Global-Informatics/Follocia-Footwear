@@ -1,0 +1,38 @@
+@model FollociaMvc.Models.CollectionsViewModel
+@{
+    ViewData["Title"] = "Seasonal Collections | Maison Follocia";
+}
+
+<div class="page-banner">
+    <div class="section-container">
+        <span class="eyebrow-tag">ATELIER SERIES</span>
+        <h1>Rare Collections MMXXV</h1>
+        <p>Each series is conceived around a singular architectural theme and executed with Florence handcraft.</p>
+    </div>
+</div>
+
+<section class="collections-page-section">
+    <div class="section-container">
+        <div class="collections-vertical-list">
+            @foreach (var col in Model.Collections)
+            {
+                <div class="collection-feature-row">
+                    <div class="col-feature-img-wrap">
+                        <img src="@col.ImageUrl" alt="@col.Name" class="col-feature-img" />
+                    </div>
+                    <div class="col-feature-info">
+                        <span class="eyebrow-tag">@col.Season</span>
+                        <h2>@col.Name</h2>
+                        <p class="lead-text">@col.Subtitle</p>
+                        <p>Produced in numbered allocations of @col.PairsCount pairs worldwide. Accompanied by a hand-signed parchment of authenticity from our Florence atelier master.</p>
+                        
+                        <div class="col-feature-actions">
+                            <a asp-controller="Home" asp-action="Shop" class="btn-gold-solid">RESERVE SILHOUETTE</a>
+                            <button type="button" class="btn-gold-outline" onclick="openVipModal()">VIP ACCESS</button>
+                        </div>
+                    </div>
+                </div>
+            }
+        </div>
+    </div>
+</section>

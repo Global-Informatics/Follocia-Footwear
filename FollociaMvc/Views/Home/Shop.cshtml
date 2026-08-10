@@ -1,0 +1,75 @@
+@model FollociaMvc.Models.ShopViewModel
+@{
+    ViewData["Title"] = "Shop Catalog | Limited Editions";
+}
+
+<div class="page-banner">
+    <div class="section-container">
+        <span class="eyebrow-tag">CURATED RELEASES</span>
+        <h1>Maison Footwear Catalog</h1>
+        <p>Explore limited-run editions hand-sculpted in Florence. Each silhouette is restricted in quantity.</p>
+    </div>
+</div>
+
+<section class="shop-catalog-section">
+    <div class="section-container">
+        
+        <!-- Filter Controls Bar -->
+        <div class="shop-filters-bar">
+            <div class="filter-group">
+                <span class="filter-label">Edition:</span>
+                <a asp-controller="Home" asp-action="Shop" asp-route-edition="All" asp-route-status="@Model.SelectedStatus" class="filter-chip @(Model.SelectedEdition == "All" ? "active" : "")">All Editions</a>
+                @foreach (var ed in Model.AvailableEditions)
+                {
+                    <a asp-controller="Home" asp-action="Shop" asp-route-edition="@ed" asp-route-status="@Model.SelectedStatus" class="filter-chip @(Model.SelectedEdition == ed ? "active" : "")">@ed</a>
+                }
+            </div>
+
+            <div class="filter-group">
+                <span class="filter-label">Status:</span>
+                <a asp-controller="Home" asp-action="Shop" asp-route-edition="@Model.SelectedEdition" asp-route-status="All" class="filter-chip @(Model.SelectedStatus == "All" ? "active" : "")">All Status</a>
+                <a asp-controller="Home" asp-action="Shop" asp-route-edition="@Model.SelectedEdition" asp-route-status="Live" class="filter-chip @(Model.SelectedStatus == "Live" ? "active" : "")">Live Only</a>
+                <a asp-controller="Home" asp-action="Shop" asp-route-edition="@Model.SelectedEdition" asp-route-status="Private Preview" class="filter-chip @(Model.SelectedStatus == "Private Preview" ? "active" : "")">Private Preview</a>
+            </div>
+        </div>
+
+        <!-- Products Grid -->
+        @if (!Model.Products.Any())
+        {
+            <div class="no-products-box">
+                <h3>No editions match your criteria.</h3>
+                <p>Try resetting filters or explore our full collection.</p>
+                <a asp-controller="Home" asp-action="Shop" class="btn-gold-outline">RESET FILTERS</a>
+            </div>
+        }
+        else
+        {
+            <div class="product-cards-grid">
+                @foreach (var product in Model.Products)
+                {
+                    <article class="product-card">
+                        <div class="card-image-wrap">
+                            <span class="status-badge @(product.Status.ToLower().Replace(" ", "-"))">@product.Status</span>
+                            <img src="@product.Image" alt="@product.Title" class="card-img" />
+                            <div class="card-overlay-actions">
+                                <button type="button" class="btn-quickview" onclick="openQuickView('@product.Id', '@product.Title', '@product.Edition', '@product.Price', '@product.Tone', '@product.Image', '@product.Available')">QUICK VIEW</button>
+                                <button type="button" class="btn-add-bag" onclick="addToCart('@product.Id', '@product.Title', '@product.Price', '@product.Image', '@product.Edition')">+ ADD TO BAG</button>
+                            </div>
+                        </div>
+                        <div class="card-body">
+                            <div class="card-meta">
+                                <span class="edition-tag">@product.Edition</span>
+                                <span class="tone-tag">@product.Tone</span>
+                            </div>
+                            <h3 class="card-title"><a asp-controller="Home" asp-action="ProductDetail" asp-route-id="@product.Id">@product.Title</a></h3>
+                            <div class="card-footer-row">
+                                <span class="card-price">@product.Price</span>
+                                <span class="card-stock">@product.Available pairs left</span>
+                            </div>
+                        </div>
+                    </article>
+                }
+            </div>
+        }
+    </div>
+</section>
