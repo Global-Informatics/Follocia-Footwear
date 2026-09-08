@@ -1,17 +1,17 @@
 {
   "format": 1,
   "restore": {
-    "C:\\Users\\ManishaKumari\\Desktop\\follocia\\FollociaMvc\\FollociaMvc.csproj": {}
+    "C:\\Users\\ManishaKumari\\Desktop\\follicia\\FollociaMvc\\FollociaMvc.csproj": {}
   },
   "projects": {
-    "C:\\Users\\ManishaKumari\\Desktop\\follocia\\FollociaMvc\\FollociaMvc.csproj": {
+    "C:\\Users\\ManishaKumari\\Desktop\\follicia\\FollociaMvc\\FollociaMvc.csproj": {
       "version": "1.0.0",
       "restore": {
-        "projectUniqueName": "C:\\Users\\ManishaKumari\\Desktop\\follocia\\FollociaMvc\\FollociaMvc.csproj",
+        "projectUniqueName": "C:\\Users\\ManishaKumari\\Desktop\\follicia\\FollociaMvc\\FollociaMvc.csproj",
         "projectName": "FollociaMvc",
-        "projectPath": "C:\\Users\\ManishaKumari\\Desktop\\follocia\\FollociaMvc\\FollociaMvc.csproj",
+        "projectPath": "C:\\Users\\ManishaKumari\\Desktop\\follicia\\FollociaMvc\\FollociaMvc.csproj",
         "packagesPath": "C:\\Users\\ManishaKumari\\.nuget\\packages\\",
-        "outputPath": "C:\\Users\\ManishaKumari\\Desktop\\follocia\\FollociaMvc\\obj\\",
+        "outputPath": "C:\\Users\\ManishaKumari\\Desktop\\follicia\\FollociaMvc\\obj\\",
         "projectStyle": "PackageReference",
         "fallbackFolders": [
           "C:\\Program Files\\DevExpress 24.2\\Components\\Offline Packages",
@@ -79,7 +79,7 @@
               "privateAssets": "all"
             }
           },
-          "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\10.0.302/PortableRuntimeIdentifierGraph.json"
+          "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\10.0.303/PortableRuntimeIdentifierGraph.json"
         }
       }
     }
