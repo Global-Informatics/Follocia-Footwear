@@ -4,7 +4,7 @@ import { useCart } from "./CartContext";
 
 export type QuickItem = { id: string; title: string; edition: string; tone: string; price: string; image: string; description?: string };
 const ease = [0.2, 0.8, 0.2, 1] as const;
-const sizes = ["35", "36", "37", "38", "39", "40", "41"];
+const sizes = ["38", "39", "40", "41"];
 
 export function QuickView({ item, onClose }: { item: QuickItem | null; onClose: () => void }) {
   const { add } = useCart();
@@ -63,7 +63,10 @@ export function QuickView({ item, onClose }: { item: QuickItem | null; onClose: 
                 </div>
 
                 <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.7, duration: 0.6 }} className="mt-8">
-                  <p className="eyebrow text-[var(--ink)]/50">Select Size</p>
+                  <div className="flex items-center justify-between">
+                    <p className="eyebrow text-[var(--ink)]/60 font-medium tracking-widest">SELECT SIZE</p>
+                    <span className="text-[10px] uppercase tracking-widest text-[var(--ink)]/40 font-medium">EU SIZING</span>
+                  </div>
                   <div className="mt-3 flex flex-wrap gap-2">
                     {sizes.map(s => (
                       <motion.button key={s} onClick={() => setSize(s)} whileTap={{ scale: 0.92 }}

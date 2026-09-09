@@ -905,7 +905,7 @@ export function AdminPanel({ onLogout }: { onLogout?: () => void }) {
     title: "",
     edition: "Edition of 100",
     tone: "Italian satin",
-    price: "EUR 950",
+    price: "₹ 14,990",
     image: getProducts()[0]?.image || "",
     images: [] as string[],
     status: "Live",
@@ -922,7 +922,7 @@ export function AdminPanel({ onLogout }: { onLogout?: () => void }) {
 
   const metrics = useMemo(() => [
     { label: "Total orders", value: String(orders.length).padStart(2, "0"), delta: "Backend synced" },
-    { label: "Reserved value", value: `EUR ${orders.reduce((sum, order) => sum + (Number(order.amount.replace(/[^\d.]/g, "")) || 0), 0).toLocaleString()}`, delta: "Live order value" },
+    { label: "Reserved value", value: `₹ ${orders.reduce((sum, order) => sum + (Number(order.amount.replace(/[^\d.]/g, "")) || 0), 0).toLocaleString("en-IN")}`, delta: "Live order value" },
     { label: "VIP customers", value: String(customers.length).padStart(2, "0"), delta: "Customer ecosystem" },
     { label: "Pairs remaining", value: String(products.reduce((sum, product) => sum + product.available, 0)), delta: "Across catalogue", tone: "warn" },
   ], [customers.length, orders, products]);
@@ -938,11 +938,11 @@ export function AdminPanel({ onLogout }: { onLogout?: () => void }) {
     if (!draftProduct.title.trim()) return;
     const images = draftProduct.images.length ? draftProduct.images : [draftProduct.image.trim() || products[0]?.image || ""].filter(Boolean);
     const nextProduct: CommerceProduct = {
-      id: `atelier-${Date.now()}`,
+      id: `fl-${Date.now()}`,
       title: draftProduct.title.trim(),
       edition: draftProduct.edition.trim() || "Edition of 100",
       tone: draftProduct.tone.trim() || "Italian satin",
-      price: draftProduct.price.trim() || "EUR 950",
+      price: draftProduct.price.trim() || "₹ 14,990",
       image: images[0] || "",
       images,
       status: draftProduct.status.trim() || "Live",
@@ -1298,7 +1298,7 @@ function LegacyAdminPanel({ onLogout }: { onLogout?: () => void }) {
   ]));
   const metrics = useMemo(() => [
     { label: "Total orders", value: String(orders.length).padStart(2, "0"), delta: "Backend synced" },
-    { label: "Reserved value", value: `EUR ${orders.reduce((sum, order) => sum + (Number(order.amount.replace(/[^\d.]/g, "")) || 0), 0).toLocaleString()}`, delta: "Live order value" },
+    { label: "Reserved value", value: `₹ ${orders.reduce((sum, order) => sum + (Number(order.amount.replace(/[^\d.]/g, "")) || 0), 0).toLocaleString("en-IN")}`, delta: "Live order value" },
     { label: "VIP customers", value: String(customers.length).padStart(2, "0"), delta: "Customer ecosystem" },
     { label: "Pairs remaining", value: String(products.reduce((sum, product) => sum + product.available, 0)), delta: "Across catalogue", tone: "warn" },
     { label: "Open queries", value: String(contactQueries.filter((item) => item.status === "Open").length).padStart(2, "0"), delta: "Support desk" },
@@ -1308,7 +1308,7 @@ function LegacyAdminPanel({ onLogout }: { onLogout?: () => void }) {
     title: "",
     edition: "Edition of 100",
     tone: "Italian satin",
-    price: "EUR 950",
+    price: "₹ 14,990",
     image: products[0]?.image || "",
     images: [] as string[],
     status: "Live",
@@ -1330,11 +1330,11 @@ function LegacyAdminPanel({ onLogout }: { onLogout?: () => void }) {
     if (!draftProduct.title.trim()) return;
     const images = draftProduct.images.length ? draftProduct.images : [draftProduct.image.trim() || products[0]?.image || ""].filter(Boolean);
     const nextProduct: CommerceProduct = {
-      id: `atelier-${Date.now()}`,
+      id: `fl-${Date.now()}`,
       title: draftProduct.title.trim(),
       edition: draftProduct.edition.trim() || "Edition of 100",
       tone: draftProduct.tone.trim() || "Italian satin",
-      price: draftProduct.price.trim() || "EUR 950",
+      price: draftProduct.price.trim() || "₹ 14,990",
       image: images[0] || "",
       images,
       status: draftProduct.status.trim() || "Live",

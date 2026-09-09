@@ -3,16 +3,17 @@ import { motion, useMotionValue, useSpring, useTransform } from "framer-motion";
 import { Reveal } from "../Reveal";
 import { useCart } from "../cart/CartContext";
 import { QuickView, type QuickItem } from "../cart/QuickView";
-import c1 from "@/assets/collection-1.jpg";
-import c2 from "@/assets/collection-2.jpg";
-import c3 from "@/assets/collection-3.jpg";
 import { COMMERCE_EVENT, getProducts, productPrimaryImage, syncCommerceFromBackend } from "@/lib/commerceStore";
+import { FOLLICIA_PRODUCTS, formatINR } from "@/data/folliciaCatalogue";
 
-const items: QuickItem[] = [
-  { id: "atelier-01", title: "Atelier 01 — Lumière", edition: "Edition of 220", price: "€ 1,480", image: c1, tone: "Ivory Calfskin" },
-  { id: "atelier-02", title: "Atelier 02 — Noir Suspendu", edition: "Edition of 180", price: "€ 1,640", image: c2, tone: "Patent Obsidian" },
-  { id: "atelier-03", title: "Atelier 03 — Or Liquide", edition: "Edition of 140", price: "€ 1,820", image: c3, tone: "Brushed Champagne" },
-];
+const items: QuickItem[] = FOLLICIA_PRODUCTS.slice(0, 3).map((p) => ({
+  id: p.id.toLowerCase(),
+  title: p.name,
+  edition: `${p.collection} Collection`,
+  price: formatINR.format(p.price),
+  image: p.image,
+  tone: p.color,
+}));
 
 function Heart({ active }: { active: boolean }) {
   return (

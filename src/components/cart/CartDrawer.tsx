@@ -113,15 +113,15 @@ export function CartDrawer({ session, onLogin }: { session?: AuthSession | null;
                   {couponSuccess && <motion.p initial={{ opacity: 0, y: -5 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="mb-4 text-sm text-emerald-400">✓ Coupon applied!</motion.p>}
                 </AnimatePresence>
 
-                <div className="flex items-center justify-between text-sm text-[var(--bone)]/50"><span>Subtotal</span><span>EUR {subtotal.toLocaleString()}</span></div>
-                {discount > 0 && <div className="mt-2 flex items-center justify-between text-sm text-emerald-400"><span>{couponQuote?.title}</span><span>− EUR {discount.toLocaleString()}</span></div>}
+                <div className="flex items-center justify-between text-sm text-[var(--bone)]/50"><span>Subtotal</span><span>₹ {subtotal.toLocaleString("en-IN")}</span></div>
+                {discount > 0 && <div className="mt-2 flex items-center justify-between text-sm text-emerald-400"><span>{couponQuote?.title}</span><span>− ₹ {discount.toLocaleString("en-IN")}</span></div>}
 
                 {/* Animated golden separator */}
                 <motion.div initial={{ scaleX: 0 }} animate={{ scaleX: 1 }} transition={{ duration: 0.8, ease }} className="mt-4 h-px bg-gradient-to-r from-[var(--gold)]/60 via-[var(--gold)] to-[var(--gold)]/60" style={{ transformOrigin: "left" }} />
 
                 <div className="mt-4 flex items-center justify-between">
                   <span className="eyebrow text-[var(--bone)]/50">Total</span>
-                  <span className="font-display text-2xl gradient-gold-text">EUR {total.toLocaleString()}</span>
+                  <span className="font-display text-2xl gradient-gold-text">₹ {total.toLocaleString("en-IN")}</span>
                 </div>
 
                 <button onClick={() => {

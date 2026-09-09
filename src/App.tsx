@@ -35,28 +35,10 @@ function sectionFromPath(path: string) {
   return "My Orders" as const;
 }
 
+import { FolliciaHomePage } from "@/components/home/FolliciaHomePage";
+
 function Storefront({ session, onLogout, onLogin }: { session: AuthSession | null; onLogout: () => void; onLogin: () => void }) {
-  return (
-    <CartProvider>
-      <Loader />
-      <main className="relative bg-[var(--bone)] text-[var(--ink)]">
-        <Cursor />
-        <ScrollProgress />
-        <Navigation userName={session?.user.name} onLogout={session ? onLogout : undefined} onLogin={onLogin} />
-        <Hero />
-        <Marquee />
-        <BrandStory />
-        <FeaturedCollections />
-        <Lookbook />
-        <Atelier />
-        <Benefits />
-        <Testimonials />
-        <VipNewsletter />
-        <Footer />
-        <CartDrawer session={session} onLogin={onLogin} />
-      </main>
-    </CartProvider>
-  );
+  return <FolliciaHomePage />;
 }
 
 export function App() {

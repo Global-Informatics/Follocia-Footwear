@@ -33,7 +33,19 @@ type PageShellProps = {
   darkNav?: boolean;
 };
 
-const sizes = ["35", "36", "37", "38", "39", "40", "41"];
+const sizes = ["38", "39", "40", "41"];
+
+function getColorHex(colorName: string): string {
+  const c = colorName.toLowerCase();
+  if (c.includes("black")) return "#171310";
+  if (c.includes("brown") || c.includes("chocolate")) return "#6c3d2c";
+  if (c.includes("burgundy")) return "#711f2c";
+  if (c.includes("olive")) return "#77704c";
+  if (c.includes("blush") || c.includes("rose")) return "#d8a9a2";
+  if (c.includes("silver") || c.includes("chrome")) return "#b8b8b5";
+  if (c.includes("gold") || c.includes("monarch") || c.includes("orange")) return "#d9a15c";
+  return "#f2e9d9"; // default ivory/nude/champagne
+}
 
 function priceNumber(price: string) {
   return Number(price.replace(/[^\d.]/g, "")) || 0;
@@ -125,103 +137,117 @@ function PageShell({ session, onLogout, onLogin, children, darkNav }: PageShellP
 function ProductCard({ product, index }: { product: CommerceProduct; index: number }) {
   const { add, wishlist, toggleWish } = useCart();
   const [quickOpen, setQuickOpen] = useState(false);
-  const sold = Math.max(product.reserved, 0);
-  const progress = Math.min(100, Math.round((sold / Math.max(product.produced, 1)) * 100));
   const wished = wishlist.includes(product.id);
-  const cardRef = useRef<HTMLElement>(null);
-  const mx = useMotionValue(0), my = useMotionValue(0);
-  const rx = useSpring(useTransform(my, [-1, 1], [6, -6]), { stiffness: 150, damping: 20 });
-  const ry = useSpring(useTransform(mx, [-1, 1], [-6, 6]), { stiffness: 150, damping: 20 });
-  
-  const urgencyBadge = product.available <= 12 && product.available > 0 ? `Only ${product.available} left` : null;
   const primaryImage = productPrimaryImage(product);
-  const mood = stockMood(product);
+  const colors = useMemo(() => {
+    const raw = product.tone.split(/[\/,·+]/).map((c) => c.trim()).filter(Boolean);
+    return raw.length ? raw : [product.tone];
+  }, [product.tone]);
 
   return (
     <>
-      <motion.article
-        ref={cardRef}
-        initial={{ opacity: 0, y: 30, rotateX: 10 }}
-        whileInView={{ opacity: 1, y: 0, rotateX: 0 }}
-        viewport={{ once: true, margin: "-10%" }}
-        transition={{ duration: 0.8, delay: index * 0.1, ease }}
-        onMouseMove={(e) => {
-          const r = cardRef.current!.getBoundingClientRect();
-          mx.set(((e.clientX - r.left) / r.width - 0.5) * 2);
-          my.set(((e.clientY - r.top) / r.height - 0.5) * 2);
-        }}
-        onMouseLeave={() => { mx.set(0); my.set(0); }}
-        style={{ perspective: 1000 }}
-        className="group relative"
-      >
-        <motion.div style={{ rotateX: rx, rotateY: ry, transformStyle: "preserve-3d" }} className="h-full border border-[var(--ink)]/10 bg-white transition-shadow duration-500 hover:shadow-[0_20px_40px_rgba(0,0,0,0.08)]">
-          <div className="relative overflow-hidden bg-[var(--champagne)]/30 holo-shine">
-            <a href={productPath(product)} className="block aspect-[4/5] overflow-hidden">
-              <motion.img 
-                style={{ translateZ: 30 }}
-                src={primaryImage} alt={product.title} loading="lazy" 
-                className="h-full w-full object-cover transition-transform duration-1000 ease-out group-hover:scale-110" 
-              />
-            </a>
-            
-            {/* Badges */}
-            <div className="absolute left-4 top-4 z-10 flex flex-col gap-2" style={{ transform: "translateZ(40px)" }}>
-              <div className="bg-white/90 backdrop-blur-sm px-3 py-1.5 text-[0.62rem] font-semibold uppercase tracking-[0.18em] text-[var(--ink)] shadow-sm">
-                {mood}
-              </div>
-              {urgencyBadge && (
-                <div className="bg-[var(--gold)]/90 backdrop-blur-sm px-3 py-1.5 text-[0.62rem] font-semibold uppercase tracking-[0.18em] text-[var(--ink)] shadow-sm animate-pulse">
-                  {urgencyBadge}
-                </div>
-              )}
-            </div>
+      <article className="group rounded-[22px] border border-[#4b261a1a] bg-[#fffdf8] p-2 pb-3.5 shadow-[0_16px_45px_rgba(75,38,26,0.06)] transition-all duration-500 hover:-translate-y-1 hover:border-[#4b261a33] hover:shadow-[0_24px_50px_rgba(75,38,26,0.12)] flex flex-col justify-between">
+        <div className="relative aspect-[0.9] overflow-hidden rounded-[16px] bg-[#fffaf0] flex items-center justify-center">
+          <a href={productPath(product)} className="flex h-full w-full items-center justify-center p-3">
+            <img
+              loading="lazy"
+              src={primaryImage}
+              alt={product.title}
+              className="h-[86%] w-[86%] object-contain mix-blend-multiply transition-transform duration-700 ease-out group-hover:scale-105"
+            />
+          </a>
 
-            <button
-              onClick={(e) => { e.preventDefault(); toggleWish(product.id); }}
-              aria-label="Toggle wishlist"
-              data-cursor="hover"
-              style={{ transform: "translateZ(40px)" }}
-              className="absolute right-4 top-4 z-10 grid h-10 w-10 place-items-center rounded-full bg-white/90 backdrop-blur-sm text-[var(--ink)] shadow-sm transition-transform hover:scale-110"
+          <button
+            type="button"
+            onClick={() => setQuickOpen(true)}
+            className="absolute bottom-3 left-1/2 -translate-x-1/2 rounded-full bg-white/95 px-4 py-2 text-[11px] font-semibold uppercase tracking-wider text-[#24130d] shadow-md opacity-0 transition-all duration-300 group-hover:opacity-100 hover:bg-[#c48d3f] hover:text-white"
+          >
+            Choose size &amp; colour
+          </button>
+
+          <button
+            type="button"
+            onClick={(e) => {
+              e.preventDefault();
+              toggleWish(product.id);
+            }}
+            aria-label="Toggle wishlist"
+            className="absolute right-2.5 top-2.5 grid h-8 w-8 place-items-center rounded-full bg-white/90 shadow-sm text-xs transition-transform hover:scale-110"
+          >
+            <motion.svg
+              animate={{ scale: wished ? [1, 1.25, 1] : 1 }}
+              width="16"
+              height="16"
+              viewBox="0 0 24 24"
+              fill={wished ? "var(--gold)" : "none"}
+              stroke={wished ? "var(--gold)" : "currentColor"}
+              strokeWidth="1.6"
             >
-              <motion.svg animate={{ scale: wished ? [1, 1.2, 1] : 1 }} transition={{ duration: 0.3 }} width="18" height="18" viewBox="0 0 24 24" fill={wished ? "var(--gold)" : "none"} stroke="currentColor" strokeWidth="1.6">
-                <path d="M12 21s-7-4.35-7-10a4 4 0 0 1 7-2.65A4 4 0 0 1 19 11c0 5.65-7 10-7 10z" />
-              </motion.svg>
-            </button>
+              <path d="M12 21s-7-4.35-7-10a4 4 0 0 1 7-2.65A4 4 0 0 1 19 11c0 5.65-7 10-7 10z" />
+            </motion.svg>
+          </button>
+        </div>
 
-            {/* Quick Actions */}
-            <div className="absolute inset-x-4 bottom-4 z-10 grid translate-y-8 gap-2 opacity-0 transition-all duration-500 ease-[cubic-bezier(0.2,0.8,0.2,1)] group-hover:translate-y-0 group-hover:opacity-100" style={{ transform: "translateZ(50px)" }}>
-              <button onClick={() => setQuickOpen(true)} className="bg-white/95 backdrop-blur-sm px-4 py-3 text-xs font-semibold uppercase tracking-[0.2em] transition-colors hover:bg-[var(--gold)] hover:text-[var(--ink)]">Quick View</button>
-              <button onClick={() => add({ id: `${product.id}-38`, title: product.title, price: product.price, image: primaryImage, tone: product.tone, size: "38" })} className="bg-[var(--ink)]/95 backdrop-blur-sm px-4 py-3 text-xs font-semibold uppercase tracking-[0.2em] text-[var(--bone)] transition-colors hover:bg-[var(--gold)] hover:text-[var(--ink)]">Add Size 38</button>
-            </div>
-          </div>
-          
-          <div className="grid gap-4 p-5" style={{ transform: "translateZ(20px)" }}>
-            <div className="flex items-start justify-between gap-4">
-              <div>
-                <p className="text-xs uppercase tracking-[0.2em] text-[var(--gold)]">{product.tone}</p>
-                <a href={productPath(product)} className="mt-2 block font-display text-3xl leading-none transition-colors hover:text-[var(--gold)]">{product.title}</a>
-                <p className="mt-2 text-sm text-[var(--ink)]/55">{product.edition}</p>
-              </div>
-              <strong className="whitespace-nowrap font-display text-2xl gradient-gold-text">{product.price}</strong>
-            </div>
+        <div className="mt-2.5 px-1">
+          <div className="flex items-start justify-between gap-2">
             <div>
-              <div className="flex justify-between text-xs uppercase tracking-[0.18em] text-[var(--ink)]/45">
-                <span>{product.available} left</span>
-                <span>{progress}% reserved</span>
-              </div>
-              <div className="mt-2 h-1 overflow-hidden bg-[var(--ink)]/10">
-                <motion.div initial={{ width: 0 }} whileInView={{ width: `${progress}%` }} viewport={{ once: true }} transition={{ duration: 1.5, ease }} className="h-full bg-[var(--gold)]" />
-              </div>
+              <p className="text-[11px] uppercase tracking-wider text-[#4b261a80]">{product.edition || product.tone}</p>
+              <a
+                href={productPath(product)}
+                className="mt-0.5 block font-display text-base font-semibold leading-tight text-[#24130d] transition-colors hover:text-[var(--gold)] line-clamp-1"
+              >
+                {product.title}
+              </a>
             </div>
+            <strong className="whitespace-nowrap font-display text-sm font-semibold text-[#24130d]">{product.price}</strong>
           </div>
-        </motion.div>
-      </motion.article>
-      <QuickView item={quickOpen ? { id: product.id, title: product.title, edition: product.edition, tone: product.tone, price: product.price, image: primaryImage } : null} onClose={() => setQuickOpen(false)} />
+
+          <div className="mt-2 flex items-center gap-1.5">
+            {colors.map((c) => (
+              <span
+                key={c}
+                title={c}
+                className="h-2.5 w-2.5 rounded-full border border-black/10 inline-block"
+                style={{ backgroundColor: getColorHex(c) }}
+              />
+            ))}
+            <small className="text-[10px] text-[#4b261a80] ml-1">{colors.join(" · ")}</small>
+          </div>
+
+          <div className="mt-2.5 flex items-center justify-between border-t border-[#4b261a0d] pt-2 text-[11px] text-[#4b261a99]">
+            <span>EU 38–41</span>
+            <button
+              type="button"
+              onClick={() => toggleWish(product.id)}
+              className={`transition-colors ${wished ? "font-semibold text-[var(--gold)]" : "hover:text-[#24130d]"}`}
+            >
+              {wished ? "Saved" : "♡ Save"}
+            </button>
+          </div>
+        </div>
+      </article>
+
+      <QuickView
+        item={
+          quickOpen
+            ? {
+                id: product.id,
+                title: product.title,
+                edition: product.edition,
+                tone: product.tone,
+                price: product.price,
+                image: primaryImage,
+              }
+            : null
+        }
+        onClose={() => setQuickOpen(false)}
+      />
     </>
   );
 }
 
 export function ShopPage({ session, onLogout, onLogin }: { session: AuthSession | null; onLogout: () => void; onLogin: () => void }) {
+  const [selectedCollection, setSelectedCollection] = useState("All");
   const [products, setProducts] = useState<CommerceProduct[]>(() => liveProducts());
   const [query, setQuery] = useState("");
   const [status, setStatus] = useState("All");
@@ -244,10 +270,11 @@ export function ShopPage({ session, onLogout, onLogin }: { session: AuthSession 
     .filter((product) => {
       const haystack = `${product.title} ${product.edition} ${product.tone} ${product.status}`.toLowerCase();
       const matchesQuery = haystack.includes(query.trim().toLowerCase());
+      const matchesCollection = selectedCollection === "All" || product.edition.toLowerCase().includes(selectedCollection.toLowerCase()) || product.title.toLowerCase().includes(selectedCollection.toLowerCase());
       const matchesStatus = status === "All" || product.status === status;
       const matchesTone = tone === "All" || product.tone === tone;
       const matchesStock = stock === "All" || (stock === "Available now" ? product.available > 0 : product.available <= 12);
-      return matchesQuery && matchesStatus && matchesTone && matchesStock;
+      return matchesQuery && matchesCollection && matchesStatus && matchesTone && matchesStock;
     })
     .sort((a, b) => {
       if (sort === "Price low to high") return priceNumber(a.price) - priceNumber(b.price);
@@ -352,36 +379,33 @@ export function ShopPage({ session, onLogout, onLogin }: { session: AuthSession 
           </button>
         </motion.div>
 
+        {/* Collection Filter Tabs */}
+        <div className="mb-10 flex flex-wrap items-center justify-center gap-2">
+          {["All", "Aura", "Bloom", "Muse", "Noire"].map((col) => (
+            <button
+              key={col}
+              type="button"
+              onClick={() => setSelectedCollection(col)}
+              className={`rounded-full px-5 py-2 text-xs font-semibold uppercase tracking-wider transition-all duration-300 ${
+                selectedCollection === col
+                  ? "bg-[#24130d] text-[#fffdf8] shadow-md"
+                  : "bg-white/80 text-[#4b261a99] border border-[#4b261a1a] hover:border-[#4b261a40] hover:text-[#24130d]"
+              }`}
+            >
+              {col}
+            </button>
+          ))}
+        </div>
+
         <div className="mb-8 flex items-center justify-between text-xs uppercase tracking-widest text-[var(--ink)]/50">
           <span>{visible.length} pieces found</span>
           <span className="h-px flex-1 bg-gradient-to-r from-[var(--ink)]/10 mx-6" />
         </div>
 
-        <section className="mb-10 grid gap-4 border border-[var(--ink)]/10 bg-white p-5 md:grid-cols-[1fr_1fr_1fr]">
-          <div>
-            <p className="eyebrow text-[var(--gold)]">Private atelier mode</p>
-            <h2 className="mt-2 font-display text-3xl">Access before catalogue.</h2>
-          </div>
-          {dropRecords.slice(0, 1).map((record) => (
-            <div key={record.id} className="border-l border-[var(--ink)]/10 pl-4">
-              <p className="text-xs uppercase tracking-[0.18em] text-[var(--ink)]/45">{record.status}</p>
-              <strong className="mt-2 block text-sm">{record.title}</strong>
-              <p className="mt-1 text-sm text-[var(--ink)]/55">{record.meta}</p>
-            </div>
-          ))}
-          {vipRecords.slice(0, 1).map((record) => (
-            <div key={record.id} className="border-l border-[var(--ink)]/10 pl-4">
-              <p className="text-xs uppercase tracking-[0.18em] text-[var(--ink)]/45">{record.status}</p>
-              <strong className="mt-2 block text-sm">{record.title}</strong>
-              <p className="mt-1 text-sm text-[var(--ink)]/55">{record.meta}</p>
-            </div>
-          ))}
-        </section>
-
-        <div className="grid gap-x-8 gap-y-16 md:grid-cols-2 xl:grid-cols-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
           <AnimatePresence mode="popLayout">
             {visible.map((product, index) => (
-              <motion.div key={product.id} layout initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.9 }} transition={{ duration: 0.5 }}>
+              <motion.div key={product.id} layout initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }} transition={{ duration: 0.35 }}>
                 <ProductCard product={product} index={index} />
               </motion.div>
             ))}
@@ -502,8 +526,8 @@ export function ProductDetailPage({ productId, session, onLogout, onLogin }: { p
 
           <div className="mt-10 border-t border-[var(--gold)]/20 pt-10">
             <div className="flex items-center justify-between">
-              <p className="eyebrow text-[var(--ink)]/60">Select Size <span className="ml-2 font-normal text-[var(--ink)]/40 lowercase">eu | uk</span></p>
-              <button className="eyebrow text-[var(--gold)] hover-underline">Size Guide</button>
+              <p className="eyebrow text-[var(--ink)]/60 font-medium tracking-widest">SELECT SIZE</p>
+              <span className="text-[10px] uppercase tracking-widest text-[var(--ink)]/40 font-medium">EU SIZING</span>
             </div>
             <div className="mt-5 flex flex-wrap gap-3">
               {sizes.map((item) => (
@@ -605,7 +629,7 @@ export function ProductDetailPage({ productId, session, onLogout, onLogin }: { p
       <section className="mx-auto max-w-[1500px] px-6 py-24 md:px-12">
         <motion.div initial={{ scaleX: 0 }} whileInView={{ scaleX: 1 }} viewport={{ once: true }} className="mb-16 h-px bg-gradient-to-r from-[var(--gold)]/50 to-transparent" style={{ transformOrigin: "left" }} />
         <h2 className="font-display text-4xl lg:text-5xl">Curated for you</h2>
-        <div className="mt-12 grid gap-8 md:grid-cols-3">
+        <div className="mt-12 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
           {related.map((item, index) => <ProductCard key={item.id} product={item} index={index} />)}
         </div>
       </section>
@@ -913,7 +937,7 @@ export function SecureCheckoutPage({ session, onLogout, onLogin }: { session: Au
                       </div>
                       
                       <button onClick={placeOrder} disabled={saving} className="magnetic-btn w-full bg-[var(--ink)] px-8 py-5 eyebrow text-white disabled:opacity-50 transition-colors hover:bg-[var(--gold)] hover:text-[var(--ink)] hover:shadow-[var(--shadow-gold-glow)]">
-                        {saving ? "Processing securely..." : `Pay ${orderTotal.toLocaleString()} EUR`}
+                        {saving ? "Processing securely..." : `Pay ₹ ${orderTotal.toLocaleString("en-IN")}`}
                       </button>
                     </motion.div>
                   )}
@@ -947,8 +971,8 @@ export function SecureCheckoutPage({ session, onLogout, onLogin }: { session: Au
 
               <div className="mt-8 border-t border-[var(--ink)]/10 pt-6">
                 <div className="grid gap-3 text-sm text-[var(--ink)]/70">
-                  <div className="flex justify-between"><span>Subtotal</span><span>{subtotal.toLocaleString()} EUR</span></div>
-                  {discount > 0 && <div className="flex justify-between text-emerald-600 font-medium"><span>{checkoutCoupon?.title}</span><span>- {discount.toLocaleString()} EUR</span></div>}
+                  <div className="flex justify-between"><span>Subtotal</span><span>₹ {subtotal.toLocaleString("en-IN")}</span></div>
+                  {discount > 0 && <div className="flex justify-between text-emerald-600 font-medium"><span>{checkoutCoupon?.title}</span><span>- ₹ {discount.toLocaleString("en-IN")}</span></div>}
                   <div className="flex justify-between"><span>Shipping</span><span>Complimentary</span></div>
                   <div className="flex justify-between"><span>Taxes & Duties</span><span>Included</span></div>
                 </div>
@@ -956,7 +980,7 @@ export function SecureCheckoutPage({ session, onLogout, onLogin }: { session: Au
                 <div className="mt-6 border-t border-[var(--gold)]/30 pt-6">
                   <div className="flex justify-between items-end">
                     <span className="eyebrow text-[var(--ink)]/60">Estimated Total</span>
-                    <span className="font-display text-3xl gradient-gold-text">{orderTotal.toLocaleString()} EUR</span>
+                    <span className="font-display text-3xl gradient-gold-text">₹ {orderTotal.toLocaleString("en-IN")}</span>
                   </div>
                 </div>
               </div>

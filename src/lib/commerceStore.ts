@@ -3,6 +3,7 @@ import c2 from "@/assets/collection-2.jpg";
 import c3 from "@/assets/collection-3.jpg";
 import atelier from "@/assets/atelier.jpg";
 import type { CartItem } from "@/components/cart/CartContext";
+import { FOLLICIA_PRODUCTS } from "@/data/folliciaCatalogue";
 
 export type CommerceProduct = {
   id: string;
@@ -71,17 +72,28 @@ const CUSTOMERS_KEY = "follocia_customers";
 export const COMMERCE_EVENT = "follocia-commerce-change";
 const API_ROOT = "/api/commerce";
 
+const catalogueCommerceProducts: CommerceProduct[] = FOLLICIA_PRODUCTS.map((p) => ({
+  id: p.id.toLowerCase(),
+  title: p.name,
+  edition: `${p.collection} Collection`,
+  tone: p.color,
+  price: `₹ ${p.price.toLocaleString("en-IN")}`,
+  image: p.image,
+  images: [p.image, ...(p.variantImages ? Object.values(p.variantImages) : [])],
+  status: "Live",
+  produced: 120,
+  reserved: 24,
+  available: 96,
+}));
+
 export const seedProducts: CommerceProduct[] = [
-  { id: "atelier-01", title: "Atelier 01 - Lumiere", edition: "Edition of 220", price: "EUR 1,480", image: c1, images: [c1], tone: "Ivory Calfskin", status: "Live", produced: 220, reserved: 184, available: 36 },
-  { id: "atelier-02", title: "Atelier 02 - Noir Suspendu", edition: "Edition of 180", price: "EUR 1,640", image: c2, images: [c2], tone: "Patent Obsidian", status: "Live", produced: 180, reserved: 168, available: 12 },
-  { id: "atelier-03", title: "Atelier 03 - Or Liquide", edition: "Edition of 140", price: "EUR 1,820", image: c3, images: [c3], tone: "Brushed Champagne", status: "Private Preview", produced: 140, reserved: 121, available: 19 },
-  { id: "atelier-04", title: "Atelier 04 - Rosso Vow", edition: "Edition of 80", price: "EUR 2,120", image: atelier, images: [atelier], tone: "Rosso Patent", status: "Draft", produced: 80, reserved: 0, available: 80 },
+  ...catalogueCommerceProducts,
 ];
 
 const seedOrders: CommerceOrder[] = [
-  { id: "RSV-1048", customerId: "vip-002", customer: "Camille R.", email: "camille@example.com", product: "Atelier 03 - Or Liquide", size: "38", amount: "EUR 1,820", status: "Concierge Review", paymentStatus: "Payment Pending", deliveryStatus: "Order Placed", deliveryEta: "Awaiting confirmation", trackingCode: "", paymentMethod: "Concierge Pay", deliveryAddress: "Paris private salon", date: "Today" },
-  { id: "RSV-1047", customerId: "vip-001", customer: "Ananya Sharma", email: "client@follocia.com", product: "Atelier 02 - Noir Suspendu", size: "39", amount: "EUR 1,640", status: "Fitting Booked", paymentStatus: "Authorized", deliveryStatus: "Fitting Scheduled", deliveryEta: "May 18", trackingCode: "", paymentMethod: "Card Authorization", deliveryAddress: "Mumbai concierge address", date: "Today" },
-  { id: "RSV-1031", customerId: "vip-001", customer: "Ananya Sharma", email: "client@follocia.com", product: "Atelier 01 - Lumiere", size: "38", amount: "EUR 1,480", status: "Certificate Ready", paymentStatus: "Paid", deliveryStatus: "Delivered", deliveryEta: "Delivered", trackingCode: "FL-1031-VIP", paymentMethod: "Card Authorization", deliveryAddress: "Mumbai concierge address", date: "Delivered" },
+  { id: "RSV-1048", customerId: "vip-002", customer: "Camille R.", email: "camille@example.com", product: "Aura - Sunrise Flat", size: "38", amount: "₹ 12,490", status: "Concierge Review", paymentStatus: "Payment Pending", deliveryStatus: "Order Placed", deliveryEta: "Awaiting confirmation", trackingCode: "", paymentMethod: "Concierge Pay", deliveryAddress: "Paris private salon", date: "Today" },
+  { id: "RSV-1047", customerId: "vip-001", customer: "Ananya Sharma", email: "client@follocia.com", product: "Bloom - Petal Mule", size: "39", amount: "₹ 14,990", status: "Fitting Booked", paymentStatus: "Authorized", deliveryStatus: "Fitting Scheduled", deliveryEta: "May 18", trackingCode: "", paymentMethod: "Card Authorization", deliveryAddress: "Mumbai concierge address", date: "Today" },
+  { id: "RSV-1031", customerId: "vip-001", customer: "Ananya Sharma", email: "client@follocia.com", product: "Muse - Ivory Stiletto", size: "38", amount: "₹ 16,800", status: "Certificate Ready", paymentStatus: "Paid", deliveryStatus: "Delivered", deliveryEta: "Delivered", trackingCode: "FL-1031-VIP", paymentMethod: "Card Authorization", deliveryAddress: "Mumbai concierge address", date: "Delivered" },
 ];
 
 const seedCustomers: CustomerProfile[] = [
@@ -94,7 +106,7 @@ const seedCustomers: CustomerProfile[] = [
     phone: "",
     tier: "Private Atelier",
     memberSince: "MMXXIV",
-    wishlist: ["atelier-03", "atelier-01"],
+    wishlist: ["fl-aura-01", "fl-bloom-01"],
     subscriptions: [],
     addresses: [],
   },
@@ -131,17 +143,37 @@ export function productPrimaryImage(product: CommerceProduct) {
   return productImages(product)[0] || "";
 }
 
+const OLD_PRODUCT_IDS = new Set([
+  "atelier-01", "atelier-02", "atelier-03", "prod-atelier-01", "prod-atelier-02", "prod-atelier-03",
+  "prod-01", "prod-02", "prod-03"
+]);
+
+export function isOldProduct(product: CommerceProduct): boolean {
+  if (!product || !product.id) return true;
+  const id = product.id.toLowerCase();
+  const title = (product.title || "").toLowerCase();
+  const price = (product.price || "").toLowerCase();
+  return OLD_PRODUCT_IDS.has(id) || id.startsWith("atelier-") || id.startsWith("prod-") || title.includes("atelier") || title.includes("noir suspendu") || price.includes("eur") || price.includes("€");
+}
+
 function normalizeProduct(product: CommerceProduct): CommerceProduct {
   const images = productImages(product);
   return { ...product, image: images[0] || product.image || "", images };
 }
 
 export function getProducts() {
-  return read<CommerceProduct[]>(PRODUCTS_KEY, seedProducts).map(normalizeProduct);
+  const raw = read<CommerceProduct[]>(PRODUCTS_KEY, seedProducts);
+  const products = raw.filter((p) => !isOldProduct(p)).map(normalizeProduct);
+  if (products.length === 0 || products.length < raw.length) {
+    const next = products.length === 0 ? seedProducts.map(normalizeProduct) : products;
+    write(PRODUCTS_KEY, next);
+    return next;
+  }
+  return products;
 }
 
 export function saveProducts(products: CommerceProduct[]) {
-  write(PRODUCTS_KEY, products.map(normalizeProduct));
+  write(PRODUCTS_KEY, products.filter((p) => !isOldProduct(p)).map(normalizeProduct));
 }
 
 export function getOrders() {
@@ -215,7 +247,8 @@ async function api<T>(path: string, init?: RequestInit): Promise<T | null> {
 export async function syncCommerceFromBackend() {
   const data = await api<{ products: CommerceProduct[]; orders: CommerceOrder[]; customers: CustomerProfile[] }>("/bootstrap");
   if (!data) return false;
-  localStorage.setItem(PRODUCTS_KEY, JSON.stringify(data.products.map(normalizeProduct)));
+  const filteredProducts = (data.products || []).filter((p) => !isOldProduct(p)).map(normalizeProduct);
+  localStorage.setItem(PRODUCTS_KEY, JSON.stringify(filteredProducts.length > 0 ? filteredProducts : seedProducts));
   localStorage.setItem(ORDERS_KEY, JSON.stringify(data.orders));
   localStorage.setItem(CUSTOMERS_KEY, JSON.stringify(data.customers));
   window.dispatchEvent(new CustomEvent(COMMERCE_EVENT));

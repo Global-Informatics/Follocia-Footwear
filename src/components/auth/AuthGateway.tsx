@@ -29,8 +29,8 @@ export function AuthGateway({ intent = "customer", compact = false, onAuthentica
   const [mode, setMode] = useState<"login" | "register">("login");
   const [role, setRole] = useState<UserRole>(intent);
   const [name, setName] = useState("");
-  const [email, setEmail] = useState(intent === "admin" ? "admin@follocia.com" : "client@follocia.com");
-  const [password, setPassword] = useState(intent === "admin" ? "Admin@123" : "Client@123");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [shake, setShake] = useState(false);
 
@@ -59,8 +59,6 @@ export function AuthGateway({ intent = "customer", compact = false, onAuthentica
     await ensureCustomerRemote(safe);
     onAuthenticated(saveSession(safe));
   };
-
-  const useDemo = (r: UserRole) => { const u = demoUsers.find(u => u.role === r)!; setRole(r); setMode("login"); setEmail(u.email); setPassword(u.password); setError(""); };
 
   return (
     <main className={`relative overflow-hidden text-[var(--bone)] ${compact ? "bg-transparent" : "min-h-screen bg-[var(--ink)]"}`}>
@@ -106,7 +104,7 @@ export function AuthGateway({ intent = "customer", compact = false, onAuthentica
           <div className="relative flex gap-0 border border-[var(--ink)]/10 p-1">
             <motion.div layoutId="role-indicator" className="absolute inset-y-1 z-0 bg-[var(--ink)]" style={{ width: "50%", left: role === "customer" ? "4px" : "calc(50% - 0px)" }} transition={{ type: "spring", stiffness: 300, damping: 30 }} />
             {(["customer", "admin"] as const).map(r => (
-              <button key={r} type="button" onClick={() => { setRole(r); setMode("login"); useDemo(r); }}
+              <button key={r} type="button" onClick={() => { setRole(r); setMode("login"); setError(""); }}
                 className={`relative z-10 flex-1 px-4 py-3 eyebrow transition-colors duration-300 ${role === r ? "text-[var(--bone)]" : "text-[var(--ink)]/55 hover:bg-[var(--ink)]/5"}`}>
                 {r === "customer" ? "Customer" : "Admin"}
               </button>
@@ -150,14 +148,6 @@ export function AuthGateway({ intent = "customer", compact = false, onAuthentica
           <button type="submit" className="magnetic-btn mt-6 w-full bg-[var(--ink)] px-5 py-4 eyebrow text-[var(--bone)] transition-all duration-500 hover:bg-[var(--gold)] hover:text-[var(--ink)] hover:shadow-[var(--shadow-gold-glow)]">
             {mode === "register" ? "Create Account" : "Enter Follocia"}
           </button>
-
-          <div className="mt-5 grid grid-cols-2 gap-2">
-            {(["customer", "admin"] as const).map(r => (
-              <button key={r} type="button" onClick={() => useDemo(r)} className="group border border-[var(--ink)]/12 px-3 py-3 eyebrow text-[var(--ink)]/60 transition-all hover:border-[var(--gold)] hover:text-[var(--ink)] hover:shadow-[0_0_15px_oklch(0.78_0.12_80/0.1)]">
-                Demo {r === "customer" ? "Client" : "Admin"}
-              </button>
-            ))}
-          </div>
 
           {role === "customer" && (
             <button type="button" onClick={() => { setMode(v => v === "login" ? "register" : "login"); setError(""); }}

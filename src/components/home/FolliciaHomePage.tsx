@@ -7,6 +7,7 @@ import {
   type FolliciaProduct,
 } from "@/data/folliciaCatalogue";
 import { getProducts, COMMERCE_EVENT, type CommerceProduct } from "@/lib/commerceStore";
+import "./follicia.css";
 
 interface BagItem {
   product: FolliciaProduct;

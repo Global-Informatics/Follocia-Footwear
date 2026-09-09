@@ -27,22 +27,65 @@ const Ctx = createContext<CartCtx | null>(null);
 const CART_KEY = "follocia_cart_items";
 const WISHLIST_KEY = "follocia_wishlist_items";
 
-function readStored<T>(key: string, fallback: T): T {
-  if (typeof window === "undefined") return fallback;
+const OLD_PREFIXES = ["atelier-", "prod-"];
+
+export const isOldCartItem = (item: CartItem | { id?: string; title?: string; price?: string }): boolean => {
+  if (!item || !item.id) return true;
+  const id = item.id.toLowerCase();
+  const title = (item.title || "").toLowerCase();
+  const price = (item.price || "").toLowerCase();
+  return (
+    OLD_PREFIXES.some((p) => id.startsWith(p)) ||
+    title.includes("atelier") ||
+    title.includes("noir suspendu") ||
+    price.includes("eur") ||
+    price.includes("€")
+  );
+};
+
+function readStoredCart(): CartItem[] {
+  if (typeof window === "undefined") return [];
   try {
-    return JSON.parse(localStorage.getItem(key) || "") as T;
+    const raw = localStorage.getItem(CART_KEY);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw) as CartItem[];
+    if (!Array.isArray(parsed)) return [];
+    const sanitized = parsed.filter((item) => !isOldCartItem(item));
+    if (sanitized.length !== parsed.length) {
+      localStorage.setItem(CART_KEY, JSON.stringify(sanitized));
+    }
+    return sanitized;
   } catch {
-    return fallback;
+    return [];
+  }
+}
+
+function readStoredWishlist(): string[] {
+  if (typeof window === "undefined") return [];
+  try {
+    const raw = localStorage.getItem(WISHLIST_KEY);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw) as string[];
+    if (!Array.isArray(parsed)) return [];
+    const sanitized = parsed.filter(
+      (id) => typeof id === "string" && !OLD_PREFIXES.some((p) => id.toLowerCase().startsWith(p))
+    );
+    if (sanitized.length !== parsed.length) {
+      localStorage.setItem(WISHLIST_KEY, JSON.stringify(sanitized));
+    }
+    return sanitized;
+  } catch {
+    return [];
   }
 }
 
 export function CartProvider({ children }: { children: ReactNode }) {
-  const [items, setItems] = useState<CartItem[]>(() => readStored<CartItem[]>(CART_KEY, []));
+  const [items, setItems] = useState<CartItem[]>(() => readStoredCart());
   const [open, setOpen] = useState(false);
-  const [wishlist, setWishlist] = useState<string[]>(() => readStored<string[]>(WISHLIST_KEY, []));
+  const [wishlist, setWishlist] = useState<string[]>(() => readStoredWishlist());
 
   useEffect(() => {
-    localStorage.setItem(CART_KEY, JSON.stringify(items));
+    localStorage.setItem(CART_KEY, JSON.stringify(items.filter((item) => !isOldCartItem(item))));
   }, [items]);
 
   useEffect(() => {
@@ -50,6 +93,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
   }, [wishlist]);
 
   const add: CartCtx["add"] = (i, qty = 1) => {
+    if (isOldCartItem(i)) return;
     setItems((prev) => {
       const existing = prev.find((p) => p.id === i.id);
       if (existing) return prev.map((p) => (p.id === i.id ? { ...p, qty: p.qty + qty } : p));
