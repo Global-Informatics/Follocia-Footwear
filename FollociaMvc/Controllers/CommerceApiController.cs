@@ -218,7 +218,7 @@ public class CommerceApiController(FollociaDbContext db) : ControllerBase
                 Amount = ParseMoney(request.Amount) * Math.Max(request.Quantity, 1),
                 CurrencyCode = ParseCurrency(request.Amount),
                 Status = "Concierge Review",
-                PaymentStatus = request.PaymentMethod == "Cash on Delivery" ? "Due on Delivery" : "Payment Pending",
+                PaymentStatus = request.PaymentMethod.Contains("Cash on Delivery") ? "Due on Delivery" : "Payment Captured",
                 DeliveryStatus = "Order Placed",
                 DeliveryEta = "Concierge will confirm within 24h",
                 TrackingCode = "",

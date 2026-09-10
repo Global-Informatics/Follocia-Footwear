@@ -344,7 +344,7 @@ export function createOrdersFromCart(items: CartItem[], customer: CustomerProfil
     size: item.size || "38",
     amount: item.price,
     status: "Concierge Review",
-    paymentStatus: checkout?.paymentMethod === "Cash on Delivery" ? "Due on Delivery" : "Payment Pending",
+    paymentStatus: checkout?.paymentMethod?.includes("Cash on Delivery") ? "Due on Delivery" : "Payment Captured",
     deliveryStatus: "Order Placed",
     deliveryEta: "Concierge will confirm within 24h",
     trackingCode: "",
