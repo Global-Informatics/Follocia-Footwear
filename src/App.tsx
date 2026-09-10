@@ -38,7 +38,7 @@ function sectionFromPath(path: string) {
 import { FolliciaHomePage } from "@/components/home/FolliciaHomePage";
 
 function Storefront({ session, onLogout, onLogin }: { session: AuthSession | null; onLogout: () => void; onLogin: () => void }) {
-  return <FolliciaHomePage />;
+  return <FolliciaHomePage session={session} onLogout={onLogout} onLogin={onLogin} />;
 }
 
 export function App() {
@@ -52,8 +52,11 @@ export function App() {
     const resolvePath = () => {
       const fullPath = window.location.pathname.toLowerCase();
       const routedPath = base && fullPath.startsWith(base) ? fullPath.slice(base.length) || "/" : fullPath;
-      const hashPath = window.location.hash.replace(/^#/, "").toLowerCase();
-      return hashPath.startsWith("/") ? hashPath : routedPath;
+      let hashPath = window.location.hash.replace(/^#/, "").toLowerCase();
+      if (hashPath && !hashPath.startsWith("/")) {
+        hashPath = "/" + hashPath;
+      }
+      return hashPath || routedPath;
     };
 
     setSession(readAuthSession());
@@ -70,7 +73,10 @@ export function App() {
     window.scrollTo({ top: 0, behavior: "instant" });
   }, [path]);
 
-  const wantsAdmin = path.startsWith("/admin");
+  const adminSections = [
+    "/admin", "/dashboard", "/orders", "/inventory", "/customers", "/drops", "/vip", "/stories", "/seo", "/coupons", "/reviews", "/banners", "/cms", "/legal", "/analytics", "/newsletter", "/contact", "/audit"
+  ];
+  const wantsAdmin = path.startsWith("/admin") || (session?.user?.role === "admin" && adminSections.some((s) => path === s || path.startsWith(s + "/")));
   const wantsAccount = path.startsWith("/account");
   const wantsShop = path === "/shop" || path.startsWith("/shop/");
   const wantsCollections = path.startsWith("/collections");
@@ -83,10 +89,40 @@ export function App() {
     setSession(null);
   };
 
+  const handleAuthenticated = (next: AuthSession) => {
+    setSession(next);
+    setLoginOpen(false);
+    if (next.user.role === "admin") {
+      window.location.hash = "/admin";
+    }
+  };
+
   if (!hydrated) return null;
 
-  if (wantsAdmin || session?.user.role === "admin") {
-    if (!session || session.user.role !== "admin") return <AuthGateway intent="admin" onAuthenticated={setSession} />;
+  if (wantsAdmin) {
+    if (!session || session.user.role !== "admin") {
+      return (
+        <>
+          <Storefront session={session} onLogout={logout} onLogin={() => setLoginOpen(true)} />
+          <div className="fixed inset-0 z-[120] grid place-items-center bg-[var(--ink)]/70 px-4 py-8 backdrop-blur-md">
+            <button
+              onClick={() => {
+                window.location.hash = "/";
+              }}
+              className="fixed right-6 top-6 z-[121] text-3xl leading-none text-[var(--bone)] hover:text-[var(--gold)] cursor-pointer"
+              aria-label="Close"
+            >
+              ✕
+            </button>
+            <AuthGateway
+              intent="admin"
+              compact
+              onAuthenticated={handleAuthenticated}
+            />
+          </div>
+        </>
+      );
+    }
     return <AdminPanel onLogout={logout} />;
   }
 
@@ -100,7 +136,7 @@ export function App() {
               setLoginOpen(false);
               window.location.hash = "/";
             }}
-            onAuthenticated={setSession}
+            onAuthenticated={handleAuthenticated}
           />
         </>
       );
@@ -118,12 +154,7 @@ export function App() {
     return (
       <CartProvider>
         <SecureCheckoutPage session={session} onLogout={logout} onLogin={() => setLoginOpen(true)} />
-        {loginOpen && (
-          <div className="fixed inset-0 z-[120] grid place-items-center bg-[var(--ink)]/70 px-4 py-8 backdrop-blur-md">
-            <button onClick={() => setLoginOpen(false)} className="fixed right-6 top-6 z-[121] text-4xl text-[var(--bone)]">x</button>
-            <AuthGateway intent="customer" compact onAuthenticated={(next) => { setSession(next); setLoginOpen(false); }} />
-          </div>
-        )}
+        {loginOpen && <LoginOverlay onClose={() => setLoginOpen(false)} onAuthenticated={handleAuthenticated} />}
       </CartProvider>
     );
   }
@@ -137,12 +168,7 @@ export function App() {
         ) : (
           <ShopPage session={session} onLogout={logout} onLogin={() => setLoginOpen(true)} />
         )}
-        {loginOpen && (
-          <div className="fixed inset-0 z-[120] grid place-items-center bg-[var(--ink)]/70 px-4 py-8 backdrop-blur-md">
-            <button onClick={() => setLoginOpen(false)} className="fixed right-6 top-6 z-[121] text-4xl text-[var(--bone)]">x</button>
-            <AuthGateway intent="customer" compact onAuthenticated={(next) => { setSession(next); setLoginOpen(false); }} />
-          </div>
-        )}
+        {loginOpen && <LoginOverlay onClose={() => setLoginOpen(false)} onAuthenticated={handleAuthenticated} />}
       </CartProvider>
     );
   }
@@ -152,12 +178,7 @@ export function App() {
       <CartProvider>
         <LegalPage slug={legalSlug} session={session} onLogout={logout} onLogin={() => setLoginOpen(true)} />
         <CartDrawer session={session} onLogin={() => setLoginOpen(true)} />
-        {loginOpen && (
-          <div className="fixed inset-0 z-[120] grid place-items-center bg-[var(--ink)]/70 px-4 py-8 backdrop-blur-md">
-            <button onClick={() => setLoginOpen(false)} className="fixed right-6 top-6 z-[121] text-4xl text-[var(--bone)]">x</button>
-            <AuthGateway intent="customer" compact onAuthenticated={(next) => { setSession(next); setLoginOpen(false); }} />
-          </div>
-        )}
+        {loginOpen && <LoginOverlay onClose={() => setLoginOpen(false)} onAuthenticated={handleAuthenticated} />}
       </CartProvider>
     );
   }
@@ -170,12 +191,7 @@ export function App() {
         ) : (
           <ContactPage session={session} onLogout={logout} onLogin={() => setLoginOpen(true)} />
         )}
-        {loginOpen && (
-          <div className="fixed inset-0 z-[120] grid place-items-center bg-[var(--ink)]/70 px-4 py-8 backdrop-blur-md">
-            <button onClick={() => setLoginOpen(false)} className="fixed right-6 top-6 z-[121] text-4xl text-[var(--bone)]">x</button>
-            <AuthGateway intent="customer" compact onAuthenticated={(next) => { setSession(next); setLoginOpen(false); }} />
-          </div>
-        )}
+        {loginOpen && <LoginOverlay onClose={() => setLoginOpen(false)} onAuthenticated={handleAuthenticated} />}
       </CartProvider>
     );
   }
@@ -183,19 +199,7 @@ export function App() {
   return (
     <>
       <Storefront session={session} onLogout={logout} onLogin={() => setLoginOpen(true)} />
-      {loginOpen && (
-        <div className="fixed inset-0 z-[120] grid place-items-center bg-[var(--ink)]/70 px-4 py-8 backdrop-blur-md">
-          <button onClick={() => setLoginOpen(false)} className="fixed right-6 top-6 z-[121] text-4xl text-[var(--bone)]">x</button>
-          <AuthGateway
-            intent="customer"
-            compact
-            onAuthenticated={(next) => {
-              setSession(next);
-              setLoginOpen(false);
-            }}
-          />
-        </div>
-      )}
+      {loginOpen && <LoginOverlay onClose={() => setLoginOpen(false)} onAuthenticated={handleAuthenticated} />}
     </>
   );
 }
@@ -203,7 +207,13 @@ export function App() {
 function LoginOverlay({ onClose, onAuthenticated }: { onClose: () => void; onAuthenticated: (session: AuthSession) => void }) {
   return (
     <div className="fixed inset-0 z-[120] grid place-items-center bg-[var(--ink)]/70 px-4 py-8 backdrop-blur-md">
-      <button onClick={onClose} className="fixed right-6 top-6 z-[121] text-4xl leading-none text-[var(--bone)]" aria-label="Close login">x</button>
+      <button
+        onClick={onClose}
+        className="fixed right-6 top-6 z-[121] text-3xl leading-none text-[var(--bone)] hover:text-[var(--gold)] cursor-pointer"
+        aria-label="Close login"
+      >
+        ✕
+      </button>
       <AuthGateway intent="customer" compact onAuthenticated={onAuthenticated} />
     </div>
   );

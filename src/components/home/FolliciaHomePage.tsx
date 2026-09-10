@@ -1,4 +1,5 @@
-import { useState, useEffect, useMemo, type FormEvent } from "react";
+import { useState, useEffect, useMemo, useRef, type FormEvent } from "react";
+import type { AuthSession } from "@/components/auth/AuthGateway";
 import {
   FOLLICIA_COLLECTIONS,
   FOLLICIA_PRODUCTS,
@@ -32,8 +33,18 @@ function getColorHex(colorName: string): string {
   return "#f2e9d9"; // default ivory/nude/champagne
 }
 
-export function FolliciaHomePage() {
+export function FolliciaHomePage({
+  session,
+  onLogout,
+  onLogin,
+}: {
+  session?: AuthSession | null;
+  onLogout?: () => void;
+  onLogin?: () => void;
+} = {}) {
   const [navOpen, setNavOpen] = useState(false);
+  const [profileOpen, setProfileOpen] = useState(false);
+  const profileRef = useRef<HTMLDivElement>(null);
   const [selectedCollection, setSelectedCollection] = useState<string>("All");
   const [selectedStyle, setSelectedStyle] = useState<string>("All styles");
   const [motionIndex, setMotionIndex] = useState(0);
@@ -110,10 +121,21 @@ export function FolliciaHomePage() {
         setBagOpen(false);
         setCheckoutOpen(false);
         setSearchOpen(false);
+        setProfileOpen(false);
       }
     };
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
+  }, []);
+
+  useEffect(() => {
+    const closeProfile = (event: PointerEvent) => {
+      if (!profileRef.current?.contains(event.target as Node)) {
+        setProfileOpen(false);
+      }
+    };
+    document.addEventListener("pointerdown", closeProfile);
+    return () => document.removeEventListener("pointerdown", closeProfile);
   }, []);
 
   // Prevent background body scroll when any modal or drawer is open
@@ -280,6 +302,21 @@ export function FolliciaHomePage() {
           >
             Our Story
           </a>
+          <button
+            type="button"
+            onClick={() => {
+              setNavOpen(false);
+              if (session?.user) {
+                setProfileOpen((prev) => !prev);
+              } else if (onLogin) {
+                onLogin();
+              }
+            }}
+            className="md:hidden text-left py-2 font-medium tracking-wider uppercase text-[0.68rem] text-[var(--gold)]"
+            style={{ background: "none", border: "none", cursor: "pointer" }}
+          >
+            {session?.user ? `Account (${session.user.name})` : "Account / Sign in"}
+          </button>
         </nav>
 
         <div className="actions">
@@ -296,18 +333,85 @@ export function FolliciaHomePage() {
             </svg>
           </button>
 
-          <a
-            href="#/admin"
-            className="action-icon"
-            title="Maison Admin"
-            aria-label="Admin Account"
-          >
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-              <circle cx="12" cy="12" r="9.5" />
-              <circle cx="12" cy="9.5" r="3.2" />
-              <path d="M6.3 18.2a6 6 0 0 1 11.4 0" />
-            </svg>
-          </a>
+          {/* User Account / Profile */}
+          <div ref={profileRef} className="relative inline-flex items-center">
+            {session?.user ? (
+              <button
+                type="button"
+                onClick={() => setProfileOpen((prev) => !prev)}
+                className="action-icon flex items-center gap-1.5 cursor-pointer"
+                title={`Signed in as ${session.user.name}`}
+                aria-label="User Account"
+              >
+                <span className="grid h-7 w-7 place-items-center rounded-full bg-[#4b261a] text-xs font-semibold text-[#fffaf0]">
+                  {session.user.name.charAt(0).toUpperCase()}
+                </span>
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={() => {
+                  if (onLogin) {
+                    onLogin();
+                  } else {
+                    window.location.hash = "/admin";
+                  }
+                }}
+                className="action-icon cursor-pointer"
+                title="Account / Sign in"
+                aria-label="Account / Sign in"
+              >
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                  <circle cx="12" cy="12" r="9.5" />
+                  <circle cx="12" cy="9.5" r="3.2" />
+                  <path d="M6.3 18.2a6 6 0 0 1 11.4 0" />
+                </svg>
+              </button>
+            )}
+
+            {/* Profile Dropdown if logged in */}
+            {profileOpen && session?.user && (
+              <div
+                className="absolute right-0 top-12 z-[70] w-56 rounded-xl border border-[#4b261a26] bg-[#fffdf8] p-4 text-xs shadow-2xl"
+                style={{ color: "#351c13" }}
+              >
+                <p className="mb-2 text-[10px] uppercase tracking-wider text-[#a87648]">
+                  Signed in as <strong className="block text-xs text-[#351c13]">{session.user.name}</strong>
+                  <span className="text-[10px] text-[#4b261a80]">{session.user.tier || session.user.role}</span>
+                </p>
+                <div className="my-2 border-t border-[#4b261a15]" />
+                {session.user.role === "admin" ? (
+                  <>
+                    <a href="#/admin" onClick={() => setProfileOpen(false)} className="block py-1.5 font-bold text-[#a87648] hover:underline">
+                      ⚡ Admin Control Panel
+                    </a>
+                    <a href="#/" onClick={() => setProfileOpen(false)} className="block py-1.5 hover:text-[#a87648] transition-colors">
+                      Storefront
+                    </a>
+                  </>
+                ) : (
+                  <>
+                    <a href="#/account/my-orders" onClick={() => setProfileOpen(false)} className="block py-1.5 hover:text-[#a87648] transition-colors">My Orders</a>
+                    <a href="#/account/my-wishlist" onClick={() => setProfileOpen(false)} className="block py-1.5 hover:text-[#a87648] transition-colors">My Wishlist</a>
+                    <a href="#/account/my-addresses" onClick={() => setProfileOpen(false)} className="block py-1.5 hover:text-[#a87648] transition-colors">My Addresses</a>
+                    <a href="#/account/my-wallet" onClick={() => setProfileOpen(false)} className="block py-1.5 hover:text-[#a87648] transition-colors">My Wallet</a>
+                    <a href="#/account/my-account" onClick={() => setProfileOpen(false)} className="block py-1.5 hover:text-[#a87648] transition-colors">Account Settings</a>
+                  </>
+                )}
+                <div className="my-2 border-t border-[#4b261a15]" />
+                <button
+                  type="button"
+                  onClick={() => {
+                    setProfileOpen(false);
+                    onLogout?.();
+                  }}
+                  className="w-full text-left py-1.5 text-red-600 hover:text-red-800 transition-colors cursor-pointer"
+                >
+                  Log Out
+                </button>
+              </div>
+            )}
+          </div>
 
           <button
             type="button"

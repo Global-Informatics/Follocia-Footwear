@@ -190,12 +190,19 @@
 
 .follicia-home .actions button,
 .site-header .actions button,
-.site-header .actions a {
+.site-header .actions a,
+.action-icon {
   letter-spacing: .08em;
   text-transform: uppercase;
   min-width: 28px;
   font-size: .74rem;
   position: relative;
+  cursor: pointer;
+  background: transparent;
+  border: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .follicia-home .actions button:first-child {

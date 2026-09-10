@@ -828,10 +828,11 @@ const adminSectionCopy: Record<AdminSection, { label: string; title: string; cop
 };
 const productStatuses = ["Live", "Private Preview", "Coming Soon", "Sold Out", "Draft"] as const;
 
-function getAdminSectionFromHash() {
-  if (typeof window === "undefined") return "dashboard" as AdminSection;
-  const hash = window.location.hash.replace("#", "").toLowerCase();
-  return adminSections.includes(hash as AdminSection) ? (hash as AdminSection) : "dashboard";
+function getAdminSectionFromHash(): AdminSection {
+  if (typeof window === "undefined") return "dashboard";
+  const raw = window.location.hash.toLowerCase().replace(/^#\/?/, "");
+  const clean = raw.startsWith("admin/") ? raw.replace(/^admin\//, "") : raw === "admin" ? "dashboard" : raw;
+  return adminSections.includes(clean as AdminSection) ? (clean as AdminSection) : "dashboard";
 }
 
 export function AdminPanel({ onLogout }: { onLogout?: () => void }) {
@@ -1010,7 +1011,9 @@ export function AdminPanel({ onLogout }: { onLogout?: () => void }) {
   };
   const openSection = (section: AdminSection) => {
     setActiveSection(section);
-    if (typeof window !== "undefined") window.location.hash = section;
+    if (typeof window !== "undefined") {
+      window.location.hash = section === "dashboard" ? "/admin" : `/admin/${section}`;
+    }
   };
 
   useEffect(() => {
@@ -1212,7 +1215,7 @@ export function AdminPanel({ onLogout }: { onLogout?: () => void }) {
     <main className="min-h-screen bg-[var(--bone)] text-[var(--ink)]">
       <header className="sticky top-0 z-40 border-b border-[var(--ink)]/10 bg-[var(--bone)]/95 px-4 backdrop-blur-xl">
         <div className="mx-auto flex h-16 max-w-[1500px] items-center justify-between gap-4">
-          <a href="/" aria-label="Follocia home" className="flex shrink-0 items-center">
+          <a href="#/" aria-label="Follocia home" className="flex shrink-0 items-center">
             <BrandLogo compact />
           </a>
           <nav className="hidden flex-1 items-center gap-1 overflow-x-auto md:flex">
@@ -1223,7 +1226,7 @@ export function AdminPanel({ onLogout }: { onLogout?: () => void }) {
             ))}
           </nav>
           <div className="flex shrink-0 gap-2">
-            <a href="/" className="border border-[var(--ink)]/15 px-4 py-2 text-[11px] uppercase tracking-[0.14em]">Storefront</a>
+            <a href="#/" className="border border-[var(--ink)]/15 px-4 py-2 text-[11px] uppercase tracking-[0.14em]">Storefront</a>
             {onLogout && <button onClick={onLogout} className="bg-[var(--ink)] px-4 py-2 text-[11px] uppercase tracking-[0.14em] text-[var(--bone)]">Logout</button>}
           </div>
         </div>

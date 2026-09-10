@@ -147,6 +147,21 @@ export function Navigation({
           >
             Our Story
           </a>
+          <button
+            type="button"
+            onClick={() => {
+              setNavOpen(false);
+              if (userName) {
+                setProfileOpen((prev) => !prev);
+              } else if (onLogin) {
+                onLogin();
+              }
+            }}
+            className="md:hidden text-left py-2 font-medium tracking-wider uppercase text-[0.68rem] text-[var(--gold)]"
+            style={{ background: "none", border: "none", cursor: "pointer" }}
+          >
+            {userName ? `Account (${userName})` : "Account / Sign in"}
+          </button>
         </nav>
 
         <div className="actions">
@@ -179,35 +194,55 @@ export function Navigation({
                 </span>
               </button>
             ) : (
-              <a
-                href="#/admin"
-                className="action-icon"
-                title="Maison Admin"
-                aria-label="Admin Account"
+              <button
+                type="button"
+                onClick={() => {
+                  if (onLogin) {
+                    onLogin();
+                  } else {
+                    window.location.hash = "/admin";
+                  }
+                }}
+                className="action-icon cursor-pointer"
+                title="Account / Sign in"
+                aria-label="Account / Sign in"
               >
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
                   <circle cx="12" cy="12" r="9.5" />
                   <circle cx="12" cy="9.5" r="3.2" />
                   <path d="M6.3 18.2a6 6 0 0 1 11.4 0" />
                 </svg>
-              </a>
+              </button>
             )}
 
             {/* Profile Dropdown if logged in */}
             {profileOpen && userName && (
               <div
-                className="absolute right-0 top-12 z-[70] w-52 rounded-xl border border-[#4b261a26] bg-[#fffdf8] p-4 text-xs shadow-2xl"
+                className="absolute right-0 top-12 z-[70] w-56 rounded-xl border border-[#4b261a26] bg-[#fffdf8] p-4 text-xs shadow-2xl"
                 style={{ color: "#351c13" }}
               >
                 <p className="mb-2 text-[10px] uppercase tracking-wider text-[#a87648]">
                   Signed in as <strong className="block text-xs text-[#351c13]">{userName}</strong>
                 </p>
                 <div className="my-2 border-t border-[#4b261a15]" />
-                <a href="#/account/my-orders" className="block py-1.5 hover:text-[#a87648] transition-colors">My Orders</a>
-                <a href="#/account/my-wishlist" className="block py-1.5 hover:text-[#a87648] transition-colors">My Wishlist</a>
-                <a href="#/account/my-addresses" className="block py-1.5 hover:text-[#a87648] transition-colors">My Addresses</a>
-                <a href="#/account/my-wallet" className="block py-1.5 hover:text-[#a87648] transition-colors">My Wallet</a>
-                <a href="#/account/my-account" className="block py-1.5 hover:text-[#a87648] transition-colors">Account Settings</a>
+                {userName.toLowerCase().includes("admin") ? (
+                  <>
+                    <a href="#/admin" onClick={() => setProfileOpen(false)} className="block py-1.5 font-bold text-[#a87648] hover:underline">
+                      ⚡ Admin Control Panel
+                    </a>
+                    <a href="#/" onClick={() => setProfileOpen(false)} className="block py-1.5 hover:text-[#a87648] transition-colors">
+                      Storefront
+                    </a>
+                  </>
+                ) : (
+                  <>
+                    <a href="#/account/my-orders" onClick={() => setProfileOpen(false)} className="block py-1.5 hover:text-[#a87648] transition-colors">My Orders</a>
+                    <a href="#/account/my-wishlist" onClick={() => setProfileOpen(false)} className="block py-1.5 hover:text-[#a87648] transition-colors">My Wishlist</a>
+                    <a href="#/account/my-addresses" onClick={() => setProfileOpen(false)} className="block py-1.5 hover:text-[#a87648] transition-colors">My Addresses</a>
+                    <a href="#/account/my-wallet" onClick={() => setProfileOpen(false)} className="block py-1.5 hover:text-[#a87648] transition-colors">My Wallet</a>
+                    <a href="#/account/my-account" onClick={() => setProfileOpen(false)} className="block py-1.5 hover:text-[#a87648] transition-colors">Account Settings</a>
+                  </>
+                )}
                 <div className="my-2 border-t border-[#4b261a15]" />
                 <button
                   type="button"
@@ -215,7 +250,7 @@ export function Navigation({
                     setProfileOpen(false);
                     onLogout?.();
                   }}
-                  className="w-full text-left py-1.5 text-red-600 hover:text-red-800 transition-colors"
+                  className="w-full text-left py-1.5 text-red-600 hover:text-red-800 transition-colors cursor-pointer"
                 >
                   Log Out
                 </button>
