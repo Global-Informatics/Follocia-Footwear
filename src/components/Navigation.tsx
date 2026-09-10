@@ -58,16 +58,33 @@ export function Navigation({
   const searchResults = useMemo(() => {
     const q = searchQuery.trim().toLowerCase();
     if (!q) return FOLLICIA_PRODUCTS.slice(0, 10);
+    const words = q.split(/\s+/).filter(Boolean);
     return FOLLICIA_PRODUCTS.filter((p) => {
-      return (
-        p.name.toLowerCase().includes(q) ||
-        p.collection.toLowerCase().includes(q) ||
-        p.category.toLowerCase().includes(q) ||
-        p.color.toLowerCase().includes(q) ||
-        (p.colors && p.colors.toLowerCase().includes(q)) ||
-        p.silhouette.toLowerCase().includes(q) ||
-        String(p.price).includes(q)
-      );
+      const pCat = p.category.toLowerCase();
+      const catKeywords = [
+        pCat,
+        pCat === "heel" ? "heels heeled" : "",
+        pCat === "flat" ? "flats" : "",
+        pCat === "mule" ? "mules" : "",
+      ].filter(Boolean).join(" ");
+
+      const searchable = [
+        p.name,
+        p.collection,
+        p.category,
+        catKeywords,
+        p.color,
+        p.colors,
+        p.silhouette,
+        p.material,
+        p.id,
+        String(p.price),
+      ].join(" ").toLowerCase();
+
+      return words.every((w) => {
+        const root = w.replace(/s$/, "");
+        return searchable.includes(w) || searchable.includes(root);
+      });
     });
   }, [searchQuery]);
 

@@ -2,7 +2,7 @@ import { AnimatePresence, motion, useMotionValue, useSpring, useTransform } from
 import { useRef, useState, type MouseEvent } from "react";
 import { useCart } from "./CartContext";
 
-export type QuickItem = { id: string; title: string; edition: string; tone: string; price: string; image: string; description?: string };
+export type QuickItem = { id: string; title: string; edition: string; tone: string; price: string; image: string; description?: string; category?: string };
 const ease = [0.2, 0.8, 0.2, 1] as const;
 const sizes = ["38", "39", "40", "41"];
 

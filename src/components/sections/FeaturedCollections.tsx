@@ -13,6 +13,7 @@ const items: QuickItem[] = FOLLICIA_PRODUCTS.slice(0, 3).map((p) => ({
   price: formatINR.format(p.price),
   image: p.image,
   tone: p.color,
+  category: p.category,
 }));
 
 function Heart({ active }: { active: boolean }) {
@@ -131,7 +132,7 @@ export function FeaturedCollections() {
   const [catalogue, setCatalogue] = useState<QuickItem[]>(() =>
     getProducts()
       .filter((item) => item.status !== "Draft")
-      .map((item) => ({ id: item.id, title: item.title, edition: item.edition, tone: item.tone, price: item.price, image: productPrimaryImage(item) })),
+      .map((item) => ({ id: item.id, title: item.title, edition: item.edition, tone: item.tone, price: item.price, image: productPrimaryImage(item), category: item.category })),
   );
 
   useEffect(() => {
@@ -139,7 +140,7 @@ export function FeaturedCollections() {
       setCatalogue(
         getProducts()
           .filter((item) => item.status !== "Draft")
-          .map((item) => ({ id: item.id, title: item.title, edition: item.edition, tone: item.tone, price: item.price, image: productPrimaryImage(item) })),
+          .map((item) => ({ id: item.id, title: item.title, edition: item.edition, tone: item.tone, price: item.price, image: productPrimaryImage(item), category: item.category })),
       );
     window.addEventListener(COMMERCE_EVENT, sync);
     void syncCommerceFromBackend();
@@ -148,10 +149,26 @@ export function FeaturedCollections() {
 
   const visibleCatalogue = (catalogue.length ? catalogue : items)
     .filter((item) => {
-      const haystack = `${item.title} ${item.edition} ${item.tone}`.toLowerCase();
-      const matchesSearch = haystack.includes(query.trim().toLowerCase());
+      const qWords = query.trim().toLowerCase().split(/\s+/).filter(Boolean);
+      if (qWords.length > 0) {
+        let catIntent: string | null = null;
+        for (const w of qWords) {
+          if (w === "flat" || w === "flats") catIntent = "flat";
+          if (w === "heel" || w === "heels" || w === "heeled") catIntent = "heel";
+          if (w === "mule" || w === "mules") catIntent = "mule";
+        }
+        if (catIntent && (item.category || "").toLowerCase() !== catIntent) {
+          return false;
+        }
+        const nonCatWords = qWords.filter((w) => !["flat", "flats", "heel", "heels", "heeled", "mule", "mules"].includes(w));
+        if (nonCatWords.length > 0) {
+          const haystack = `${item.title} ${item.edition} ${item.tone}`.toLowerCase();
+          const matches = nonCatWords.every((w) => haystack.includes(w) || haystack.includes(w.replace(/s$/, "")));
+          if (!matches) return false;
+        }
+      }
       const matchesStatus = status === "All" || (status === "Ready to ship" ? !item.edition.toLowerCase().includes("80") : item.edition.includes(status));
-      return matchesSearch && matchesStatus;
+      return matchesStatus;
     })
     .sort((a, b) => {
       const priceA = Number(a.price.replace(/[^\d.]/g, "")) || 0;

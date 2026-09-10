@@ -48,8 +48,9 @@ function getColorHex(colorName: string): string {
   return "#f2e9d9"; // default ivory/nude/champagne
 }
 
-function priceNumber(price: string) {
-  return Number(price.replace(/[^\d.]/g, "")) || 0;
+function priceNumber(price: string | number) {
+  if (typeof price === "number") return price;
+  return Number(String(price).replace(/[^\d]/g, "")) || 0;
 }
 
 function slugify(value: string) {
@@ -349,9 +350,18 @@ export function ShopPage({
   const [products, setProducts] = useState<CommerceProduct[]>(() => liveProducts());
   const [query, setQuery] = useState("");
   const [status, setStatus] = useState("All");
-  const [tone, setTone] = useState("All");
+  const [materialFilter, setMaterialFilter] = useState("All");
   const [stock, setStock] = useState("All");
   const [sort, setSort] = useState("Featured");
+
+  const MATERIAL_OPTIONS = [
+    "All",
+    "Vegan Leather",
+    "Satin",
+    "Embroidered & Textile",
+    "Crystal & Embellished",
+    "Metallic & Glossy",
+  ];
 
   // Selected product state for the Order View
   const [selectedProduct, setSelectedProduct] = useState<CommerceProduct | null>(() => {
@@ -395,35 +405,166 @@ export function ShopPage({
     }
   }, [selectedProduct?.id]);
 
-  const tones = useMemo(() => ["All", ...Array.from(new Set(products.map((product) => product.tone)))], [products]);
+  const queryWords = useMemo(
+    () => query.trim().toLowerCase().split(/\s+/).filter(Boolean),
+    [query]
+  );
+
+  const categoryIntent = useMemo<"flat" | "heel" | "mule" | null>(() => {
+    for (const w of queryWords) {
+      if (w === "flat" || w === "flats") return "flat";
+      if (w === "heel" || w === "heels" || w === "heeled") return "heel";
+      if (w === "mule" || w === "mules") return "mule";
+    }
+    return null;
+  }, [queryWords]);
+
+  const nonCategoryWords = useMemo(() => {
+    return queryWords.filter(
+      (w) => !["flat", "flats", "heel", "heels", "heeled", "mule", "mules"].includes(w)
+    );
+  }, [queryWords]);
 
   const visible = useMemo(() => {
     return products
       .filter((product) => {
-        const haystack = `${product.title} ${product.edition} ${product.tone} ${product.status}`.toLowerCase();
-        const matchesQuery = haystack.includes(query.trim().toLowerCase());
-        const matchesCollection = selectedCollection === "All" || product.edition.toLowerCase().includes(selectedCollection.toLowerCase()) || product.title.toLowerCase().includes(selectedCollection.toLowerCase());
-        const matchesStatus = status === "All" || product.status === status;
-        const matchesTone = tone === "All" || product.tone === tone;
-        const matchesStock = stock === "All" || (stock === "Available now" ? product.available > 0 : product.available <= 12);
-        return matchesQuery && matchesCollection && matchesStatus && matchesTone && matchesStock;
+        // 1. Search Query filter (strictly separates Flat, Heel, and Mule when specified)
+        if (queryWords.length > 0) {
+          const pCat = (product.category || "").toLowerCase();
+
+          // Strict category intent: typing flat returns ONLY flats, heel returns ONLY heels, mule returns ONLY mules
+          if (categoryIntent) {
+            if (pCat !== categoryIntent) {
+              return false;
+            }
+          }
+
+          // If there are other words in query (e.g. "aura", "black", "pearl", "rose", "1449")
+          if (nonCategoryWords.length > 0) {
+            const searchable = [
+              product.title,
+              product.collection,
+              product.edition,
+              product.tone,
+              product.material,
+              product.silhouette,
+              product.id,
+              String(priceNumber(product.price)),
+            ].join(" ").toLowerCase();
+
+            const matchesAllOtherWords = nonCategoryWords.every((word) => {
+              const root = word.replace(/s$/, "");
+              return searchable.includes(word) || searchable.includes(root);
+            });
+            if (!matchesAllOtherWords) return false;
+          }
+        }
+
+        // 2. Collection filter: if user typed a search query (like "aura heel" or "flat"), do not restrict to previously selected collection tab!
+        if (queryWords.length === 0 && selectedCollection !== "All") {
+          const pColl = (product.collection || product.edition || "").toLowerCase();
+          if (!pColl.includes(selectedCollection.toLowerCase())) {
+            return false;
+          }
+        }
+
+        // 3. Status filter
+        if (status !== "All" && product.status !== status) {
+          return false;
+        }
+
+        // 4. Material filter
+        if (materialFilter !== "All") {
+          const mat = (product.material || "").toLowerCase();
+          const tone = (product.tone || "").toLowerCase();
+          const title = (product.title || "").toLowerCase();
+          const combined = `${mat} ${tone} ${title}`;
+
+          if (materialFilter === "Vegan Leather") {
+            if (!combined.includes("leather")) return false;
+          } else if (materialFilter === "Satin") {
+            if (!combined.includes("satin")) return false;
+          } else if (materialFilter === "Embroidered & Textile") {
+            const isTextile =
+              combined.includes("textile") ||
+              combined.includes("embroider") ||
+              combined.includes("woven") ||
+              combined.includes("appliqué") ||
+              combined.includes("print") ||
+              combined.includes("mesh");
+            if (!isTextile) return false;
+          } else if (materialFilter === "Crystal & Embellished") {
+            const isEmbellished =
+              combined.includes("crystal") ||
+              combined.includes("embellish") ||
+              combined.includes("pearl") ||
+              combined.includes("bead") ||
+              combined.includes("sheer");
+            if (!isEmbellished) return false;
+          } else if (materialFilter === "Metallic & Glossy") {
+            const isMetallic =
+              combined.includes("metallic") ||
+              combined.includes("glossy") ||
+              combined.includes("chrome") ||
+              combined.includes("shine") ||
+              combined.includes("high-shine") ||
+              combined.includes("patent");
+            if (!isMetallic) return false;
+          } else {
+            if (!combined.includes(materialFilter.toLowerCase())) return false;
+          }
+        }
+
+        // 5. Stock filter
+        if (stock === "Available now" && product.available <= 0) return false;
+        if (stock === "Last pairs" && product.available > 12) return false;
+
+        return true;
       })
       .sort((a, b) => {
-        if (sort === "Price low to high") return priceNumber(a.price) - priceNumber(b.price);
-        if (sort === "Price high to low") return priceNumber(b.price) - priceNumber(a.price);
+        const pA = priceNumber(a.price);
+        const pB = priceNumber(b.price);
+        if (sort === "Price low to high") return pA - pB;
+        if (sort === "Price high to low") return pB - pA;
         if (sort === "Most limited") return a.produced - b.produced;
         if (sort === "Availability") return b.available - a.available;
         return a.title.localeCompare(b.title);
       });
-  }, [products, query, selectedCollection, status, tone, stock, sort]);
+  }, [products, queryWords, categoryIntent, nonCategoryWords, selectedCollection, status, materialFilter, stock, sort]);
 
-  // Keep selected product FIRST in the catalogue
+  // Keep selected product FIRST in the catalogue ONLY when sort === "Featured"!
+  // If user selected "Price low to high" or "Price high to low", strictly respect the price order!
   const sortedProducts = useMemo(() => {
+    if (sort !== "Featured") {
+      return visible;
+    }
     if (!selectedProduct) return visible;
     const current = visible.find((p) => p.id === selectedProduct.id);
     const rest = visible.filter((p) => p.id !== selectedProduct.id);
     return current ? [current, ...rest] : visible;
-  }, [visible, selectedProduct]);
+  }, [visible, selectedProduct, sort]);
+
+  // Automatically sync selected product with search query and active filters:
+  // When user searches (e.g. "flat", "heel", "mule") or changes filters,
+  // ensure the first matching product is selected so the hero order piece always matches the search query!
+  const prevQueryRef = useRef(query);
+  useEffect(() => {
+    if (visible.length === 0) {
+      setSelectedProduct(null);
+      return;
+    }
+
+    const queryChanged = prevQueryRef.current !== query;
+    prevQueryRef.current = query;
+
+    const isCurrentInVisible = selectedProduct && visible.some((p) => p.id === selectedProduct.id);
+
+    if (!isCurrentInVisible) {
+      setSelectedProduct(visible[0]);
+    } else if (queryChanged && query.trim().length > 0) {
+      setSelectedProduct(visible[0]);
+    }
+  }, [query, visible, selectedProduct]);
 
   const handleSelectProduct = (product: CommerceProduct) => {
     setSelectedProduct(product);
@@ -528,8 +669,17 @@ export function ShopPage({
                 value={query} 
                 onChange={(e) => setQuery(e.target.value)} 
                 placeholder="Search..." 
-                className="h-9 w-32 md:w-40 bg-transparent pl-9 pr-3 text-xs outline-none transition-all focus:w-48 placeholder:text-[var(--ink)]/40 text-[var(--ink)]" 
+                className="h-9 w-32 md:w-40 bg-transparent pl-9 pr-7 text-xs outline-none transition-all focus:w-48 placeholder:text-[var(--ink)]/40 text-[var(--ink)]" 
               />
+              {query && (
+                <button 
+                  onClick={() => setQuery("")} 
+                  title="Clear search" 
+                  className="absolute right-2.5 text-xs text-[var(--ink)]/40 hover:text-[var(--ink)]"
+                >
+                  ✕
+                </button>
+              )}
             </div>
             
             <div className="h-4 w-px bg-[var(--ink)]/15 hidden sm:block" />
@@ -544,9 +694,9 @@ export function ShopPage({
 
               <FilterDropdown
                 label="MATERIAL"
-                value={tone}
-                options={tones}
-                onChange={setTone}
+                value={materialFilter}
+                options={MATERIAL_OPTIONS}
+                onChange={setMaterialFilter}
               />
 
               <FilterDropdown
@@ -569,7 +719,14 @@ export function ShopPage({
 
           <button 
             type="button"
-            onClick={() => { setQuery(""); setStatus("All"); setTone("All"); setStock("All"); setSort("Featured"); setSelectedCollection("All"); }} 
+            onClick={() => {
+              setQuery("");
+              setStatus("All");
+              setMaterialFilter("All");
+              setStock("All");
+              setSort("Featured");
+              setSelectedCollection("All");
+            }} 
             className="text-[10px] uppercase tracking-widest text-[var(--ink)]/50 hover:text-[var(--gold)] transition-colors cursor-pointer"
           >
             CLEAR

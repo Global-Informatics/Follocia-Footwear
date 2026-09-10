@@ -17,6 +17,10 @@ export type CommerceProduct = {
   produced: number;
   reserved: number;
   available: number;
+  category?: string;
+  material?: string;
+  silhouette?: string;
+  collection?: string;
 };
 
 export type CommerceOrder = {
@@ -84,6 +88,10 @@ const catalogueCommerceProducts: CommerceProduct[] = FOLLICIA_PRODUCTS.map((p) =
   produced: 120,
   reserved: 24,
   available: 96,
+  category: p.category,
+  material: p.material,
+  silhouette: p.silhouette,
+  collection: p.collection,
 }));
 
 export const seedProducts: CommerceProduct[] = [
@@ -158,7 +166,16 @@ export function isOldProduct(product: CommerceProduct): boolean {
 
 function normalizeProduct(product: CommerceProduct): CommerceProduct {
   const images = productImages(product);
-  return { ...product, image: images[0] || product.image || "", images };
+  const matched = FOLLICIA_PRODUCTS.find((p) => p.id.toLowerCase() === product.id.toLowerCase());
+  return {
+    ...product,
+    image: images[0] || product.image || "",
+    images,
+    category: matched?.category || product.category || "Heel",
+    material: matched?.material || product.material || "Vegan Leather",
+    silhouette: matched?.silhouette || product.silhouette || "",
+    collection: matched?.collection || product.collection || product.edition.replace(/ Collection$/i, ""),
+  };
 }
 
 export function getProducts() {
