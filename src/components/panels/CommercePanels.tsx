@@ -55,13 +55,21 @@ function AccountShell({ profile, active, onActive, children }: { profile: Custom
               <button 
                 key={item} 
                 onClick={() => onActive(item)} 
-                className={`relative px-8 py-3.5 text-left text-sm uppercase tracking-[0.1em] transition-all duration-300 ${active === item ? "text-[var(--gold)] font-semibold" : "text-[var(--ink)]/60 hover:text-[var(--ink)] hover:bg-[var(--ink)]/5"}`}
+                className={`relative px-8 py-3.5 text-left text-sm uppercase tracking-[0.1em] transition-all duration-300 cursor-pointer ${active === item ? "text-[var(--gold)] font-semibold" : "text-[var(--ink)]/60 hover:text-[var(--ink)] hover:bg-[var(--ink)]/5"}`}
               >
                 {active === item && <motion.div layoutId="activeNav" className="absolute left-0 top-0 bottom-0 w-1 bg-[var(--gold)]" />}
                 {item}
               </button>
             ))}
           </nav>
+          <div className="mt-4 flex flex-col gap-2">
+            <a href="#/" className="block text-center border border-[var(--ink)]/15 bg-white/80 py-3 text-xs uppercase tracking-[0.14em] hover:bg-white hover:text-[var(--gold)] transition-colors shadow-sm">
+              ← Storefront
+            </a>
+            <a href="#/shop" className="block text-center border border-[var(--ink)]/15 bg-white/80 py-3 text-xs uppercase tracking-[0.14em] hover:bg-white hover:text-[var(--gold)] transition-colors shadow-sm">
+              Explore Shop
+            </a>
+          </div>
         </aside>
         
         <section className="min-h-[60vh] glass border border-[var(--ink)]/10 bg-white/80 p-8 md:p-12 shadow-[var(--shadow-soft)]">
@@ -100,62 +108,82 @@ function EmptyState({ title, copy, action }: { title: string; copy?: string; act
   );
 }
 
-function AddressModal({ profile, onClose, onSave }: { profile: CustomerProfile; onClose: () => void; onSave: (address: CommerceAddress) => void }) {
-  const [address, setAddress] = useState<CommerceAddress>({
-    id: `addr-${Date.now()}`,
-    firstName: profile.firstName,
-    lastName: profile.lastName,
-    company: "",
-    address: "",
-    address2: "",
-    city: "",
-    country: "India",
-    region: "",
-    zip: "",
-    phone: profile.phone,
-    isDefault: profile.addresses.length === 0,
+function AddressModal({
+  profile,
+  initialAddress,
+  onClose,
+  onSave,
+}: {
+  profile: CustomerProfile;
+  initialAddress?: CommerceAddress | null;
+  onClose: () => void;
+  onSave: (address: CommerceAddress) => void;
+}) {
+  const [address, setAddress] = useState<CommerceAddress>(() => {
+    if (initialAddress) return { ...initialAddress };
+    return {
+      id: `addr-${Date.now()}`,
+      firstName: profile.firstName,
+      lastName: profile.lastName,
+      company: "",
+      address: "",
+      address2: "",
+      city: "",
+      country: "India",
+      region: "",
+      zip: "",
+      phone: profile.phone,
+      isDefault: profile.addresses.length === 0,
+    };
   });
   const set = (key: keyof CommerceAddress, value: string | boolean) => setAddress((current) => ({ ...current, [key]: value }));
 
   return (
-    <div className="fixed inset-0 z-[100] bg-[var(--ink)]/80 backdrop-blur-md p-4 flex items-center justify-center">
+    <div className="fixed inset-0 z-[9999] bg-black/70 backdrop-blur-md p-4 flex items-center justify-center">
       <motion.form
-        initial={{ opacity: 0, scale: 0.95 }}
-        animate={{ opacity: 1, scale: 1 }}
+        initial={{ opacity: 0, scale: 0.95, y: 15 }}
+        animate={{ opacity: 1, scale: 1, y: 0 }}
         onSubmit={(event) => {
           event.preventDefault();
           onSave(address);
         }}
-        className="flex max-h-[90vh] w-full max-w-[700px] flex-col glass border border-[var(--gold)]/20 bg-white shadow-[var(--shadow-luxe)]"
+        className="relative flex max-h-[90vh] w-full max-w-[720px] flex-col rounded-2xl border border-[#4b261a]/20 bg-[#fffdfa] text-[#351c13] shadow-2xl overflow-hidden"
       >
-        <div className="flex items-center justify-between px-10 py-8 border-b border-[var(--ink)]/10">
-          <h2 className="font-display text-2xl">Add New Address</h2>
-          <button type="button" onClick={onClose} aria-label="Close" className="text-3xl font-light hover:text-[var(--gold)] transition-colors">×</button>
+        <div className="flex items-center justify-between px-8 py-5 border-b border-[#4b261a]/15 bg-[#fbf6ed]">
+          <div>
+            <span className="text-[10px] font-semibold uppercase tracking-[0.2em] text-[#a87648]">Private Atelier</span>
+            <h2 className="font-serif text-2xl font-medium text-[#351c13]">
+              {initialAddress ? "Edit Delivery Address" : "Add New Address"}
+            </h2>
+          </div>
+          <button type="button" onClick={onClose} aria-label="Close" className="text-3xl font-light text-[#351c13]/60 hover:text-[#a87648] cursor-pointer transition-colors leading-none">×</button>
         </div>
         
-        <div className="grid flex-1 gap-6 overflow-y-auto px-10 py-8">
-          <div className="grid gap-6 md:grid-cols-2">
-            <Field label="* First name" value={address.firstName} onChange={(v) => set("firstName", v)} required />
-            <Field label="* Last name" value={address.lastName} onChange={(v) => set("lastName", v)} required />
+        <div className="grid flex-1 gap-5 overflow-y-auto px-8 py-6 bg-[#fffdfa]">
+          <div className="grid gap-5 md:grid-cols-2">
+            <Field label="* First name" value={address.firstName} onChange={(v) => set("firstName", v)} required placeholder="First name" />
+            <Field label="* Last name" value={address.lastName} onChange={(v) => set("lastName", v)} required placeholder="Last name" />
           </div>
-          <Field label="Company name" value={address.company} onChange={(v) => set("company", v)} />
-          <Field label="Address" value={address.address} onChange={(v) => set("address", v)} required />
-          <Field label="Address - line 2" value={address.address2} onChange={(v) => set("address2", v)} placeholder="Apartment, suite, floor" />
-          <Field label="City" value={address.city} onChange={(v) => set("city", v)} required />
-          <div className="grid gap-6 md:grid-cols-2">
-            <Field label="Country/Region" value={address.country} onChange={(v) => set("country", v)} />
-            <Field label="Region" value={address.region} onChange={(v) => set("region", v)} />
-            <Field label="Zip / Postal code" value={address.zip} onChange={(v) => set("zip", v)} />
-            <Field label="Phone" value={address.phone} onChange={(v) => set("phone", v)} />
+          <Field label="Company name (optional)" value={address.company} onChange={(v) => set("company", v)} placeholder="Company" />
+          <Field label="* Street Address" value={address.address} onChange={(v) => set("address", v)} required placeholder="House number and street name" />
+          <Field label="Apartment / Suite / Floor" value={address.address2} onChange={(v) => set("address2", v)} placeholder="Apartment, suite, unit, etc." />
+          <div className="grid gap-5 md:grid-cols-3">
+            <Field label="* City" value={address.city} onChange={(v) => set("city", v)} required placeholder="City" />
+            <Field label="State / Region" value={address.region} onChange={(v) => set("region", v)} placeholder="State" />
+            <Field label="* PIN / Postal code" value={address.zip} onChange={(v) => set("zip", v)} required placeholder="PIN code" />
           </div>
-          <label className="mt-2 flex items-center gap-3 text-sm text-[var(--ink)]/70 cursor-pointer">
-            <input type="checkbox" checked={address.isDefault} onChange={(event) => set("isDefault", event.target.checked)} className="w-4 h-4 accent-[var(--gold)]" />
-            Make this my default address
+          <div className="grid gap-5 md:grid-cols-2">
+            <Field label="Country" value={address.country} onChange={(v) => set("country", v)} placeholder="India" />
+            <Field label="* Contact Phone" value={address.phone} onChange={(v) => set("phone", v)} required placeholder="10-digit mobile number" />
+          </div>
+          <label className="mt-2 flex items-center gap-3 text-sm text-[#351c13]/80 cursor-pointer select-none">
+            <input type="checkbox" checked={address.isDefault} onChange={(event) => set("isDefault", event.target.checked)} className="w-4 h-4 accent-[#4b261a] rounded cursor-pointer" />
+            Make this my default delivery address
           </label>
         </div>
-        <footer className="border-t border-[var(--ink)]/10 px-10 py-8 flex justify-end gap-4 bg-[var(--champagne)]/10">
-          <button type="button" onClick={onClose} className="border border-[var(--ink)]/20 px-8 py-3 text-xs uppercase tracking-[0.1em] hover:bg-white transition-colors">Cancel</button>
-          <button className="magnetic-btn bg-[var(--ink)] px-8 py-3 text-xs uppercase tracking-[0.1em] text-white hover:bg-[var(--gold)] hover:text-[var(--ink)] transition-colors">Add Address</button>
+        <footer className="border-t border-[#4b261a]/15 px-8 py-4 flex justify-end gap-3 bg-[#fbf6ed]">
+          <button type="button" onClick={onClose} className="rounded-lg border border-[#4b261a]/20 bg-white px-6 py-2.5 text-xs font-semibold uppercase tracking-[0.12em] text-[#351c13] hover:bg-[#f2e9d9] cursor-pointer transition-colors">Cancel</button>
+          <button type="submit" className="rounded-lg bg-[#351c13] px-7 py-2.5 text-xs font-semibold uppercase tracking-[0.12em] text-[#fffaf0] hover:bg-[#a87648] cursor-pointer transition-all shadow-md">{initialAddress ? "Save Changes" : "Add Address"}</button>
         </footer>
       </motion.form>
     </div>
@@ -164,9 +192,15 @@ function AddressModal({ profile, onClose, onSave }: { profile: CustomerProfile; 
 
 function Field({ label, value, onChange, required, placeholder }: { label: string; value: string; onChange: (value: string) => void; required?: boolean; placeholder?: string }) {
   return (
-    <label className="grid gap-2 text-xs uppercase tracking-[0.15em] text-[var(--ink)]/50">
+    <label className="grid gap-1.5 text-xs font-semibold uppercase tracking-[0.12em] text-[#6c3d2c]">
       <span>{label}</span>
-      <input required={required} value={value} placeholder={placeholder} onChange={(event) => onChange(event.target.value)} className="h-12 border border-[var(--ink)]/15 bg-transparent px-4 normal-case tracking-normal text-[var(--ink)] outline-none transition-all focus:border-[var(--gold)] focus:shadow-[0_0_10px_oklch(0.78_0.12_80/0.1)]" />
+      <input
+        required={required}
+        value={value}
+        placeholder={placeholder}
+        onChange={(event) => onChange(event.target.value)}
+        className="h-11 rounded-lg border border-[#4b261a]/20 bg-white px-4 text-sm normal-case tracking-normal text-[#351c13] placeholder-[#4b261a]/40 outline-none transition-all focus:border-[#a87648] focus:ring-2 focus:ring-[#a87648]/20 shadow-sm"
+      />
     </label>
   );
 }
@@ -176,11 +210,37 @@ export function AccountPanel({ session, initialSection = "My Orders" }: { sessio
   const [active, setActive] = useState<AccountSection>(initialSection);
   const [orders, setOrders] = useState(() => getOrders());
   const [showAddress, setShowAddress] = useState(false);
+  const [editingAddress, setEditingAddress] = useState<CommerceAddress | null>(null);
   const [products, setProducts] = useState(() => getProducts());
   const myOrders = orders.filter((order) => order.customerId === profile.id || order.email.toLowerCase() === profile.email.toLowerCase());
   const localWishlist = readLocalWishlist();
   const mergedWishlist = Array.from(new Set([...profile.wishlist, ...localWishlist]));
   const deliveredOrders = myOrders.filter((order) => order.deliveryStatus === "Delivered");
+
+  useEffect(() => {
+    if (initialSection) {
+      setActive(initialSection);
+    }
+  }, [initialSection]);
+
+  const handleSectionSelect = (section: AccountSection) => {
+    setActive(section);
+    const slugMap: Record<AccountSection, string> = {
+      "My Orders": "my-orders",
+      "My Wishlist": "my-wishlist",
+      "My Addresses": "my-addresses",
+      "My Wallet": "my-wallet",
+      "My Coupons": "my-coupons",
+      "Gift Cards": "gift-cards",
+      "My Reviews": "my-reviews",
+      "Notifications": "notifications",
+      "My Subscriptions": "my-subscriptions",
+      "My Account": "my-account",
+    };
+    if (typeof window !== "undefined") {
+      window.location.hash = `/account/${slugMap[section] || "my-orders"}`;
+    }
+  };
 
   useEffect(() => {
     const sync = () => {
@@ -206,6 +266,16 @@ export function AccountPanel({ session, initialSection = "My Orders" }: { sessio
     upsertCustomer(next);
     void saveCustomerRemote(next);
     setProfile(next);
+    try {
+      const sess = readAuthSession();
+      if (sess && sess.user) {
+        sess.user.name = next.name;
+        if (next.phone) sess.user.phone = next.phone;
+        localStorage.setItem("follocia_session", JSON.stringify(sess));
+      }
+    } catch {
+      // ignore
+    }
   };
   const updateOrder = (next: CommerceOrder) => {
     const updated = orders.map((order) => (order.id === next.id ? next : order));
@@ -215,7 +285,7 @@ export function AccountPanel({ session, initialSection = "My Orders" }: { sessio
   };
 
   return (
-    <AccountShell profile={profile} active={active} onActive={setActive}>
+    <AccountShell profile={profile} active={active} onActive={handleSectionSelect}>
       {active === "My Orders" && (
         <>
           <SectionHead title="My Orders" copy="View your order history or track the status of a recent reservation." />
@@ -238,14 +308,37 @@ export function AccountPanel({ session, initialSection = "My Orders" }: { sessio
               {profile.addresses.map((address) => (
                 <article key={address.id} className="glass border border-[var(--ink)]/10 p-6 text-sm flex justify-between items-start group hover:border-[var(--gold)]/30 transition-colors shadow-[var(--shadow-soft)]">
                   <div>
-                    {address.isDefault && <span className="inline-block bg-[var(--gold)] px-2 py-0.5 text-[0.6rem] uppercase tracking-widest text-[var(--ink)] mb-3 rounded-sm">Default</span>}
+                    {address.isDefault && <span className="inline-block bg-[var(--gold)] px-2 py-0.5 text-[0.6rem] uppercase tracking-widest text-[var(--ink)] mb-3 rounded-sm font-semibold">Default</span>}
                     <strong className="block text-lg font-display mb-1">{address.firstName} {address.lastName}</strong>
-                    <p className="text-[var(--ink)]/60 leading-relaxed">{address.address}{address.address2 ? `, ${address.address2}` : ""}<br />{address.city}, {address.region} {address.zip}<br />{address.country} · {address.phone}</p>
+                    <p className="text-[var(--ink)]/70 leading-relaxed">
+                      {address.address}{address.address2 ? `, ${address.address2}` : ""}<br />
+                      {address.city}, {address.region} {address.zip}<br />
+                      {address.country} · {address.phone}
+                    </p>
                   </div>
-                  <button className="text-[var(--gold)] text-xs uppercase tracking-[0.1em] opacity-0 group-hover:opacity-100 transition-opacity">Edit</button>
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setEditingAddress(address)}
+                      className="px-3 py-1.5 rounded border border-[var(--gold)] text-[var(--gold)] text-xs uppercase tracking-[0.1em] hover:bg-[var(--gold)] hover:text-white transition-all cursor-pointer font-medium"
+                    >
+                      Edit
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (window.confirm("Are you sure you want to remove this address?")) {
+                          saveProfile({ ...profile, addresses: profile.addresses.filter((a) => a.id !== address.id) });
+                        }
+                      }}
+                      className="px-3 py-1.5 rounded border border-neutral-300 text-neutral-500 text-xs uppercase tracking-[0.1em] hover:border-red-500 hover:text-red-600 transition-all cursor-pointer font-medium"
+                    >
+                      Delete
+                    </button>
+                  </div>
                 </article>
               ))}
-              <button onClick={() => setShowAddress(true)} className="w-fit border border-[var(--ink)]/20 px-9 py-4 text-xs uppercase tracking-[0.1em] text-[var(--ink)] hover:border-[var(--gold)] transition-colors mt-4">Add New Address</button>
+              <button onClick={() => { setEditingAddress(null); setShowAddress(true); }} className="w-fit border border-[var(--ink)]/20 px-9 py-4 text-xs uppercase tracking-[0.1em] text-[var(--ink)] hover:border-[var(--gold)] hover:text-[var(--gold)] transition-colors mt-4 cursor-pointer">Add New Address</button>
             </div>
           )}
         </>
@@ -325,14 +418,24 @@ export function AccountPanel({ session, initialSection = "My Orders" }: { sessio
       {active === "My Account" && <AccountForm profile={profile} onSave={saveProfile} />}
       
       <AnimatePresence>
-        {showAddress && (
+        {(showAddress || editingAddress !== null) && (
           <AddressModal
             profile={profile}
-            onClose={() => setShowAddress(false)}
-            onSave={(address) => {
-              const addresses = address.isDefault ? profile.addresses.map((item) => ({ ...item, isDefault: false })) : profile.addresses;
-              saveProfile({ ...profile, addresses: [...addresses, address] });
+            initialAddress={editingAddress}
+            onClose={() => {
               setShowAddress(false);
+              setEditingAddress(null);
+            }}
+            onSave={(savedAddr) => {
+              let updated = editingAddress
+                ? profile.addresses.map((a) => (a.id === savedAddr.id ? savedAddr : a))
+                : [...profile.addresses, savedAddr];
+              if (savedAddr.isDefault) {
+                updated = updated.map((a) => ({ ...a, isDefault: a.id === savedAddr.id }));
+              }
+              saveProfile({ ...profile, addresses: updated });
+              setShowAddress(false);
+              setEditingAddress(null);
             }}
           />
         )}
@@ -343,8 +446,17 @@ export function AccountPanel({ session, initialSection = "My Orders" }: { sessio
 
 function AccountForm({ profile, onSave }: { profile: CustomerProfile; onSave: (profile: CustomerProfile) => void }) {
   const [draft, setDraft] = useState(profile);
+  const [saved, setSaved] = useState(false);
   useEffect(() => setDraft(profile), [profile]);
-  const update = (key: keyof CustomerProfile, value: string) => setDraft((current) => ({ ...current, [key]: value, name: key === "firstName" || key === "lastName" ? `${key === "firstName" ? value : current.firstName} ${key === "lastName" ? value : current.lastName}`.trim() : current.name }));
+  const update = (key: keyof CustomerProfile, value: string) =>
+    setDraft((current) => ({
+      ...current,
+      [key]: value,
+      name:
+        key === "firstName" || key === "lastName"
+          ? `${key === "firstName" ? value : current.firstName} ${key === "lastName" ? value : current.lastName}`.trim()
+          : current.name,
+    }));
 
   return (
     <>
@@ -353,19 +465,42 @@ function AccountForm({ profile, onSave }: { profile: CustomerProfile; onSave: (p
         onSubmit={(event) => {
           event.preventDefault();
           onSave(draft);
+          setSaved(true);
+          setTimeout(() => setSaved(false), 4000);
         }}
         className="border-b border-[var(--ink)]/10 pb-12 mb-10"
       >
         <h2 className="font-display text-2xl">Personal info</h2>
         <p className="mt-2 text-sm text-[var(--ink)]/60">Update your private client information.</p>
-        <div className="mt-8 grid max-w-[600px] gap-6 md:grid-cols-2">
+
+        {saved && (
+          <div className="mt-4 p-4 rounded-lg bg-[#f0fdf4] border border-[#86efac] text-[#166534] text-sm flex items-center gap-2.5 font-medium shadow-sm">
+            <span className="text-base font-bold">✓</span> Personal information updated successfully!
+          </div>
+        )}
+
+        <div className="mt-6 grid max-w-[600px] gap-6 md:grid-cols-2">
           <Field label="First name" value={draft.firstName} onChange={(value) => update("firstName", value)} />
           <Field label="Last name" value={draft.lastName} onChange={(value) => update("lastName", value)} />
           <Field label="Phone" value={draft.phone} onChange={(value) => update("phone", value)} />
         </div>
         <div className="mt-8 flex gap-4">
-          <button type="button" onClick={() => setDraft(profile)} className="border border-[var(--ink)]/20 px-8 py-3 text-xs uppercase tracking-[0.1em] hover:bg-[var(--ink)]/5 transition-colors">Discard</button>
-          <button className="magnetic-btn bg-[var(--ink)] px-8 py-3 text-xs uppercase tracking-[0.1em] text-white hover:bg-[var(--gold)] hover:text-[var(--ink)] transition-colors">Update Info</button>
+          <button
+            type="button"
+            onClick={() => {
+              setDraft(profile);
+              setSaved(false);
+            }}
+            className="border border-[var(--ink)]/20 px-8 py-3 text-xs uppercase tracking-[0.1em] hover:bg-[var(--ink)]/5 transition-colors cursor-pointer"
+          >
+            Discard
+          </button>
+          <button
+            type="submit"
+            className="magnetic-btn bg-[var(--ink)] px-8 py-3 text-xs uppercase tracking-[0.1em] text-white hover:bg-[var(--gold)] hover:text-[var(--ink)] transition-colors cursor-pointer font-medium"
+          >
+            Update Info
+          </button>
         </div>
       </form>
       <section className="text-sm">

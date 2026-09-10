@@ -94,6 +94,8 @@ export function App() {
     setLoginOpen(false);
     if (next.user.role === "admin") {
       window.location.hash = "/admin";
+    } else {
+      window.location.hash = "/account/my-orders";
     }
   };
 

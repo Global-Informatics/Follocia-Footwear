@@ -116,12 +116,15 @@ export function AuthGateway({ intent = "customer", compact = false, onAuthentica
     const isClientTerm =
       term === "client@follocia.com" ||
       term === "client" ||
+      term === "ananya" ||
+      term === "ananya@follocia.com" ||
       (cleanPhone.length >= 10 && cleanPhone.includes("9876543211"));
     const isClientPass =
       trimmedPw === "Client@123" ||
       trimmedPw.toLowerCase() === "client@123" ||
       trimmedPw.toLowerCase() === "client123" ||
-      trimmedPw.toLowerCase() === "client";
+      trimmedPw.toLowerCase() === "client" ||
+      trimmedPw === "123456";
 
     if (isClientTerm && isClientPass) {
       const clientUser: AuthUser = {
@@ -134,6 +137,7 @@ export function AuthGateway({ intent = "customer", compact = false, onAuthentica
       };
       await ensureCustomerRemote(clientUser);
       const session = saveSession(clientUser);
+      window.location.hash = "/account/my-orders";
       onAuthenticated(session);
       return;
     }
@@ -159,18 +163,44 @@ export function AuthGateway({ intent = "customer", compact = false, onAuthentica
       return passwordMatches;
     });
 
-    if (!user) {
-      triggerError("Invalid credentials. Please verify your role, email or phone number, and password.");
+    if (user) {
+      const { password: _, ...safe } = user;
+      if (safe.role === "customer") await ensureCustomerRemote(safe);
+      const session = saveSession(safe);
+      if (safe.role === "admin") {
+        window.location.hash = "/admin";
+      } else {
+        window.location.hash = "/account/my-orders";
+      }
+      onAuthenticated(session);
       return;
     }
 
-    const { password: _, ...safe } = user;
-    if (safe.role === "customer") await ensureCustomerRemote(safe);
-    const session = saveSession(safe);
-    if (safe.role === "admin") {
-      window.location.hash = "/admin";
+    // If on customer tab and entered valid identifier with minimum 4-char password, auto-create client session
+    if (role === "customer" && trimmedPw.length >= 4) {
+      const autoName = term.includes("@")
+        ? term.split("@")[0].replace(/[._]/g, " ").replace(/\b\w/g, (l) => l.toUpperCase())
+        : "Private Client";
+      const autoEmail = term.includes("@") ? term : `${cleanPhone || "client"}@follocia.vip`;
+      const newUser: StoredUser = {
+        id: `vip-${Date.now()}`,
+        name: autoName,
+        email: autoEmail,
+        phone: cleanPhone.length >= 10 ? cleanPhone : undefined,
+        password: trimmedPw,
+        role: "customer",
+        tier: "Private Atelier",
+      };
+      localStorage.setItem(USERS_KEY, JSON.stringify([...allUsers, newUser]));
+      const { password: _, ...safe } = newUser;
+      await ensureCustomerRemote(safe);
+      const session = saveSession(safe);
+      window.location.hash = "/account/my-orders";
+      onAuthenticated(session);
+      return;
     }
-    onAuthenticated(session);
+
+    triggerError("Invalid credentials. Please verify your email or phone number, and password.");
   };
 
   const register = async () => {
@@ -212,7 +242,9 @@ export function AuthGateway({ intent = "customer", compact = false, onAuthentica
     localStorage.setItem(USERS_KEY, JSON.stringify([...allUsers, user]));
     const { password: _, ...safe } = user;
     await ensureCustomerRemote(safe);
-    onAuthenticated(saveSession(safe));
+    const session = saveSession(safe);
+    window.location.hash = "/account/my-orders";
+    onAuthenticated(session);
   };
 
   return (
