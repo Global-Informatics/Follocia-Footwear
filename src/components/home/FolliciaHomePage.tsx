@@ -68,9 +68,6 @@ export function FolliciaHomePage() {
   const [checkoutOpen, setCheckoutOpen] = useState(false);
   const [isPaying, setIsPaying] = useState(false);
   const [toastMessage, setToastMessage] = useState("");
-  const [quickProduct, setQuickProduct] = useState<FolliciaProduct | null>(null);
-  const [quickSize, setQuickSize] = useState<number | null>(null);
-  const [quickColor, setQuickColor] = useState<string>("");
   const [cursorOffset, setCursorOffset] = useState({ x: 0, y: 0 });
 
   // Search state & dynamic backend store integration
@@ -110,7 +107,6 @@ export function FolliciaHomePage() {
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === "Escape") {
-        setQuickProduct(null);
         setBagOpen(false);
         setCheckoutOpen(false);
         setSearchOpen(false);
@@ -122,7 +118,7 @@ export function FolliciaHomePage() {
 
   // Prevent background body scroll when any modal or drawer is open
   useEffect(() => {
-    if (quickProduct || bagOpen || checkoutOpen || searchOpen) {
+    if (bagOpen || checkoutOpen || searchOpen) {
       document.body.style.overflow = "hidden";
     } else {
       document.body.style.overflow = "";
@@ -130,7 +126,7 @@ export function FolliciaHomePage() {
     return () => {
       document.body.style.overflow = "";
     };
-  }, [quickProduct, bagOpen, checkoutOpen, searchOpen]);
+  }, [bagOpen, checkoutOpen, searchOpen]);
 
   const searchResults = useMemo(() => {
     const q = searchQuery.trim().toLowerCase();
@@ -167,36 +163,6 @@ export function FolliciaHomePage() {
       showToast(exists ? `Removed ${productName} from wishlist` : `Saved ${productName} to wishlist`);
       return next;
     });
-  };
-
-  const handleOpenQuickView = (product: FolliciaProduct) => {
-    setQuickProduct(product);
-    setQuickSize(null);
-    setQuickColor(product.color);
-  };
-
-  const handleAddToBag = (product: FolliciaProduct) => {
-    if (!quickSize) {
-      showToast("Please select a size");
-      return;
-    }
-    const color = quickColor || product.color;
-    setBag((prev) => {
-      const match = prev.find(
-        (item) => item.product.id === product.id && item.size === quickSize && item.color === color
-      );
-      if (match) {
-        return prev.map((item) =>
-          item === match ? { ...item, quantity: item.quantity + 1 } : item
-        );
-      }
-      return [...prev, { product, size: quickSize, color, quantity: 1 }];
-    });
-    showToast(`${product.name} · EU ${quickSize} added to your bag`);
-    setQuickProduct(null);
-    setQuickSize(null);
-    setQuickColor("");
-    setBagOpen(true);
   };
 
   const handleUpdateBagQty = (target: BagItem, change: number) => {
@@ -547,25 +513,27 @@ export function FolliciaHomePage() {
 
             return (
               <article key={product.id} className="product-card">
-                <button
+                <a
                   className="product-image"
                   aria-label={`View ${product.name}`}
-                  onClick={() => handleOpenQuickView(product)}
+                  href={`#/shop/${product.id.toLowerCase()}`}
                 >
                   <img
                     loading="lazy"
                     src={product.image}
                     alt={`${product.name} in ${product.color}`}
                   />
-                  <span className="quick">Choose size &amp; colour</span>
-                </button>
+                  <span className="quick">View piece details</span>
+                </a>
 
                 <div className="product-meta">
                   <div>
                     <p>
                       {product.collection} · {product.color}
                     </p>
-                    <h3>{product.name}</h3>
+                    <a href={`#/shop/${product.id.toLowerCase()}`} className="product-title-link">
+                      <h3>{product.name}</h3>
+                    </a>
                   </div>
                   <strong>{formatINR.format(product.price)}</strong>
                 </div>
@@ -695,83 +663,6 @@ export function FolliciaHomePage() {
 
         <small>© 2026 Follicia. All rights reserved.</small>
       </footer>
-
-      {/* Quick View Modal */}
-      {quickProduct && (
-        <div
-          className="quick-view-backdrop"
-          role="presentation"
-          onMouseDown={(e) => {
-            if (e.target === e.currentTarget) setQuickProduct(null);
-          }}
-        >
-          <section
-            className="quick-view"
-            role="dialog"
-            aria-modal="true"
-            aria-label={`${quickProduct.name} details`}
-          >
-            <button
-              className="close"
-              aria-label="Close product details"
-              onClick={() => setQuickProduct(null)}
-            >
-              ×
-            </button>
-
-            <div className="quick-view-image">
-              <img
-                src={getProductVariantImage(quickProduct, quickColor)}
-                alt={`${quickProduct.name} in ${quickColor || quickProduct.color}`}
-              />
-            </div>
-
-            <div className="quick-view-copy">
-              <p className="eyebrow">
-                {quickProduct.collection} · {quickProduct.category}
-              </p>
-              <h2>{quickProduct.name}</h2>
-              <strong>{formatINR.format(quickProduct.price)}</strong>
-
-              <p className="size-label">Select colour</p>
-              <div className="colour-options">
-                {(quickProduct.availableColors || [quickProduct.color]).map((color) => (
-                  <button
-                    key={color}
-                    className={(quickColor || quickProduct.color) === color ? "active" : ""}
-                    onClick={() => setQuickColor(color)}
-                  >
-                    {color}
-                  </button>
-                ))}
-              </div>
-
-              <div className="size-label">
-                <span>SELECT SIZE</span>
-                <span>EU SIZING</span>
-              </div>
-              <div className="size-grid">
-                {SIZES.map((size) => (
-                  <button
-                    key={size}
-                    className={quickSize === size ? "active" : ""}
-                    onClick={() => setQuickSize(size)}
-                  >
-                    {size}
-                  </button>
-                ))}
-              </div>
-
-              <button
-                className="button dark add-button"
-                onClick={() => handleAddToBag(quickProduct)}
-              >
-                Add to bag
-              </button>
-            </div>
-          </section>
-        </div>
-      )}
 
       {/* Shopping Bag Drawer */}
       {bagOpen && (
@@ -995,13 +886,13 @@ export function FolliciaHomePage() {
               ) : (
                 <div className="search-results-grid">
                   {searchResults.map((p) => (
-                    <div
+                    <a
                       key={p.id}
+                      href={`#/shop/${p.id.toLowerCase()}`}
                       className="search-result-item"
                       onClick={() => {
                         setSearchOpen(false);
                         setSearchQuery("");
-                        handleOpenQuickView(p);
                       }}
                     >
                       <img src={p.image} alt={p.name} />
@@ -1012,7 +903,7 @@ export function FolliciaHomePage() {
                         </p>
                         <strong>{formatINR.format(p.price)}</strong>
                       </div>
-                    </div>
+                    </a>
                   ))}
                 </div>
               )}

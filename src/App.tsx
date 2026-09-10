@@ -66,6 +66,10 @@ export function App() {
     return () => window.removeEventListener("hashchange", handleHashChange);
   }, [base]);
 
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: "instant" });
+  }, [path]);
+
   const wantsAdmin = path.startsWith("/admin");
   const wantsAccount = path.startsWith("/account");
   const wantsShop = path === "/shop" || path.startsWith("/shop/");

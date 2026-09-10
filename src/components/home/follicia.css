@@ -684,6 +684,18 @@
   font-family: Georgia, serif;
   font-size: 1.15rem;
   font-weight: 400;
+  transition: color 0.2s;
+}
+
+.follicia-home .product-title-link {
+  display: inline-block;
+  color: inherit;
+  text-decoration: none;
+}
+
+.follicia-home .product-card:hover .product-title-link h3,
+.follicia-home .product-title-link:hover h3 {
+  color: var(--gold);
 }
 
 .follicia-home .product-meta strong {
