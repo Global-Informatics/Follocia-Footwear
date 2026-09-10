@@ -22,6 +22,7 @@ import {
 } from "@/lib/commerceStore";
 import type { AuthSession } from "@/components/auth/AuthGateway";
 import { readCheckoutCoupon } from "@/lib/coupons";
+import "@/components/home/follicia.css";
 
 const ease = [0.2, 0.8, 0.2, 1] as const;
 
@@ -125,18 +126,104 @@ async function saveContactQuery(name: string, email: string, requestType: string
 
 function PageShell({ session, onLogout, onLogin, children, darkNav }: PageShellProps) {
   return (
-    <>
+    <div className="follicia-home flex flex-col min-h-screen bg-[#fffaf0]">
       <Navigation userName={session?.user.name} onLogout={session ? onLogout : undefined} onLogin={onLogin} solid={!darkNav} />
-      <main className="min-h-screen bg-[var(--bone)] pt-20 text-[var(--ink)]">{children}</main>
+      <main className="flex-1 bg-[#fffaf0] text-[var(--ink)]">{children}</main>
       <Footer />
       <CartDrawer session={session} onLogin={onLogin} />
-    </>
+    </div>
   );
 }
 
-function ProductCard({ product, index }: { product: CommerceProduct; index: number }) {
-  const { add, wishlist, toggleWish } = useCart();
-  const [quickOpen, setQuickOpen] = useState(false);
+function FilterDropdown({
+  label,
+  value,
+  options,
+  onChange,
+}: {
+  label: string;
+  value: string;
+  options: string[];
+  onChange: (val: string) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) {
+        setOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  return (
+    <div ref={ref} className="relative">
+      <button
+        type="button"
+        onClick={() => setOpen(!open)}
+        className="flex items-center gap-1.5 cursor-pointer text-[10px] uppercase tracking-widest text-[var(--ink)]/70 hover:text-[var(--ink)] transition-colors select-none py-1"
+      >
+        <span className="text-[var(--ink)]/40 font-medium">{label}</span>
+        <span className="font-semibold text-[var(--ink)]">{value}</span>
+        <svg
+          width="8"
+          height="8"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2.5"
+          className={`transition-transform duration-200 text-[var(--ink)]/50 ${open ? "rotate-180" : ""}`}
+        >
+          <path d="M6 9l6 6 6-6" />
+        </svg>
+      </button>
+
+      {open && (
+        <div className="absolute top-full left-0 mt-2 min-w-[150px] overflow-hidden rounded-md border border-[#4b261a22] bg-white shadow-[0_12px_32px_rgba(0,0,0,0.18)] z-50 animate-in fade-in zoom-in-95 duration-150">
+          <div className="bg-[#5c5c5c] px-3.5 py-2 text-left text-xs font-semibold text-white">
+            {value}
+          </div>
+          <div className="py-1">
+            {options.map((opt) => (
+              <button
+                key={opt}
+                type="button"
+                onClick={() => {
+                  onChange(opt);
+                  setOpen(false);
+                }}
+                className={`flex w-full items-center justify-between px-3.5 py-2 text-left text-xs transition-colors ${
+                  value === opt
+                    ? "bg-[#f5efe6] font-semibold text-[#24130d]"
+                    : "text-[#24130d]/80 hover:bg-[#fffaf0] hover:text-[#24130d]"
+                }`}
+              >
+                <span>{opt}</span>
+                {value === opt && <span className="text-[var(--gold)] ml-2">✓</span>}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function ProductCard({
+  product,
+  index,
+  isSelected,
+  onSelect,
+}: {
+  product: CommerceProduct;
+  index: number;
+  isSelected?: boolean;
+  onSelect?: () => void;
+}) {
+  const { wishlist, toggleWish } = useCart();
   const wished = wishlist.includes(product.id);
   const primaryImage = productPrimaryImage(product);
   const colors = useMemo(() => {
@@ -145,108 +232,119 @@ function ProductCard({ product, index }: { product: CommerceProduct; index: numb
   }, [product.tone]);
 
   return (
-    <>
-      <article className="group rounded-[22px] border border-[#4b261a1a] bg-[#fffdf8] p-2 pb-3.5 shadow-[0_16px_45px_rgba(75,38,26,0.06)] transition-all duration-500 hover:-translate-y-1 hover:border-[#4b261a33] hover:shadow-[0_24px_50px_rgba(75,38,26,0.12)] flex flex-col justify-between">
-        <div className="relative aspect-[0.9] overflow-hidden rounded-[16px] bg-[#fffaf0] flex items-center justify-center">
-          <a href={productPath(product)} className="flex h-full w-full items-center justify-center p-3">
-            <img
-              loading="lazy"
-              src={primaryImage}
-              alt={product.title}
-              className="h-[86%] w-[86%] object-contain mix-blend-multiply transition-transform duration-700 ease-out group-hover:scale-105"
-            />
-          </a>
+    <article
+      onClick={() => onSelect?.()}
+      className={`group cursor-pointer rounded-[22px] border bg-[#fffdf8] p-2 pb-3.5 shadow-[0_16px_45px_rgba(75,38,26,0.06)] transition-all duration-500 hover:-translate-y-1 hover:shadow-[0_24px_50px_rgba(75,38,26,0.12)] flex flex-col justify-between ${
+        isSelected
+          ? "border-[var(--gold)] ring-2 ring-[var(--gold)]/40 shadow-[0_20px_50px_rgba(196,141,63,0.15)]"
+          : "border-[#4b261a1a] hover:border-[#4b261a33]"
+      }`}
+    >
+      <div className="relative aspect-[0.9] overflow-hidden rounded-[16px] bg-[#fffaf0] flex items-center justify-center">
+        {/* Available badge matching Pic 1 */}
+        <div className="absolute left-2.5 top-2.5 z-10 rounded bg-white/95 px-2 py-0.5 text-[9px] font-semibold uppercase tracking-wider text-[#24130d] shadow-sm border border-black/5">
+          {product.status === "Live" ? "AVAILABLE" : product.status.toUpperCase()}
+        </div>
 
-          <button
-            type="button"
-            onClick={() => setQuickOpen(true)}
-            className="absolute bottom-3 left-1/2 -translate-x-1/2 rounded-full bg-white/95 px-4 py-2 text-[11px] font-semibold uppercase tracking-wider text-[#24130d] shadow-md opacity-0 transition-all duration-300 group-hover:opacity-100 hover:bg-[#c48d3f] hover:text-white"
+        <div className="flex h-full w-full items-center justify-center p-3">
+          <img
+            loading="lazy"
+            src={primaryImage}
+            alt={product.title}
+            className="h-[86%] w-[86%] object-contain mix-blend-multiply transition-transform duration-700 ease-out group-hover:scale-105"
+          />
+        </div>
+
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation();
+            onSelect?.();
+          }}
+          className="absolute bottom-3 left-1/2 -translate-x-1/2 rounded-full bg-white/95 px-4 py-2 text-[11px] font-semibold uppercase tracking-wider text-[#24130d] shadow-md opacity-0 transition-all duration-300 group-hover:opacity-100 hover:bg-[#c48d3f] hover:text-white"
+        >
+          {isSelected ? "Currently Viewing" : "View & Order Pair"}
+        </button>
+
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation();
+            e.preventDefault();
+            toggleWish(product.id);
+          }}
+          aria-label="Toggle wishlist"
+          className="absolute right-2.5 top-2.5 z-10 grid h-8 w-8 place-items-center rounded-full bg-white/90 shadow-sm text-xs transition-transform hover:scale-110"
+        >
+          <motion.svg
+            animate={{ scale: wished ? [1, 1.25, 1] : 1 }}
+            width="16"
+            height="16"
+            viewBox="0 0 24 24"
+            fill={wished ? "var(--gold)" : "none"}
+            stroke={wished ? "var(--gold)" : "currentColor"}
+            strokeWidth="1.6"
           >
-            Choose size &amp; colour
-          </button>
+            <path d="M12 21s-7-4.35-7-10a4 4 0 0 1 7-2.65A4 4 0 0 1 19 11c0 5.65-7 10-7 10z" />
+          </motion.svg>
+        </button>
+      </div>
 
+      <div className="mt-2.5 px-1">
+        <div className="flex items-start justify-between gap-2">
+          <div>
+            <p className="text-[11px] uppercase tracking-wider text-[#4b261a80]">{product.edition || product.tone}</p>
+            <div
+              className="mt-0.5 block font-display text-base font-semibold leading-tight text-[#24130d] transition-colors group-hover:text-[var(--gold)] line-clamp-1"
+            >
+              {product.title}
+            </div>
+          </div>
+          <strong className="whitespace-nowrap font-display text-sm font-semibold text-[#24130d]">{product.price}</strong>
+        </div>
+
+        <div className="mt-2 flex items-center gap-1.5">
+          {colors.map((c) => (
+            <span
+              key={c}
+              title={c}
+              className="h-2.5 w-2.5 rounded-full border border-black/10 inline-block"
+              style={{ backgroundColor: getColorHex(c) }}
+            />
+          ))}
+          <small className="text-[10px] text-[#4b261a80] ml-1">{colors.join(" · ")}</small>
+        </div>
+
+        <div className="mt-2.5 flex items-center justify-between border-t border-[#4b261a0d] pt-2 text-[11px] text-[#4b261a99]">
+          <span>EU 38–41</span>
           <button
             type="button"
             onClick={(e) => {
-              e.preventDefault();
+              e.stopPropagation();
               toggleWish(product.id);
             }}
-            aria-label="Toggle wishlist"
-            className="absolute right-2.5 top-2.5 grid h-8 w-8 place-items-center rounded-full bg-white/90 shadow-sm text-xs transition-transform hover:scale-110"
+            className={`transition-colors ${wished ? "font-semibold text-[var(--gold)]" : "hover:text-[#24130d]"}`}
           >
-            <motion.svg
-              animate={{ scale: wished ? [1, 1.25, 1] : 1 }}
-              width="16"
-              height="16"
-              viewBox="0 0 24 24"
-              fill={wished ? "var(--gold)" : "none"}
-              stroke={wished ? "var(--gold)" : "currentColor"}
-              strokeWidth="1.6"
-            >
-              <path d="M12 21s-7-4.35-7-10a4 4 0 0 1 7-2.65A4 4 0 0 1 19 11c0 5.65-7 10-7 10z" />
-            </motion.svg>
+            {wished ? "Saved" : "♡ Save"}
           </button>
         </div>
-
-        <div className="mt-2.5 px-1">
-          <div className="flex items-start justify-between gap-2">
-            <div>
-              <p className="text-[11px] uppercase tracking-wider text-[#4b261a80]">{product.edition || product.tone}</p>
-              <a
-                href={productPath(product)}
-                className="mt-0.5 block font-display text-base font-semibold leading-tight text-[#24130d] transition-colors hover:text-[var(--gold)] line-clamp-1"
-              >
-                {product.title}
-              </a>
-            </div>
-            <strong className="whitespace-nowrap font-display text-sm font-semibold text-[#24130d]">{product.price}</strong>
-          </div>
-
-          <div className="mt-2 flex items-center gap-1.5">
-            {colors.map((c) => (
-              <span
-                key={c}
-                title={c}
-                className="h-2.5 w-2.5 rounded-full border border-black/10 inline-block"
-                style={{ backgroundColor: getColorHex(c) }}
-              />
-            ))}
-            <small className="text-[10px] text-[#4b261a80] ml-1">{colors.join(" · ")}</small>
-          </div>
-
-          <div className="mt-2.5 flex items-center justify-between border-t border-[#4b261a0d] pt-2 text-[11px] text-[#4b261a99]">
-            <span>EU 38–41</span>
-            <button
-              type="button"
-              onClick={() => toggleWish(product.id)}
-              className={`transition-colors ${wished ? "font-semibold text-[var(--gold)]" : "hover:text-[#24130d]"}`}
-            >
-              {wished ? "Saved" : "♡ Save"}
-            </button>
-          </div>
-        </div>
-      </article>
-
-      <QuickView
-        item={
-          quickOpen
-            ? {
-                id: product.id,
-                title: product.title,
-                edition: product.edition,
-                tone: product.tone,
-                price: product.price,
-                image: primaryImage,
-              }
-            : null
-        }
-        onClose={() => setQuickOpen(false)}
-      />
-    </>
+      </div>
+    </article>
   );
 }
 
-export function ShopPage({ session, onLogout, onLogin }: { session: AuthSession | null; onLogout: () => void; onLogin: () => void }) {
+export function ShopPage({
+  session,
+  onLogout,
+  onLogin,
+  initialProductId,
+}: {
+  session: AuthSession | null;
+  onLogout: () => void;
+  onLogin: () => void;
+  initialProductId?: string;
+}) {
+  const { add, wishlist, toggleWish, setOpen: setCartOpen } = useCart();
   const [selectedCollection, setSelectedCollection] = useState("All");
   const [products, setProducts] = useState<CommerceProduct[]>(() => liveProducts());
   const [query, setQuery] = useState("");
@@ -254,8 +352,21 @@ export function ShopPage({ session, onLogout, onLogin }: { session: AuthSession 
   const [tone, setTone] = useState("All");
   const [stock, setStock] = useState("All");
   const [sort, setSort] = useState("Featured");
-  const dropRecords = activeRecords("drops", [{ id: "drop-default", title: "Private Drop Open", meta: "VIP preview and concierge reservations are available now.", status: "Live" }]);
-  const vipRecords = activeRecords("vip", [{ id: "vip-default", title: "Private Atelier Mode", meta: "Members receive early access, holds and size support.", status: "Active" }]);
+
+  // Selected product state for the Order View
+  const [selectedProduct, setSelectedProduct] = useState<CommerceProduct | null>(() => {
+    const list = liveProducts();
+    if (initialProductId) {
+      const match = list.find((p) => p.id.toLowerCase() === initialProductId.toLowerCase() || slugify(p.title) === initialProductId.toLowerCase());
+      return match || list[0] || null;
+    }
+    return null;
+  });
+
+  const [selectedSize, setSelectedSize] = useState("");
+  const [activeImage, setActiveImage] = useState("");
+  const [addedToBag, setAddedToBag] = useState(false);
+  const [openAccordion, setOpenAccordion] = useState("Product Details");
 
   useEffect(() => {
     const sync = () => setProducts(liveProducts());
@@ -264,36 +375,118 @@ export function ShopPage({ session, onLogout, onLogin }: { session: AuthSession 
     return () => window.removeEventListener(COMMERCE_EVENT, sync);
   }, []);
 
+  useEffect(() => {
+    if (initialProductId && products.length > 0) {
+      const match = products.find(
+        (p) => p.id.toLowerCase() === initialProductId.toLowerCase() || slugify(p.title) === initialProductId.toLowerCase()
+      );
+      if (match) {
+        setSelectedProduct(match);
+        setActiveImage(productPrimaryImage(match));
+        setSelectedSize("");
+      }
+    }
+  }, [initialProductId, products]);
+
+  useEffect(() => {
+    if (selectedProduct) {
+      setActiveImage(productPrimaryImage(selectedProduct));
+      setSelectedSize("");
+    }
+  }, [selectedProduct?.id]);
+
   const tones = useMemo(() => ["All", ...Array.from(new Set(products.map((product) => product.tone)))], [products]);
-  const statuses = useMemo(() => ["All", ...Array.from(new Set(products.map((product) => product.status)))], [products]);
-  const visible = products
-    .filter((product) => {
-      const haystack = `${product.title} ${product.edition} ${product.tone} ${product.status}`.toLowerCase();
-      const matchesQuery = haystack.includes(query.trim().toLowerCase());
-      const matchesCollection = selectedCollection === "All" || product.edition.toLowerCase().includes(selectedCollection.toLowerCase()) || product.title.toLowerCase().includes(selectedCollection.toLowerCase());
-      const matchesStatus = status === "All" || product.status === status;
-      const matchesTone = tone === "All" || product.tone === tone;
-      const matchesStock = stock === "All" || (stock === "Available now" ? product.available > 0 : product.available <= 12);
-      return matchesQuery && matchesCollection && matchesStatus && matchesTone && matchesStock;
-    })
-    .sort((a, b) => {
-      if (sort === "Price low to high") return priceNumber(a.price) - priceNumber(b.price);
-      if (sort === "Price high to low") return priceNumber(b.price) - priceNumber(a.price);
-      if (sort === "Most limited") return a.produced - b.produced;
-      if (sort === "Availability") return b.available - a.available;
-      return a.title.localeCompare(b.title);
-    });
+
+  const visible = useMemo(() => {
+    return products
+      .filter((product) => {
+        const haystack = `${product.title} ${product.edition} ${product.tone} ${product.status}`.toLowerCase();
+        const matchesQuery = haystack.includes(query.trim().toLowerCase());
+        const matchesCollection = selectedCollection === "All" || product.edition.toLowerCase().includes(selectedCollection.toLowerCase()) || product.title.toLowerCase().includes(selectedCollection.toLowerCase());
+        const matchesStatus = status === "All" || product.status === status;
+        const matchesTone = tone === "All" || product.tone === tone;
+        const matchesStock = stock === "All" || (stock === "Available now" ? product.available > 0 : product.available <= 12);
+        return matchesQuery && matchesCollection && matchesStatus && matchesTone && matchesStock;
+      })
+      .sort((a, b) => {
+        if (sort === "Price low to high") return priceNumber(a.price) - priceNumber(b.price);
+        if (sort === "Price high to low") return priceNumber(b.price) - priceNumber(a.price);
+        if (sort === "Most limited") return a.produced - b.produced;
+        if (sort === "Availability") return b.available - a.available;
+        return a.title.localeCompare(b.title);
+      });
+  }, [products, query, selectedCollection, status, tone, stock, sort]);
+
+  // Keep selected product FIRST in the catalogue
+  const sortedProducts = useMemo(() => {
+    if (!selectedProduct) return visible;
+    const current = visible.find((p) => p.id === selectedProduct.id);
+    const rest = visible.filter((p) => p.id !== selectedProduct.id);
+    return current ? [current, ...rest] : visible;
+  }, [visible, selectedProduct]);
+
+  const handleSelectProduct = (product: CommerceProduct) => {
+    setSelectedProduct(product);
+    setActiveImage(productPrimaryImage(product));
+    setSelectedSize("");
+    window.location.hash = `#/shop/${product.id.toLowerCase()}`;
+    const el = document.getElementById("selected-product-order");
+    if (el) {
+      el.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+  };
+
+  const handleAddToBag = () => {
+    if (!selectedProduct || !selectedSize) return;
+    add(
+      {
+        id: `${selectedProduct.id}-${selectedSize}`,
+        title: selectedProduct.title,
+        price: selectedProduct.price,
+        image: activeImage || productPrimaryImage(selectedProduct),
+        tone: selectedProduct.tone,
+        size: selectedSize,
+      },
+      1
+    );
+    setAddedToBag(true);
+    setCartOpen(true);
+    setTimeout(() => setAddedToBag(false), 2500);
+  };
+
+  const handleBuyNow = () => {
+    if (!selectedProduct || !selectedSize) return;
+    add(
+      {
+        id: `${selectedProduct.id}-${selectedSize}`,
+        title: selectedProduct.title,
+        price: selectedProduct.price,
+        image: activeImage || productPrimaryImage(selectedProduct),
+        tone: selectedProduct.tone,
+        size: selectedSize,
+      },
+      1
+    );
+    setCartOpen(true);
+  };
+
+  const selectedProductGallery = useMemo(() => {
+    if (!selectedProduct) return [];
+    return productImages(selectedProduct);
+  }, [selectedProduct]);
+
+  const isWished = selectedProduct ? wishlist.includes(selectedProduct.id) : false;
 
   return (
     <PageShell session={session} onLogout={onLogout} onLogin={onLogin} darkNav>
-      {/* Aurora Hero */}
-      <section className="relative overflow-hidden bg-[var(--ink)] text-[var(--bone)] pt-32 pb-40 -mt-20 flex flex-col items-center justify-center min-h-[60svh]">
+      {/* Aurora Hero from Pic 1 */}
+      <section className="relative overflow-hidden bg-[var(--ink)] text-[var(--bone)] pt-20 pb-36 md:pt-24 md:pb-44 flex flex-col items-center justify-center min-h-[52svh]">
         <div className="absolute inset-0 animate-aurora opacity-30" style={{ background: "linear-gradient(135deg, oklch(0.2 0.08 60), oklch(0.12 0.1 80), oklch(0.18 0.06 40))", backgroundSize: "300% 300%" }} />
         <GoldenParticles count={30} className="z-[1] opacity-50" />
         <div className="absolute inset-0 luxe-grain z-[2]" />
         <div className="vignette absolute inset-0 z-[2]" />
         
-        <div className="relative z-10 mx-auto flex flex-col items-center text-center max-w-4xl px-6 md:px-12 mt-10">
+        <div className="relative z-10 mx-auto flex flex-col items-center text-center max-w-4xl px-6 md:px-12 mt-4">
           <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.8 }} className="flex items-center gap-3 mb-6">
             <div className="h-px w-6 bg-[var(--gold)]/60" />
             <p className="eyebrow text-[var(--gold)]">The Follocia Atelier</p>
@@ -310,7 +503,7 @@ export function ShopPage({ session, onLogout, onLogin }: { session: AuthSession 
           </motion.p>
 
           <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 1, delay: 0.6 }} className="mt-10 flex flex-wrap justify-center gap-3">
-            {["FOLLOCIA10 active at checkout", "White-glove dispatch", "Dynamic inventory mapping"].map((item, i) => (
+            {["FOLLOCIA10 active at checkout", "White-glove dispatch", "Dynamic inventory mapping"].map((item) => (
               <div key={item} className="flex items-center gap-2 rounded-full border border-[var(--bone)]/10 bg-[var(--ink)]/40 backdrop-blur-md px-4 py-1.5 text-[10px] uppercase tracking-widest text-[var(--bone)]/80">
                 <span className="h-1 w-1 rounded-full bg-[var(--gold)] animate-pulse" />
                 {item}
@@ -320,64 +513,90 @@ export function ShopPage({ session, onLogout, onLogin }: { session: AuthSession 
         </div>
       </section>
 
-      <section className="mx-auto max-w-[1500px] px-6 py-12 md:px-12">
-        {/* Premium Compact Filter Bar */}
+      <section className="mx-auto max-w-[1500px] px-6 py-10 md:px-12">
+        {/* Floating Filter Bar matching Pic 1, 2, 3, 4 */}
         <motion.div 
           initial={{ opacity: 0, y: -20 }} 
           animate={{ opacity: 1, y: 0 }} 
-          transition={{ duration: 0.8, delay: 0.8 }} 
-          className="mb-10 flex flex-wrap items-center justify-between gap-4 rounded-full border border-[var(--ink)]/10 bg-white/90 backdrop-blur-xl px-6 py-3 shadow-[var(--shadow-soft)] relative z-20 -mt-24 w-fit mx-auto"
+          transition={{ duration: 0.8, delay: 0.4 }} 
+          className="mb-10 flex flex-wrap items-center justify-between gap-4 rounded-full border border-[var(--ink)]/10 bg-white/95 backdrop-blur-xl px-6 py-2.5 shadow-[var(--shadow-soft)] relative z-20 -mt-8 md:-mt-10 w-fit mx-auto max-w-full"
         >
-          <div className="flex flex-wrap items-center gap-6">
+          <div className="flex flex-wrap items-center gap-4 md:gap-6">
             <div className="relative flex items-center">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="absolute left-3 text-[var(--ink)]/40"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
               <input 
                 value={query} 
                 onChange={(e) => setQuery(e.target.value)} 
                 placeholder="Search..." 
-                className="h-9 w-40 bg-transparent pl-9 pr-4 text-xs outline-none transition-all focus:w-48 placeholder:text-[var(--ink)]/40" 
+                className="h-9 w-32 md:w-40 bg-transparent pl-9 pr-3 text-xs outline-none transition-all focus:w-48 placeholder:text-[var(--ink)]/40 text-[var(--ink)]" 
               />
             </div>
             
-            <div className="h-4 w-px bg-[var(--ink)]/10 hidden md:block" />
+            <div className="h-4 w-px bg-[var(--ink)]/15 hidden sm:block" />
 
-            <div className="flex items-center gap-4 text-[10px] uppercase tracking-widest text-[var(--ink)]/60">
-              <label className="flex items-center gap-2 cursor-pointer hover:text-[var(--ink)] transition-colors">
-                <span className="hidden sm:inline">Status</span>
-                <select value={status} onChange={(e) => setStatus(e.target.value)} className="bg-transparent font-medium text-[var(--ink)] outline-none cursor-pointer appearance-none">
-                  {statuses.map((item) => <option key={item} value={item}>{item}</option>)}
-                </select>
-              </label>
+            <div className="flex flex-wrap items-center gap-4 md:gap-5">
+              <FilterDropdown
+                label="STATUS"
+                value={status}
+                options={["All", "Live"]}
+                onChange={setStatus}
+              />
 
-              <label className="flex items-center gap-2 cursor-pointer hover:text-[var(--ink)] transition-colors">
-                <span className="hidden sm:inline">Material</span>
-                <select value={tone} onChange={(e) => setTone(e.target.value)} className="bg-transparent font-medium text-[var(--ink)] outline-none cursor-pointer appearance-none">
-                  {tones.map((item) => <option key={item} value={item}>{item}</option>)}
-                </select>
-              </label>
+              <FilterDropdown
+                label="MATERIAL"
+                value={tone}
+                options={tones}
+                onChange={setTone}
+              />
 
-              <label className="flex items-center gap-2 cursor-pointer hover:text-[var(--ink)] transition-colors">
-                <span className="hidden sm:inline">Stock</span>
-                <select value={stock} onChange={(e) => setStock(e.target.value)} className="bg-transparent font-medium text-[var(--ink)] outline-none cursor-pointer appearance-none">
-                  {["All", "Available now", "Last pairs"].map((item) => <option key={item} value={item}>{item}</option>)}
-                </select>
-              </label>
+              <FilterDropdown
+                label="STOCK"
+                value={stock}
+                options={["All", "Available now", "Last pairs"]}
+                onChange={setStock}
+              />
 
-              <label className="flex items-center gap-2 cursor-pointer hover:text-[var(--ink)] transition-colors">
-                <span className="hidden sm:inline">Sort</span>
-                <select value={sort} onChange={(e) => setSort(e.target.value)} className="bg-transparent font-medium text-[var(--ink)] outline-none cursor-pointer appearance-none">
-                  {["Featured", "Price low to high", "Price high to low", "Most limited", "Availability"].map((item) => <option key={item} value={item}>{item}</option>)}
-                </select>
-              </label>
+              <FilterDropdown
+                label="SORT"
+                value={sort}
+                options={["Featured", "Price low to high", "Price high to low", "Most limited", "Availability"]}
+                onChange={setSort}
+              />
             </div>
           </div>
           
-          <div className="h-4 w-px bg-[var(--ink)]/10 hidden lg:block" />
+          <div className="h-4 w-px bg-[var(--ink)]/15 hidden md:block" />
 
-          <button onClick={() => { setQuery(""); setStatus("All"); setTone("All"); setStock("All"); setSort("Featured"); }} className="text-[10px] uppercase tracking-widest text-[var(--ink)]/50 hover:text-[var(--gold)] transition-colors hidden lg:block">
-            Clear
+          <button 
+            type="button"
+            onClick={() => { setQuery(""); setStatus("All"); setTone("All"); setStock("All"); setSort("Featured"); setSelectedCollection("All"); }} 
+            className="text-[10px] uppercase tracking-widest text-[var(--ink)]/50 hover:text-[var(--gold)] transition-colors cursor-pointer"
+          >
+            CLEAR
           </button>
         </motion.div>
+
+        {/* VIP Preview and Active access banners matching Pic 1 */}
+        <div className="mb-10 grid grid-cols-1 md:grid-cols-12 gap-6 items-center border-b border-[var(--ink)]/10 pb-8">
+          <div className="md:col-span-4">
+            <h2 className="font-display text-3xl md:text-4xl text-[var(--ink)]">Catalogue.</h2>
+            <p className="mt-1 text-xs uppercase tracking-widest text-[var(--ink)]/50">
+              {visible.length} pieces found
+            </p>
+          </div>
+          
+          <div className="md:col-span-4 border-l border-[var(--ink)]/10 pl-6">
+            <p className="eyebrow text-[var(--gold)] text-[10px] tracking-widest">VIP PREVIEW</p>
+            <h4 className="mt-1 font-semibold text-sm text-[var(--ink)]">Noire Autumn/Winter Drop</h4>
+            <p className="mt-0.5 text-xs text-[var(--ink)]/60">VIP preview active, public release Monday</p>
+          </div>
+
+          <div className="md:col-span-4 border-l border-[var(--ink)]/10 pl-6">
+            <p className="eyebrow text-emerald-600 text-[10px] tracking-widest">ACTIVE</p>
+            <h4 className="mt-1 font-semibold text-sm text-[var(--ink)]">Private Preview Access</h4>
+            <p className="mt-0.5 text-xs text-[var(--ink)]/60">Private Atelier and VIP customers see preview pairs</p>
+          </div>
+        </div>
 
         {/* Collection Filter Tabs */}
         <div className="mb-10 flex flex-wrap items-center justify-center gap-2">
@@ -386,7 +605,7 @@ export function ShopPage({ session, onLogout, onLogin }: { session: AuthSession 
               key={col}
               type="button"
               onClick={() => setSelectedCollection(col)}
-              className={`rounded-full px-5 py-2 text-xs font-semibold uppercase tracking-wider transition-all duration-300 ${
+              className={`rounded-full px-5 py-2 text-xs font-semibold uppercase tracking-wider transition-all duration-300 cursor-pointer ${
                 selectedCollection === col
                   ? "bg-[#24130d] text-[#fffdf8] shadow-md"
                   : "bg-white/80 text-[#4b261a99] border border-[#4b261a1a] hover:border-[#4b261a40] hover:text-[#24130d]"
@@ -397,243 +616,307 @@ export function ShopPage({ session, onLogout, onLogin }: { session: AuthSession 
           ))}
         </div>
 
-        <div className="mb-8 flex items-center justify-between text-xs uppercase tracking-widest text-[var(--ink)]/50">
-          <span>{visible.length} pieces found</span>
-          <span className="h-px flex-1 bg-gradient-to-r from-[var(--ink)]/10 mx-6" />
-        </div>
+        {/* Selected Product Order Section */}
+        {selectedProduct && (
+          <section id="selected-product-order" className="mb-16 rounded-3xl border border-[#4b261a1a] bg-[#fffdf8] p-6 md:p-10 shadow-[0_20px_60px_rgba(75,38,26,0.08)]">
+            <div className="mb-6 flex flex-wrap items-center justify-between gap-4 border-b border-[#4b261a12] pb-4">
+              <div className="flex items-center gap-3">
+                <span className="h-2 w-2 rounded-full bg-[var(--gold)] animate-pulse" />
+                <span className="eyebrow text-[var(--gold)]">Order Selected Piece</span>
+                <span className="rounded-full bg-[#fffaf0] border border-[#4b261a20] px-3 py-1 text-xs font-semibold text-[#24130d]">
+                  {selectedProduct.title}
+                </span>
+              </div>
+              <div className="flex items-center gap-4 text-xs">
+                <span className="text-[var(--ink)]/50">Click any piece below to switch</span>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const el = document.getElementById("catalogue-grid");
+                    if (el) el.scrollIntoView({ behavior: "smooth" });
+                  }}
+                  className="eyebrow text-[var(--gold)] hover:underline cursor-pointer"
+                >
+                  Browse all designs ↓
+                </button>
+              </div>
+            </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-          <AnimatePresence mode="popLayout">
-            {visible.map((product, index) => (
-              <motion.div key={product.id} layout initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }} transition={{ duration: 0.35 }}>
-                <ProductCard product={product} index={index} />
-              </motion.div>
-            ))}
-          </AnimatePresence>
-        </div>
-        
-        {visible.length === 0 && (
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="my-24 flex flex-col items-center justify-center border border-[var(--ink)]/10 bg-white py-32 text-center shadow-[var(--shadow-soft)]">
-            <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="var(--gold)" strokeWidth="1" className="mb-6 opacity-60"><path d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
-            <h2 className="font-display text-4xl">No pieces match your search.</h2>
-            <p className="mt-4 text-[var(--ink)]/60">Try adjusting your filters or search terms.</p>
-            <button onClick={() => { setQuery(""); setStatus("All"); setTone("All"); setStock("All"); }} className="magnetic-btn mt-8 bg-[var(--ink)] px-8 py-4 eyebrow text-[var(--bone)] transition-colors hover:bg-[var(--gold)] hover:text-[var(--ink)]">Reset all filters</button>
-          </motion.div>
+            {/* The 2-column order view */}
+            <div className="grid gap-10 lg:grid-cols-[1.05fr_0.95fr] xl:grid-cols-[1.1fr_0.9fr]">
+              {/* Product Gallery */}
+              <div className="grid gap-4">
+                <div className="relative aspect-[4/5] overflow-hidden rounded-2xl bg-[#fffaf0] border border-[#4b261a12] shadow-sm flex items-center justify-center p-6">
+                  <img
+                    src={activeImage || productPrimaryImage(selectedProduct)}
+                    alt={selectedProduct.title}
+                    className="max-h-[90%] max-w-[90%] object-contain mix-blend-multiply transition-transform duration-500 hover:scale-105"
+                  />
+                  <div className="absolute left-3.5 top-3.5 rounded bg-white/90 px-2.5 py-1 text-[9px] font-semibold uppercase tracking-wider text-[#24130d] shadow-sm">
+                    {selectedProduct.status || "AVAILABLE"}
+                  </div>
+                </div>
+
+                {/* Thumbnails */}
+                {selectedProductGallery.length > 1 && (
+                  <div className="flex flex-wrap gap-3">
+                    {selectedProductGallery.map((img, idx) => (
+                      <button
+                        key={`${img}-${idx}`}
+                        type="button"
+                        onClick={() => setActiveImage(img)}
+                        className={`h-16 w-16 overflow-hidden rounded-xl border p-1 bg-[#fffaf0] transition-all cursor-pointer ${
+                          (activeImage || productPrimaryImage(selectedProduct)) === img
+                            ? "border-[var(--gold)] ring-2 ring-[var(--gold)]/30 scale-105"
+                            : "border-[#4b261a1a] opacity-70 hover:opacity-100"
+                        }`}
+                      >
+                        <img src={img} alt="" className="h-full w-full object-contain mix-blend-multiply" />
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Order Form & Details */}
+              <div className="flex flex-col justify-between">
+                <div>
+                  <div className="flex items-start justify-between gap-4">
+                    <div>
+                      <p className="eyebrow text-[var(--gold)]">{selectedProduct.edition || "FOLLICIA ATELIER"}</p>
+                      <h2 className="mt-2 font-display text-4xl md:text-5xl text-[#24130d] leading-tight">
+                        {selectedProduct.title}
+                      </h2>
+                      <p className="mt-2 text-xs uppercase tracking-widest text-[#4b261a99]">
+                        Colour: <strong className="text-[#24130d] font-semibold">{selectedProduct.tone}</strong>
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => toggleWish(selectedProduct.id)}
+                      aria-label="Wishlist"
+                      className="grid h-12 w-12 shrink-0 place-items-center rounded-full border border-[#4b261a1a] bg-white shadow-sm transition-transform hover:scale-110 cursor-pointer"
+                    >
+                      <svg
+                        width="20"
+                        height="20"
+                        viewBox="0 0 24 24"
+                        fill={isWished ? "var(--gold)" : "none"}
+                        stroke={isWished ? "var(--gold)" : "currentColor"}
+                        strokeWidth="1.6"
+                      >
+                        <path d="M12 21s-7-4.35-7-10a4 4 0 0 1 7-2.65A4 4 0 0 1 19 11c0 5.65-7 10-7 10z" />
+                      </svg>
+                    </button>
+                  </div>
+
+                  <div className="mt-4 flex items-baseline gap-4">
+                    <span className="font-display text-3xl font-semibold text-[#24130d]">{selectedProduct.price}</span>
+                    <span className="text-xs text-emerald-700 font-medium bg-emerald-50 border border-emerald-200 px-2.5 py-0.5 rounded-full">
+                      Inclusive of all taxes · Free Shipping
+                    </span>
+                  </div>
+
+                  {/* Size Selector */}
+                  <div className="mt-8 border-t border-[#4b261a12] pt-6">
+                    <div className="flex items-center justify-between">
+                      <span className="eyebrow text-[#4b261a80]">Select EU Size</span>
+                      <span className="text-[10px] uppercase tracking-widest text-[#4b261a60]">Italian Sizing</span>
+                    </div>
+
+                    <div className="mt-3.5 flex flex-wrap gap-3">
+                      {sizes.map((s) => (
+                        <button
+                          key={s}
+                          type="button"
+                          onClick={() => setSelectedSize(s)}
+                          className={`h-12 w-14 rounded-xl border text-sm font-semibold transition-all cursor-pointer ${
+                            selectedSize === s
+                              ? "border-[#24130d] bg-[#24130d] text-[#fffdf8] shadow-md scale-105"
+                              : "border-[#4b261a20] bg-white text-[#24130d] hover:border-[var(--gold)]"
+                          }`}
+                        >
+                          {s}
+                        </button>
+                      ))}
+                    </div>
+
+                    {!selectedSize && (
+                      <p className="mt-2.5 text-xs text-[var(--gold)] font-medium">
+                        Please choose a size to reserve pair
+                      </p>
+                    )}
+
+                    <div className="mt-3 rounded-lg border border-[#4b261a12] bg-[#fffaf0] p-3 text-xs text-[#4b261a99]">
+                      <strong className="font-semibold text-[#24130d]">Size confidence: </strong>
+                      <span>{sizeConfidence(selectedProduct, selectedSize)}</span>
+                    </div>
+                  </div>
+
+                  {/* Action Buttons */}
+                  <div className="mt-6 flex flex-col sm:flex-row gap-3">
+                    <button
+                      type="button"
+                      onClick={handleAddToBag}
+                      disabled={!selectedSize}
+                      className={`flex-1 rounded-full py-4 px-6 text-xs font-semibold uppercase tracking-widest transition-all ${
+                        selectedSize
+                          ? "bg-[#24130d] text-[#fffdf8] hover:bg-[#3d1f14] shadow-lg hover:shadow-xl cursor-pointer"
+                          : "bg-gray-200 text-gray-400 cursor-not-allowed"
+                      }`}
+                    >
+                      {addedToBag ? "✓ Added to Bag!" : selectedSize ? "Add to Bag / Reserve Pair →" : "Select Size First"}
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={handleBuyNow}
+                      disabled={!selectedSize}
+                      className={`rounded-full py-4 px-8 text-xs font-semibold uppercase tracking-widest border transition-all ${
+                        selectedSize
+                          ? "border-[#24130d] bg-white text-[#24130d] hover:bg-[#24130d] hover:text-white cursor-pointer"
+                          : "border-gray-200 text-gray-300 cursor-not-allowed"
+                      }`}
+                    >
+                      Buy Now (Card / UPI / COD)
+                    </button>
+                  </div>
+
+                  <div className="mt-4 flex items-center justify-center gap-4 text-xs text-[#4b261a80]">
+                    <span className="flex items-center gap-1.5">
+                      <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                      Dispatches in 24-48 hrs
+                    </span>
+                    <span>·</span>
+                    <span>100% Original &amp; Handcrafted</span>
+                    <span>·</span>
+                    <span>Complimentary Returns</span>
+                  </div>
+                </div>
+
+                {/* Collapsible details */}
+                <div className="mt-8 border-t border-[#4b261a12] pt-4">
+                  {["Product Details", "Delivery & Returns", "Care Instructions"].map((panel) => (
+                    <div key={panel} className="border-b border-[#4b261a12]">
+                      <button
+                        type="button"
+                        onClick={() => setOpenAccordion(openAccordion === panel ? "" : panel)}
+                        className="flex w-full items-center justify-between py-3 text-xs font-semibold uppercase tracking-widest text-[#24130d] cursor-pointer"
+                      >
+                        <span>{panel}</span>
+                        <span className="text-sm">{openAccordion === panel ? "−" : "+"}</span>
+                      </button>
+                      {openAccordion === panel && (
+                        <div className="pb-4 text-xs leading-relaxed text-[#4b261a99]">
+                          {panel === "Product Details" && (
+                            <p>
+                              Numbered limited edition construction with memory foam cushioning, sculpted heel balance, and genuine leather lining. Constructed using traditional Florentine atelier techniques.
+                            </p>
+                          )}
+                          {panel === "Delivery & Returns" && (
+                            <p>
+                              Complimentary white-glove shipping across India. Standard dispatch within 24-48 hours. 7-day doorstep return and size exchange service included.
+                            </p>
+                          )}
+                          {panel === "Care Instructions" && (
+                            <p>
+                              Store in the provided breathable cotton dust bag. Wipe clean with a soft dry cloth. Avoid prolonged exposure to moisture or direct sunlight.
+                            </p>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </section>
         )}
+
+        {/* All Products Catalogue Grid */}
+        <div id="catalogue-grid" className="mt-12">
+          <div className="mb-6 flex items-center justify-between">
+            <h3 className="font-display text-2xl md:text-3xl text-[#24130d]">
+              {selectedProduct ? "All Collection Designs" : "Explore All Designs"}
+            </h3>
+            <span className="text-xs uppercase tracking-widest text-[#4b261a80]">
+              {sortedProducts.length} pieces available
+            </span>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+            <AnimatePresence mode="popLayout">
+              {sortedProducts.map((product, index) => {
+                const isSelected = selectedProduct?.id === product.id;
+                return (
+                  <motion.div
+                    key={product.id}
+                    layout
+                    initial={{ opacity: 0, scale: 0.95 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    exit={{ opacity: 0, scale: 0.95 }}
+                    transition={{ duration: 0.35 }}
+                  >
+                    <ProductCard
+                      product={product}
+                      index={index}
+                      isSelected={isSelected}
+                      onSelect={() => handleSelectProduct(product)}
+                    />
+                  </motion.div>
+                );
+              })}
+            </AnimatePresence>
+          </div>
+
+          {sortedProducts.length === 0 && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              className="my-24 flex flex-col items-center justify-center border border-[var(--ink)]/10 bg-white py-32 text-center shadow-[var(--shadow-soft)]"
+            >
+              <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="var(--gold)" strokeWidth="1" className="mb-6 opacity-60">
+                <path d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+              </svg>
+              <h2 className="font-display text-4xl">No pieces match your search.</h2>
+              <p className="mt-4 text-[var(--ink)]/60">Try adjusting your filters or search terms.</p>
+              <button
+                onClick={() => {
+                  setQuery("");
+                  setStatus("All");
+                  setTone("All");
+                  setStock("All");
+                }}
+                className="magnetic-btn mt-8 bg-[var(--ink)] px-8 py-4 eyebrow text-[var(--bone)] transition-colors hover:bg-[var(--gold)] hover:text-[var(--ink)] cursor-pointer"
+              >
+                Reset all filters
+              </button>
+            </motion.div>
+          )}
+        </div>
       </section>
     </PageShell>
   );
 }
 
-export function ProductDetailPage({ productId, session, onLogout, onLogin }: { productId: string; session: AuthSession | null; onLogout: () => void; onLogin: () => void }) {
-  const { add, toggleWish, wishlist } = useCart();
-  const [products, setProducts] = useState<CommerceProduct[]>(() => liveProducts());
-  const [size, setSize] = useState("");
-  const [openPanel, setOpenPanel] = useState("Product Details");
-  const [added, setAdded] = useState(false);
-  const [activeImage, setActiveImage] = useState("");
-  const imgRef = useRef<HTMLDivElement>(null);
-  const mx = useMotionValue(0), my = useMotionValue(0);
-  const rx = useSpring(useTransform(my, [-1, 1], [4, -4]), { stiffness: 100, damping: 20 });
-  const ry = useSpring(useTransform(mx, [-1, 1], [-4, 4]), { stiffness: 100, damping: 20 });
-
-  useEffect(() => {
-    const sync = () => setProducts(liveProducts());
-    window.addEventListener(COMMERCE_EVENT, sync);
-    void syncCommerceFromBackend();
-    return () => window.removeEventListener(COMMERCE_EVENT, sync);
-  }, []);
-
-  const product = products.find((item) => item.id === productId || slugify(item.title) === productId);
-  const related = products.filter((item) => item.id !== product?.id).slice(0, 3);
-
-  useEffect(() => {
-    if (product) setActiveImage(productPrimaryImage(product));
-  }, [product?.id, product?.image, product?.images]);
-
-  const storyRecords = activeRecords("stories", [
-    { id: "story-craft", title: "Craft Note", meta: "Hand-lasted construction, numbered editions and atelier finishing.", status: "Published" },
-    { id: "story-size", title: "Size Confidence", meta: "Fits true to size; concierge can review your usual size.", status: "Published" },
-    { id: "story-care", title: "Care Promise", meta: "Care kit, restoration guidance and post-purchase check-in.", status: "Published" },
-  ]);
-  const dropRecords = activeRecords("drops", [{ id: "drop-default", title: "Private drop window", meta: "VIP holds and concierge reservations are open.", status: "Live" }]);
-  const seoRecord = activeRecords("seo").find((record) => record.id.includes("product")) || null;
-
-  useEffect(() => {
-    if (!product || typeof document === "undefined") return;
-    document.title = seoRecord?.title || `${product.title} - Follocia`;
-  }, [product?.id, seoRecord?.title]);
-
-  if (!product) {
-    return (
-      <PageShell session={session} onLogout={onLogout} onLogin={onLogin}>
-        <section className="mx-auto grid min-h-[60vh] max-w-[900px] place-items-center px-6 text-center">
-          <div>
-            <p className="eyebrow text-[var(--gold)]">Shop</p>
-            <motion.h1 initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="mt-4 font-display text-6xl">Piece not found.</motion.h1>
-            <a href="#/shop" className="magnetic-btn mt-8 inline-block bg-[var(--ink)] px-8 py-4 eyebrow text-[var(--bone)] transition-colors hover:bg-[var(--gold)] hover:text-[var(--ink)]">Back to shop</a>
-          </div>
-        </section>
-      </PageShell>
-    );
-  }
-
-  const wished = wishlist.includes(product.id);
-  const gallery = productImages(product);
-  const displayImage = activeImage || productPrimaryImage(product);
-  const confidence = sizeConfidence(product, size);
-
+export function ProductDetailPage({
+  productId,
+  session,
+  onLogout,
+  onLogin,
+}: {
+  productId: string;
+  session: AuthSession | null;
+  onLogout: () => void;
+  onLogin: () => void;
+}) {
   return (
-    <PageShell session={session} onLogout={onLogout} onLogin={onLogin}>
-      <section className="mx-auto grid max-w-[1400px] gap-12 bg-[var(--bone)] px-6 py-14 md:px-12 lg:grid-cols-[1fr_0.8fr] xl:grid-cols-[1.1fr_0.9fr]">
-        <div className="grid gap-4 lg:sticky lg:top-28 lg:self-start">
-          <motion.div 
-            ref={imgRef}
-            onMouseMove={(e) => {
-              const r = imgRef.current!.getBoundingClientRect();
-              mx.set(((e.clientX - r.left) / r.width - 0.5) * 2);
-              my.set(((e.clientY - r.top) / r.height - 0.5) * 2);
-            }}
-            onMouseLeave={() => { mx.set(0); my.set(0); }}
-            style={{ rotateX: rx, rotateY: ry, transformPerspective: 1200 }}
-            className="relative aspect-[4/5] overflow-hidden bg-[var(--champagne)]/30 holo-shine shadow-[var(--shadow-soft)] cursor-crosshair"
-          >
-            <motion.img initial={{ scale: 1.1 }} animate={{ scale: 1 }} transition={{ duration: 1.2, ease }} src={displayImage} alt={product.title} className="h-full w-full object-cover" />
-            <div className="absolute left-0 top-0 h-16 w-px bg-gradient-to-b from-[var(--gold)]/40 to-transparent" />
-            <div className="absolute left-0 top-0 h-px w-16 bg-gradient-to-r from-[var(--gold)]/40 to-transparent" />
-          </motion.div>
-          <div className="grid grid-cols-3 gap-4">
-            {(gallery.length ? gallery : [productPrimaryImage(product), ...related.slice(0, 2).map(productPrimaryImage)]).slice(0, 5).map((image, index) => (
-              <motion.button type="button" key={`${image}-${index}`} onClick={() => setActiveImage(image)} whileHover={{ scale: 1.02 }} className={`aspect-square overflow-hidden bg-[var(--champagne)]/30 border cursor-pointer ${displayImage === image ? "border-[var(--gold)]" : "border-[var(--ink)]/5"}`}>
-                <img src={image} alt="" className="h-full w-full object-cover transition-transform duration-500 hover:scale-110" />
-              </motion.button>
-            ))}
-          </div>
-        </div>
-        
-        <div className="glass border border-[var(--ink)]/10 bg-white/80 p-8 shadow-[var(--shadow-soft)] lg:p-12 xl:p-16 backdrop-blur-xl">
-          <div className="flex items-start justify-between gap-6">
-            <div>
-              <motion.p initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} className="eyebrow text-[var(--gold)]">{product.status}</motion.p>
-              <motion.h1 initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="mt-4 font-display text-5xl leading-[1.05] tracking-[-0.02em] lg:text-6xl">{product.title}</motion.h1>
-              <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.2 }} className="mt-4 text-sm text-[var(--ink)]/70 uppercase tracking-[0.1em]">Colour <span className="ml-2 font-semibold text-[var(--ink)]">{product.tone}</span></motion.p>
-              <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.3 }} className="mt-6 font-display text-3xl gradient-gold-text">{product.price}</motion.p>
-            </div>
-            <button onClick={() => toggleWish(product.id)} aria-label="Wishlist" className="grid h-12 w-12 place-items-center rounded-full border border-[var(--ink)]/15 transition-colors hover:border-[var(--gold)] hover:shadow-[0_0_15px_oklch(0.78_0.12_80/0.15)]">
-              <motion.svg animate={{ scale: wished ? [1, 1.2, 1] : 1 }} width="21" height="21" viewBox="0 0 24 24" fill={wished ? "var(--gold)" : "none"} stroke={wished ? "var(--gold)" : "currentColor"} strokeWidth="1.5"><path d="M12 21s-7-4.35-7-10a4 4 0 0 1 7-2.65A4 4 0 0 1 19 11c0 5.65-7 10-7 10z" /></motion.svg>
-            </button>
-          </div>
-
-          <div className="mt-10 border-t border-[var(--gold)]/20 pt-10">
-            <div className="flex items-center justify-between">
-              <p className="eyebrow text-[var(--ink)]/60 font-medium tracking-widest">SELECT SIZE</p>
-              <span className="text-[10px] uppercase tracking-widest text-[var(--ink)]/40 font-medium">EU SIZING</span>
-            </div>
-            <div className="mt-5 flex flex-wrap gap-3">
-              {sizes.map((item) => (
-                <motion.button 
-                  key={item} 
-                  onClick={() => setSize(item)} 
-                  whileTap={{ scale: 0.95 }}
-                  className={`h-12 w-14 border text-sm transition-all duration-300 ${size === item ? "border-[var(--gold)] bg-[var(--ink)] text-[var(--bone)] shadow-[0_0_15px_oklch(0.78_0.12_80/0.2)]" : "border-[var(--ink)]/15 bg-transparent hover:border-[var(--gold)]/50"}`}
-                >
-                  {item}
-                </motion.button>
-              ))}
-            </div>
-            <AnimatePresence>
-              {!size && <motion.p initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }} className="mt-3 text-sm text-[var(--gold)]">Please select a size to continue</motion.p>}
-            </AnimatePresence>
-            <p className="mt-4 text-xs tracking-wide text-[var(--ink)]/55">Italian sizing. Fits true to size.</p>
-            <div className="mt-4 border border-[var(--ink)]/10 bg-[var(--bone)]/45 p-4 text-sm text-[var(--ink)]/65">
-              <strong className="block text-xs uppercase tracking-[0.16em] text-[var(--gold)]">Size confidence</strong>
-              <span className="mt-2 block">{confidence}</span>
-            </div>
-          </div>
-
-          <motion.button 
-            whileHover={{ scale: 1.02 }} 
-            whileTap={{ scale: 0.98 }}
-            onClick={() => { 
-              if (!size) return;
-              add({ id: `${product.id}-${size}`, title: product.title, price: product.price, image: productPrimaryImage(product), tone: product.tone, size }, 1);
-              setAdded(true);
-              setTimeout(() => setAdded(false), 2000);
-            }} 
-            className={`magnetic-btn mt-10 w-full border px-8 py-5 eyebrow transition-all duration-500 ${size ? "border-[var(--ink)] bg-[var(--ink)] text-white hover:shadow-[var(--shadow-gold-glow)]" : "border-[var(--ink)]/20 text-[var(--ink)]/50 cursor-not-allowed"}`}
-          >
-            {added ? <><motion.span initial={{ scale: 0 }} animate={{ scale: 1 }} className="inline-block mr-2">✓</motion.span> Added to Bag</> : size ? "Reserve Pair →" : "Select Size First"}
-          </motion.button>
-
-          <div className="mt-3 grid gap-3 sm:grid-cols-2">
-            <button
-              onClick={() => {
-                void saveContactQuery(session?.user.name || "Guest", session?.user.email || "guest@follocia.local", "Concierge reservation", `${product.title}${size ? ` size ${size}` : ""}`);
-              }}
-              className="border border-[var(--ink)] px-5 py-4 text-xs uppercase tracking-[0.16em] transition-colors hover:border-[var(--gold)] hover:text-[var(--gold)]"
-            >
-              Ask stylist
-            </button>
-            <button
-              onClick={() => {
-                void saveContactQuery(session?.user.name || "Guest", session?.user.email || "guest@follocia.local", "24h hold request", `${product.title}${size ? ` size ${size}` : ""}`);
-              }}
-              className="border border-[var(--gold)] bg-[var(--gold)]/10 px-5 py-4 text-xs uppercase tracking-[0.16em] transition-colors hover:bg-[var(--gold)] hover:text-[var(--ink)]"
-            >
-              Request 24h hold
-            </button>
-          </div>
-
-          <div className="mt-12 flex items-center gap-4 text-xs tracking-wide text-[var(--ink)]/60">
-            <span className="flex items-center gap-2"><div className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" /> Dispatches within 48 hours</span>
-            <span>·</span>
-            <span>Complimentary returns</span>
-          </div>
-
-          <section className="mt-10 grid gap-3 border border-[var(--ink)]/10 bg-[var(--bone)]/35 p-5">
-            <div className="flex flex-wrap items-center justify-between gap-3">
-              <p className="eyebrow text-[var(--gold)]">Drop signal</p>
-              <span className="text-xs uppercase tracking-[0.16em] text-[var(--ink)]/45">{stockMood(product)}</span>
-            </div>
-            {dropRecords.slice(0, 1).map((record) => <p key={record.id} className="text-sm text-[var(--ink)]/65"><strong>{record.title}:</strong> {record.meta}</p>)}
-          </section>
-
-          <div className="mt-12 border-t border-[var(--ink)]/10">
-            {["Product Details", "Craft Story", "Delivery & Returns", "Book An Appointment", "Contact Us"].map((panel) => (
-              <div key={panel} className="border-b border-[var(--ink)]/10">
-                <button onClick={() => setOpenPanel(openPanel === panel ? "" : panel)} className="flex w-full items-center justify-between py-5 text-sm font-semibold uppercase tracking-[0.1em]">
-                  {panel}
-                  <motion.span animate={{ rotate: openPanel === panel ? 180 : 0 }}>↓</motion.span>
-                </button>
-                <AnimatePresence>
-                  {openPanel === panel && (
-                    <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="overflow-hidden">
-                      {panel === "Craft Story" ? (
-                        <div className="grid gap-3 pb-6">
-                          {storyRecords.slice(0, 4).map((record) => <p key={record.id} className="text-sm leading-relaxed text-[var(--ink)]/65"><strong className="text-[var(--ink)]">{record.title}:</strong> {record.meta}</p>)}
-                        </div>
-                      ) : (
-                        <p className="pb-6 text-sm leading-relaxed text-[var(--ink)]/65">
-                          Hand-lasted limited edition footwear with secure checkout, complimentary delivery and concierge support. Each pair takes 32 hours to construct using traditional Florentine techniques.
-                        </p>
-                      )}
-                    </motion.div>
-                  )}
-                </AnimatePresence>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      <section className="mx-auto max-w-[1500px] px-6 py-24 md:px-12">
-        <motion.div initial={{ scaleX: 0 }} whileInView={{ scaleX: 1 }} viewport={{ once: true }} className="mb-16 h-px bg-gradient-to-r from-[var(--gold)]/50 to-transparent" style={{ transformOrigin: "left" }} />
-        <h2 className="font-display text-4xl lg:text-5xl">Curated for you</h2>
-        <div className="mt-12 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-          {related.map((item, index) => <ProductCard key={item.id} product={item} index={index} />)}
-        </div>
-      </section>
-    </PageShell>
+    <ShopPage
+      initialProductId={productId}
+      session={session}
+      onLogout={onLogout}
+      onLogin={onLogin}
+    />
   );
 }
 

@@ -1,4 +1,5 @@
 /* ==================== FOLLICIA REFERENCE REDESIGN STYLES ==================== */
+:root,
 .follicia-home {
   --ivory: #fffaf0;
   --cream: #f1e4d2;
@@ -97,7 +98,8 @@
   margin-left: 11px;
 }
 
-.follicia-home .announcement {
+.follicia-home .announcement,
+.announcement {
   background: var(--chocolate);
   height: 31px;
   color: var(--paper);
@@ -113,7 +115,8 @@
   z-index: 51;
 }
 
-.follicia-home .site-header {
+.follicia-home .site-header,
+.site-header {
   z-index: 50;
   border-bottom: 1px solid var(--line);
   -webkit-backdrop-filter: blur(18px);
@@ -128,7 +131,8 @@
   top: 0;
 }
 
-.follicia-home .brand-wordmark {
+.follicia-home .brand-wordmark,
+.brand-wordmark {
   letter-spacing: .075em;
   color: transparent;
   text-shadow: 0 1px #ffffff59;
@@ -142,21 +146,24 @@
   line-height: 1;
 }
 
-.follicia-home .nav {
+.follicia-home .nav,
+.site-header .nav {
   grid-area: 1/1;
   align-items: center;
   gap: 25px;
   display: flex;
 }
 
-.follicia-home .nav a {
+.follicia-home .nav a,
+.site-header .nav a {
   letter-spacing: .13em;
   text-transform: uppercase;
   font-size: .68rem;
   position: relative;
 }
 
-.follicia-home .nav a:after {
+.follicia-home .nav a:after,
+.site-header .nav a:after {
   content: "";
   background: var(--gold);
   height: 1px;
@@ -167,11 +174,13 @@
   right: 100%;
 }
 
-.follicia-home .nav a:hover:after {
+.follicia-home .nav a:hover:after,
+.site-header .nav a:hover:after {
   right: 0;
 }
 
-.follicia-home .actions {
+.follicia-home .actions,
+.site-header .actions {
   grid-area: 1/3;
   justify-self: end;
   align-items: center;
@@ -179,7 +188,9 @@
   display: flex;
 }
 
-.follicia-home .actions button {
+.follicia-home .actions button,
+.site-header .actions button,
+.site-header .actions a {
   letter-spacing: .08em;
   text-transform: uppercase;
   min-width: 28px;
@@ -850,7 +861,8 @@
   font-size: .62rem;
 }
 
-.follicia-home footer {
+.follicia-home footer,
+.site-footer {
   color: #e9e0d2;
   background: #2a140e;
   grid-template-columns: 2fr repeat(3, 1fr);
@@ -860,7 +872,8 @@
   position: relative;
 }
 
-.follicia-home .footer-wordmark {
+.follicia-home .footer-wordmark,
+.footer-wordmark {
   letter-spacing: .075em;
   color: transparent;
   background: linear-gradient(#f0d79f 0%, #b77a3c 55%, #e9c886 100%);
@@ -873,14 +886,16 @@
   display: inline-block;
 }
 
-.follicia-home .footer-brand p {
+.follicia-home .footer-brand p,
+.site-footer .footer-brand p {
   color: #a99c90;
   margin: 4px 0 0;
   font-family: Georgia, serif;
   font-style: italic;
 }
 
-.follicia-home footer h4 {
+.follicia-home footer h4,
+.site-footer h4 {
   color: #c4a475;
   letter-spacing: .17em;
   text-transform: uppercase;
@@ -888,7 +903,8 @@
   font-size: .6rem;
 }
 
-.follicia-home footer > div:not(.footer-brand) {
+.follicia-home footer > div:not(.footer-brand),
+.site-footer > div:not(.footer-brand) {
   flex-direction: column;
   align-items: flex-start;
   gap: 12px;
@@ -896,13 +912,24 @@
 }
 
 .follicia-home footer a,
-.follicia-home footer button {
+.follicia-home footer button,
+.site-footer a,
+.site-footer button {
   color: #cec4b8;
   padding: 0;
   font-size: .7rem;
+  text-decoration: none;
 }
 
-.follicia-home footer small {
+.follicia-home footer a:hover,
+.follicia-home footer button:hover,
+.site-footer a:hover,
+.site-footer button:hover {
+  color: #fff;
+}
+
+.follicia-home footer small,
+.site-footer small {
   color: #81766b;
   border-top: 1px solid #ffffff1f;
   grid-column: 1/-1;
@@ -1522,8 +1549,10 @@
   .follicia-home .story-copy { padding: 80px 8vw; }
   .follicia-home .promise { grid-template-columns: 1fr; }
   .follicia-home .promise > div { border-right: 0; border-bottom: 1px solid var(--line); }
-  .follicia-home footer { grid-template-columns: repeat(2, 1fr); }
-  .follicia-home .footer-brand { grid-column: 1/-1; }
+  .follicia-home footer,
+  .site-footer { grid-template-columns: repeat(2, 1fr); }
+  .follicia-home .footer-brand,
+  .site-footer .footer-brand { grid-column: 1/-1; }
   .quick-view { grid-template-columns: 1fr; }
   .quick-view-image { min-height: 450px; }
   .search-dialog { width: 100%; max-height: 90vh; }
