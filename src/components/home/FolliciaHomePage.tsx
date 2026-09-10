@@ -120,6 +120,18 @@ export function FolliciaHomePage() {
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, []);
 
+  // Prevent background body scroll when any modal or drawer is open
+  useEffect(() => {
+    if (quickProduct || bagOpen || checkoutOpen || searchOpen) {
+      document.body.style.overflow = "hidden";
+    } else {
+      document.body.style.overflow = "";
+    }
+    return () => {
+      document.body.style.overflow = "";
+    };
+  }, [quickProduct, bagOpen, checkoutOpen, searchOpen]);
+
   const searchResults = useMemo(() => {
     const q = searchQuery.trim().toLowerCase();
     if (!q) return FOLLICIA_PRODUCTS.slice(0, 10);
