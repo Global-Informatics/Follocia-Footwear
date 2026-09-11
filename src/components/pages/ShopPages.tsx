@@ -213,7 +213,7 @@ function FilterDropdown({
   );
 }
 
-function ProductCard({
+export function ProductCard({
   product,
   index,
   isSelected,

@@ -38,7 +38,11 @@ function sectionFromPath(path: string) {
 import { FolliciaHomePage } from "@/components/home/FolliciaHomePage";
 
 function Storefront({ session, onLogout, onLogin }: { session: AuthSession | null; onLogout: () => void; onLogin: () => void }) {
-  return <FolliciaHomePage session={session} onLogout={onLogout} onLogin={onLogin} />;
+  return (
+    <CartProvider>
+      <FolliciaHomePage session={session} onLogout={onLogout} onLogin={onLogin} />
+    </CartProvider>
+  );
 }
 
 export function App() {

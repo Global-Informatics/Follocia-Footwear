@@ -8,6 +8,7 @@ import {
   type FolliciaProduct,
 } from "@/data/folliciaCatalogue";
 import { getProducts, COMMERCE_EVENT, type CommerceProduct } from "@/lib/commerceStore";
+import { ProductCard } from "@/components/pages/ShopPages";
 import "./follicia.css";
 
 interface BagItem {
@@ -84,7 +85,7 @@ export function FolliciaHomePage({
   // Search state & dynamic backend store integration
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
-  const [, setStoreProducts] = useState<CommerceProduct[]>(() => getProducts());
+  const [storeProducts, setStoreProducts] = useState<CommerceProduct[]>(() => getProducts());
 
   useEffect(() => {
     const sync = () => setStoreProducts(getProducts());
@@ -227,14 +228,18 @@ export function FolliciaHomePage({
   };
 
   const filteredProducts = useMemo(() => {
-    return FOLLICIA_PRODUCTS.filter((product) => {
+    return storeProducts.filter((product) => {
       const matchCollection =
-        selectedCollection === "All" || product.collection === selectedCollection;
+        selectedCollection === "All" ||
+        (product.collection && product.collection.toLowerCase() === selectedCollection.toLowerCase()) ||
+        (product.edition && product.edition.toLowerCase().includes(selectedCollection.toLowerCase()));
       const matchStyle =
-        selectedStyle === "All styles" || product.category === selectedStyle;
+        selectedStyle === "All styles" ||
+        (product.category && product.category.toLowerCase() === selectedStyle.toLowerCase()) ||
+        (product.silhouette && product.silhouette.toLowerCase().includes(selectedStyle.toLowerCase()));
       return matchCollection && matchStyle;
     });
-  }, [selectedCollection, selectedStyle]);
+  }, [storeProducts, selectedCollection, selectedStyle]);
 
   const totalBagCount = bag.reduce((sum, item) => sum + item.quantity, 0);
   const totalBagAmount = bag.reduce((sum, item) => sum + item.product.price * item.quantity, 0);
@@ -610,65 +615,17 @@ export function FolliciaHomePage({
           </div>
         </div>
 
-        <div className="product-grid">
-          {filteredProducts.map((product) => {
-            const colorsList = product.availableColors || [product.color];
-            const isSaved = wishlist.includes(product.id);
-
-            return (
-              <article key={product.id} className="product-card">
-                <a
-                  className="product-image"
-                  aria-label={`View ${product.name}`}
-                  href={`#/shop/${product.id.toLowerCase()}`}
-                >
-                  <img
-                    loading="lazy"
-                    src={product.image}
-                    alt={`${product.name} in ${product.color}`}
-                  />
-                  <span className="quick">View piece details</span>
-                </a>
-
-                <div className="product-meta">
-                  <div>
-                    <p>
-                      {product.collection} · {product.color}
-                    </p>
-                    <a href={`#/shop/${product.id.toLowerCase()}`} className="product-title-link">
-                      <h3>{product.name}</h3>
-                    </a>
-                  </div>
-                  <strong>{formatINR.format(product.price)}</strong>
-                </div>
-
-                <div
-                  className="colour-preview"
-                  aria-label={`Available colours for ${product.name}`}
-                >
-                  {colorsList.map((c) => (
-                    <span
-                      key={c}
-                      title={c}
-                      style={{ background: getColorHex(c) }}
-                    />
-                  ))}
-                  <small>{colorsList.join(" · ")}</small>
-                </div>
-
-                <div className="product-actions">
-                  <span>EU 38–41</span>
-                  <button
-                    className={isSaved ? "saved" : ""}
-                    aria-label={`Save ${product.name}`}
-                    onClick={() => handleToggleWishlist(product.id, product.name)}
-                  >
-                    {isSaved ? "Saved" : "♡ Save"}
-                  </button>
-                </div>
-              </article>
-            );
-          })}
+        <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
+          {filteredProducts.map((product, idx) => (
+            <ProductCard
+              key={product.id}
+              product={product}
+              index={idx}
+              onSelect={() => {
+                window.location.hash = `#/shop/${product.id}`;
+              }}
+            />
+          ))}
         </div>
       </section>
 
