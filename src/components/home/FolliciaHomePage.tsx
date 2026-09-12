@@ -312,14 +312,6 @@ export function FolliciaHomePage({
 
       {/* Site Header */}
       <header className="site-header">
-        <button
-          className="menu-button"
-          aria-label="Toggle navigation"
-          onClick={() => setNavOpen((prev) => !prev)}
-        >
-          Menu
-        </button>
-
         <a className="brand-wordmark" href="#top" aria-label="Follicia home">
           FOLLICIA
         </a>
@@ -420,15 +412,16 @@ export function FolliciaHomePage({
                     window.location.hash = "/admin";
                   }
                 }}
-                className="action-icon cursor-pointer"
-                title="Account / Sign in"
-                aria-label="Account / Sign in"
+                className="inline-flex items-center gap-1.5 font-medium tracking-wider uppercase text-[0.72rem] text-[#351c13] hover:text-[var(--gold)] cursor-pointer transition-colors px-2.5 py-1 rounded-full border border-[#351c13]/25 hover:border-[var(--gold)]"
+                title="Log In"
+                aria-label="Log In"
               >
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
                   <circle cx="12" cy="12" r="9.5" />
                   <circle cx="12" cy="9.5" r="3.2" />
                   <path d="M6.3 18.2a6 6 0 0 1 11.4 0" />
                 </svg>
+                <span>Login</span>
               </button>
             )}
 
@@ -479,13 +472,26 @@ export function FolliciaHomePage({
           <button
             type="button"
             aria-label="Wishlist"
-            className="wishlist-btn"
+            className="wishlist-btn inline-flex items-center justify-center cursor-pointer text-[#351c13] hover:text-[var(--gold)] transition-colors"
+            title="Wishlist"
             onClick={() => {
               const el = document.querySelector("#shop");
               if (el) el.scrollIntoView({ behavior: "smooth" });
             }}
           >
-            ♡{wishlist.length > 0 && <small>{wishlist.length}</small>}
+            <svg
+              width="21"
+              height="21"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.6"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              className="transition-transform hover:scale-110"
+            >
+              <path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z" />
+            </svg>
           </button>
 
           <button
@@ -494,7 +500,7 @@ export function FolliciaHomePage({
             className="bag-btn"
             onClick={() => setBagOpen(true)}
           >
-            Bag{totalBagCount > 0 && <small>{totalBagCount}</small>}
+            Bag
           </button>
         </div>
       </header>
@@ -508,7 +514,6 @@ export function FolliciaHomePage({
         />
         <div className="hero-shade"></div>
         <div className="hero-copy">
-          <p className="eyebrow">The Follicia Edit</p>
           <h1>FOLLICIA</h1>
           <p className="hero-tagline">Every Step, A Statement.</p>
           <p className="hero-description">
@@ -525,8 +530,15 @@ export function FolliciaHomePage({
             >
               Shop all designs
             </a>
-            <a className="text-link" href="#motion">
-              See Follicia in motion <span>→</span>
+            <a
+              className="text-link"
+              href="#our-story"
+              onClick={(e) => {
+                e.preventDefault();
+                document.getElementById("our-story")?.scrollIntoView({ behavior: "smooth" });
+              }}
+            >
+              Contact Us <span>→</span>
             </a>
           </div>
         </div>
@@ -750,7 +762,7 @@ export function FolliciaHomePage({
             <img
               src={logo}
               alt="FOLLICIA - Every Step, A Statement."
-              className="h-28 w-auto max-w-[240px] object-contain -ml-2"
+              className="h-32 sm:h-36 w-auto max-w-[280px] object-contain -ml-2"
             />
           </a>
         </div>

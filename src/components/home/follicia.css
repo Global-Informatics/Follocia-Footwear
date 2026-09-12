@@ -223,11 +223,9 @@
   right: -8px;
 }
 
-.follicia-home .menu-button {
-  letter-spacing: .12em;
-  text-transform: uppercase;
-  font-size: .66rem;
-  display: none;
+.follicia-home .menu-button,
+.menu-button {
+  display: none !important;
 }
 
 .follicia-home .hero {
@@ -1521,7 +1519,7 @@
 @media (max-width: 860px) {
   .follicia-home .site-header { height: 82px; padding: 0 22px; }
   .follicia-home .brand-wordmark { font-size: 1.35rem; }
-  .follicia-home .menu-button { grid-area: 1/1; justify-self: start; display: block; }
+  .follicia-home .menu-button { display: none !important; }
   .follicia-home .nav {
     border-bottom: 1px solid var(--line);
     background: var(--ivory);

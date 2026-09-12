@@ -1,3 +1,7 @@
+using System.Collections.Concurrent;
+using System.Net;
+using System.Net.Mail;
+using System.Security.Cryptography;
 using FollociaMvc.Data;
 using FollociaMvc.Models;
 using Microsoft.AspNetCore.Mvc;
@@ -7,8 +11,141 @@ namespace FollociaMvc.Controllers;
 
 [ApiController]
 [Route("api/commerce")]
-public class CommerceApiController(FollociaDbContext db) : ControllerBase
+public class CommerceApiController(FollociaDbContext db, IConfiguration config, ILogger<CommerceApiController> logger) : ControllerBase
 {
+    private static readonly ConcurrentDictionary<string, (string Code, DateTime ExpiresAtUtc, int Attempts)> OtpStore = new();
+
+    [HttpPost("auth/send-otp")]
+    public async Task<ActionResult<OtpResponseDto>> SendOtp([FromBody] SendOtpRequest request)
+    {
+        if (string.IsNullOrWhiteSpace(request.Email) || !request.Email.Contains('@'))
+        {
+            return BadRequest(new OtpResponseDto(false, "Please provide a valid email address.", false, null));
+        }
+
+        var cleanEmail = request.Email.Trim().ToLowerInvariant();
+        var code = RandomNumberGenerator.GetInt32(100000, 999999).ToString();
+        var expiresAt = DateTime.UtcNow.AddMinutes(10);
+
+        OtpStore[cleanEmail] = (code, expiresAt, 0);
+
+        var sentViaSmtp = await TrySendSmtpEmailAsync(cleanEmail, code);
+
+        return Ok(new OtpResponseDto(
+            true,
+            sentViaSmtp ? $"Verification code sent to {cleanEmail}." : $"Verification code generated for {cleanEmail}.",
+            sentViaSmtp,
+            sentViaSmtp ? null : code));
+    }
+
+    [HttpPost("auth/verify-otp")]
+    public ActionResult<OtpResponseDto> VerifyOtp([FromBody] VerifyOtpRequest request)
+    {
+        if (string.IsNullOrWhiteSpace(request.Email) || string.IsNullOrWhiteSpace(request.Otp))
+        {
+            return BadRequest(new OtpResponseDto(false, "Email and OTP are required.", false, null));
+        }
+
+        var cleanEmail = request.Email.Trim().ToLowerInvariant();
+        var cleanOtp = request.Otp.Trim();
+
+        if (!OtpStore.TryGetValue(cleanEmail, out var entry))
+        {
+            return BadRequest(new OtpResponseDto(false, "No active OTP request found for this email. Please request a new code.", false, null));
+        }
+
+        if (DateTime.UtcNow > entry.ExpiresAtUtc)
+        {
+            OtpStore.TryRemove(cleanEmail, out _);
+            return BadRequest(new OtpResponseDto(false, "OTP has expired. Please request a new code.", false, null));
+        }
+
+        if (entry.Attempts >= 5)
+        {
+            OtpStore.TryRemove(cleanEmail, out _);
+            return BadRequest(new OtpResponseDto(false, "Too many failed attempts. Please request a new OTP.", false, null));
+        }
+
+        if (entry.Code != cleanOtp)
+        {
+            OtpStore[cleanEmail] = (entry.Code, entry.ExpiresAtUtc, entry.Attempts + 1);
+            return BadRequest(new OtpResponseDto(false, "Invalid OTP code. The code entered does not match the code sent to your email.", false, null));
+        }
+
+        // Successfully verified, remove used OTP
+        OtpStore.TryRemove(cleanEmail, out _);
+        return Ok(new OtpResponseDto(true, "OTP verified successfully.", false, null));
+    }
+
+    private async Task<bool> TrySendSmtpEmailAsync(string toEmail, string code)
+    {
+        try
+        {
+            var smtpSection = config.GetSection("Smtp");
+            var host = smtpSection["Host"];
+            if (string.IsNullOrWhiteSpace(host)) return false;
+
+            var port = int.TryParse(smtpSection["Port"], out var p) ? p : 587;
+            var enableSsl = bool.TryParse(smtpSection["EnableSsl"], out var ssl) && ssl;
+            var userName = smtpSection["UserName"];
+            var password = smtpSection["Password"];
+            var senderEmail = smtpSection["SenderEmail"] ?? "concierge@follocia.com";
+            var senderName = smtpSection["SenderName"] ?? "Maison Follocia";
+
+            using var client = new SmtpClient(host, port)
+            {
+                EnableSsl = enableSsl,
+                DeliveryMethod = SmtpDeliveryMethod.Network,
+                UseDefaultCredentials = false,
+            };
+
+            if (!string.IsNullOrWhiteSpace(userName) && !string.IsNullOrWhiteSpace(password))
+            {
+                client.Credentials = new NetworkCredential(userName, password);
+            }
+
+            using var message = new MailMessage
+            {
+                From = new MailAddress(senderEmail, senderName),
+                Subject = $"{code} is your Maison Follocia Verification Code",
+                IsBodyHtml = true,
+                Body = $@"
+<div style=""font-family: 'Segoe UI', Arial, sans-serif; max-width: 520px; margin: 0 auto; background: #ffffff; border: 1px solid #e6ded7; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 20px rgba(0,0,0,0.08);"">
+    <div style=""background: #351c13; padding: 26px 20px; text-align: center; border-bottom: 3px solid #d9b36e;"">
+        <h1 style=""color: #d9b36e; font-size: 24px; font-weight: 300; letter-spacing: 4px; margin: 0;"">FOLLICIA</h1>
+        <p style=""color: #e5cfb2; font-size: 11px; text-transform: uppercase; letter-spacing: 2px; margin: 6px 0 0;"">Every Step, A Statement.</p>
+    </div>
+    <div style=""padding: 30px 24px; color: #351c13;"">
+        <h2 style=""font-size: 18px; font-weight: 600; margin: 0 0 10px;"">Client Authentication Code</h2>
+        <p style=""font-size: 13px; line-height: 1.6; color: #555; margin: 0 0 20px;"">
+            You requested a one-time verification code to securely access your Maison Follocia account. Please enter the code below to proceed:
+        </p>
+        <div style=""background: #fcf9f6; border: 1.5px dashed #d9b36e; border-radius: 8px; padding: 16px; text-align: center; margin-bottom: 22px;"">
+            <span style=""font-size: 34px; font-family: monospace; font-weight: 700; letter-spacing: 8px; color: #a87648; display: inline-block;"">{code}</span>
+        </div>
+        <p style=""font-size: 12px; color: #888; line-height: 1.5; margin: 0;"">
+            • Code is valid for <strong>10 minutes</strong>.<br />
+            • If you did not request this code, please ignore this email.
+        </p>
+    </div>
+    <div style=""background: #f9f9f9; padding: 14px 20px; text-align: center; border-top: 1px solid #eee; font-size: 11px; color: #999;"">
+        © 2026 Maison Follocia Ltd. All rights reserved. Sculpted in Florence.
+    </div>
+</div>"
+            };
+            message.To.Add(toEmail);
+
+            await client.SendMailAsync(message);
+            logger.LogInformation("Verification OTP sent via SMTP to {Email}", toEmail);
+            return true;
+        }
+        catch (Exception ex)
+        {
+            logger.LogWarning(ex, "Failed to send OTP via SMTP to {Email}", toEmail);
+            return false;
+        }
+    }
+
     [HttpGet("bootstrap")]
     public async Task<ActionResult<BootstrapDto>> Bootstrap()
     {

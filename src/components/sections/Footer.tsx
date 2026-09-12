@@ -9,7 +9,7 @@ export function Footer() {
           <img
             src={logo}
             alt="FOLLICIA - Every Step, A Statement."
-            className="h-28 w-auto max-w-[240px] object-contain -ml-2"
+            className="h-32 sm:h-36 w-auto max-w-[280px] object-contain -ml-2"
           />
         </a>
       </div>

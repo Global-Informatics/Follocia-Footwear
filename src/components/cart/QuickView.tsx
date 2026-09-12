@@ -64,7 +64,7 @@ export function QuickView({ item, onClose }: { item: QuickItem | null; onClose: 
 
                 <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.7, duration: 0.6 }} className="mt-8">
                   <div className="flex items-center justify-between">
-                    <p className="eyebrow text-[var(--ink)]/60 font-medium tracking-widest">SELECT EU</p>
+                    <p className="eyebrow text-[var(--ink)]/60 font-medium tracking-widest">SELECT SIZE</p>
                     <span className="text-[10px] uppercase tracking-widest text-[var(--ink)]/40 font-medium">EU SIZING</span>
                   </div>
                   <div className="mt-3 flex flex-wrap gap-2">
@@ -82,7 +82,14 @@ export function QuickView({ item, onClose }: { item: QuickItem | null; onClose: 
                     <span className="font-display text-3xl gradient-gold-text">{item.price}</span>
                     <motion.button whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }}
                       onClick={() => { add({ id: `${item.id}-${size}`, title: item.title, price: item.price, image: item.image, tone: item.tone, size }, 1); setAdded(true); setTimeout(() => { setAdded(false); onClose(); }, 1200); }}
-                      className="magnetic-btn inline-flex items-center gap-3 px-8 py-4 eyebrow transition-all duration-500 bg-[var(--ink)] text-[var(--bone)] hover:shadow-[var(--shadow-gold-glow)]" data-cursor="hover">
+                      style={{
+                        backgroundColor: "#15803d",
+                        backgroundImage: "linear-gradient(135deg, #16a34a, #15803d)",
+                        color: "#ffffff",
+                        border: "none",
+                        boxShadow: "0 4px 16px rgba(22, 163, 74, 0.4)",
+                      }}
+                      className="btn-green-action inline-flex items-center gap-3 px-8 py-4 eyebrow transition-all duration-300 text-white hover:brightness-110 cursor-pointer" data-cursor="hover">
                       {added ? <><motion.span initial={{ scale: 0 }} animate={{ scale: 1 }} transition={{ type: "spring" }}>✓</motion.span> Reserved!</> : "Reserve Pair →"}
                     </motion.button>
                   </div>

@@ -70,6 +70,14 @@ button { font: inherit; cursor: pointer; border: none; background: none; color: 
 .btn-gold-solid { background: linear-gradient(135deg, var(--gold-light), var(--gold)); color: var(--ink); font-size: 0.7rem; font-weight: 700; letter-spacing: 0.25em; padding: 1rem 2.2rem; border-radius: 2px; display: inline-block; text-transform: uppercase; transition: all 0.4s ease; box-shadow: 0 4px 20px rgba(212, 175, 55, 0.2); }
 .btn-gold-solid:hover { transform: translateY(-2px); box-shadow: 0 8px 30px rgba(212, 175, 55, 0.4); }
 
+.btn-green-solid,
+.btn-green-action { background: linear-gradient(135deg, #16a34a, #15803d) !important; color: #ffffff !important; font-size: 0.7rem; font-weight: 700; letter-spacing: 0.25em; padding: 1rem 2.2rem; border-radius: 9999px; display: inline-block; text-transform: uppercase; transition: all 0.4s ease; box-shadow: 0 4px 20px rgba(22, 163, 74, 0.35); border: none !important; }
+.btn-green-solid:hover,
+.btn-green-action:hover { background: linear-gradient(135deg, #15803d, #166534) !important; transform: translateY(-2px); box-shadow: 0 8px 30px rgba(22, 163, 74, 0.55); color: #ffffff !important; }
+
+.btn-green-outline { border: 1.5px solid #16a34a !important; color: #15803d !important; background: #ffffff !important; font-size: 0.7rem; font-weight: 700; letter-spacing: 0.25em; padding: 1rem 2.2rem; border-radius: 9999px; display: inline-block; text-transform: uppercase; transition: all 0.4s ease; }
+.btn-green-outline:hover { background: #15803d !important; color: #ffffff !important; border-color: #15803d !important; }
+
 .btn-gold-outline { border: 1px solid var(--gold); color: var(--gold); font-size: 0.7rem; font-weight: 700; letter-spacing: 0.25em; padding: 1rem 2.2rem; border-radius: 2px; display: inline-block; text-transform: uppercase; transition: all 0.4s ease; }
 .btn-gold-outline:hover { background: var(--gold); color: var(--ink); }
 

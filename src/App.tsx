@@ -82,6 +82,7 @@ export function App() {
   ];
   const wantsAdmin = path.startsWith("/admin") || (session?.user?.role === "admin" && adminSections.some((s) => path === s || path.startsWith(s + "/")));
   const wantsAccount = path.startsWith("/account");
+  const wantsLogin = path === "/login" || path.startsWith("/login");
   const wantsShop = path === "/shop" || path.startsWith("/shop/");
   const wantsCollections = path.startsWith("/collections");
   const wantsContact = path.startsWith("/contact");
@@ -105,27 +106,32 @@ export function App() {
 
   if (!hydrated) return null;
 
+  if (wantsLogin) {
+    return (
+      <>
+        <Storefront session={session} onLogout={logout} onLogin={() => setLoginOpen(true)} />
+        <LoginOverlay
+          onClose={() => {
+            setLoginOpen(false);
+            window.location.hash = "/";
+          }}
+          onAuthenticated={handleAuthenticated}
+        />
+      </>
+    );
+  }
+
   if (wantsAdmin) {
     if (!session || session.user.role !== "admin") {
       return (
         <>
           <Storefront session={session} onLogout={logout} onLogin={() => setLoginOpen(true)} />
-          <div className="fixed inset-0 z-[120] grid place-items-center bg-[var(--ink)]/70 px-4 py-8 backdrop-blur-md">
-            <button
-              onClick={() => {
-                window.location.hash = "/";
-              }}
-              className="fixed right-6 top-6 z-[121] text-3xl leading-none text-[var(--bone)] hover:text-[var(--gold)] cursor-pointer"
-              aria-label="Close"
-            >
-              ✕
-            </button>
-            <AuthGateway
-              intent="admin"
-              compact
-              onAuthenticated={handleAuthenticated}
-            />
-          </div>
+          <LoginOverlay
+            onClose={() => {
+              window.location.hash = "/";
+            }}
+            onAuthenticated={handleAuthenticated}
+          />
         </>
       );
     }
@@ -220,15 +226,13 @@ export function App() {
 
 function LoginOverlay({ onClose, onAuthenticated }: { onClose: () => void; onAuthenticated: (session: AuthSession) => void }) {
   return (
-    <div className="fixed inset-0 z-[120] grid place-items-center bg-[var(--ink)]/70 px-4 py-8 backdrop-blur-md">
-      <button
-        onClick={onClose}
-        className="fixed right-6 top-6 z-[121] text-3xl leading-none text-[var(--bone)] hover:text-[var(--gold)] cursor-pointer"
-        aria-label="Close login"
-      >
-        ✕
-      </button>
-      <AuthGateway intent="customer" compact onAuthenticated={onAuthenticated} />
+    <div
+      className="fixed inset-0 z-[120] flex items-center justify-center bg-black/75 px-4 py-8 backdrop-blur-md overflow-y-auto min-h-screen"
+      onClick={(e) => {
+        if (e.target === e.currentTarget) onClose();
+      }}
+    >
+      <AuthGateway intent="customer" compact onClose={onClose} onAuthenticated={onAuthenticated} />
     </div>
   );
 }

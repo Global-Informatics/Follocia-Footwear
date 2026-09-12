@@ -87,7 +87,7 @@ export type CustomerProfile = {
   subscriptions: string[];
 };
 
-const PRODUCTS_KEY = "follocia_products_v6";
+const PRODUCTS_KEY = "follocia_products_v7";
 const ORDERS_KEY = "follocia_orders";
 const CUSTOMERS_KEY = "follocia_customers";
 export const COMMERCE_EVENT = "follocia-commerce-change";
@@ -100,6 +100,7 @@ if (typeof window !== "undefined") {
     localStorage.removeItem("follocia_products_v3");
     localStorage.removeItem("follocia_products_v4");
     localStorage.removeItem("follocia_products_v5");
+    localStorage.removeItem("follocia_products_v6");
   } catch {
     // Ignore in SSR / restricted storage
   }

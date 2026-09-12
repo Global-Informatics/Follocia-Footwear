@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { createPortal } from "react-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { readAuthSession } from "@/components/auth/AuthGateway";
 import {
@@ -146,28 +147,46 @@ function AddressModal({
   });
   const set = (key: keyof CommerceAddress, value: string | boolean) => setAddress((current) => ({ ...current, [key]: value }));
 
-  return (
-    <div className="fixed inset-0 z-[9999] bg-black/70 backdrop-blur-md p-4 flex items-center justify-center">
+  if (typeof document === "undefined") return null;
+
+  return createPortal(
+    <div className="fixed inset-0 z-[99999] flex items-center justify-center p-3 sm:p-6 overflow-y-auto min-h-screen">
+      {/* Backdrop covering header and whole page */}
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        onClick={onClose}
+        className="fixed inset-0 bg-black/75 backdrop-blur-md"
+      />
       <motion.form
         initial={{ opacity: 0, scale: 0.95, y: 15 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
+        exit={{ opacity: 0, scale: 0.95, y: 15 }}
         onSubmit={(event) => {
           event.preventDefault();
           onSave(address);
         }}
-        className="relative flex max-h-[90vh] w-full max-w-[720px] flex-col rounded-2xl border border-[#4b261a]/20 bg-[#fffdfa] text-[#351c13] shadow-2xl overflow-hidden"
+        className="relative z-10 my-auto flex max-h-[90vh] w-full max-w-[720px] flex-col rounded-2xl border border-[#4b261a]/20 bg-[#fffdfa] text-[#351c13] shadow-[0_25px_60px_-15px_rgba(0,0,0,0.5)] overflow-hidden"
       >
-        <div className="flex items-center justify-between px-8 py-5 border-b border-[#4b261a]/15 bg-[#fbf6ed]">
+        <div className="flex items-center justify-between px-6 sm:px-8 py-5 border-b border-[#4b261a]/15 bg-[#fbf6ed] shrink-0">
           <div>
             <span className="text-[10px] font-semibold uppercase tracking-[0.2em] text-[#a87648]">Private Atelier</span>
-            <h2 className="font-serif text-2xl font-medium text-[#351c13]">
+            <h2 className="font-serif text-2xl font-medium text-[#351c13] tracking-tight">
               {initialAddress ? "Edit Delivery Address" : "Add New Address"}
             </h2>
           </div>
-          <button type="button" onClick={onClose} aria-label="Close" className="text-3xl font-light text-[#351c13]/60 hover:text-[#a87648] cursor-pointer transition-colors leading-none">×</button>
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label="Close"
+            className="flex h-9 w-9 items-center justify-center rounded-full border border-[#4b261a20] text-xl font-light text-[#351c13]/70 hover:bg-[#4b261a10] hover:text-[#a87648] cursor-pointer transition-colors"
+          >
+            ×
+          </button>
         </div>
         
-        <div className="grid flex-1 gap-5 overflow-y-auto px-8 py-6 bg-[#fffdfa]">
+        <div className="grid flex-1 gap-5 overflow-y-auto px-6 sm:px-8 py-6 bg-[#fffdfa]">
           <div className="grid gap-5 md:grid-cols-2">
             <Field label="* First name" value={address.firstName} onChange={(v) => set("firstName", v)} required placeholder="First name" />
             <Field label="* Last name" value={address.lastName} onChange={(v) => set("lastName", v)} required placeholder="Last name" />
@@ -189,12 +208,13 @@ function AddressModal({
             Make this my default delivery address
           </label>
         </div>
-        <footer className="border-t border-[#4b261a]/15 px-8 py-4 flex justify-end gap-3 bg-[#fbf6ed]">
+        <footer className="border-t border-[#4b261a]/15 px-6 sm:px-8 py-4 flex justify-end gap-3 bg-[#fbf6ed] shrink-0">
           <button type="button" onClick={onClose} className="rounded-lg border border-[#4b261a]/20 bg-white px-6 py-2.5 text-xs font-semibold uppercase tracking-[0.12em] text-[#351c13] hover:bg-[#f2e9d9] cursor-pointer transition-colors">Cancel</button>
           <button type="submit" className="rounded-lg bg-[#351c13] px-7 py-2.5 text-xs font-semibold uppercase tracking-[0.12em] text-[#fffaf0] hover:bg-[#a87648] cursor-pointer transition-all shadow-md">{initialAddress ? "Save Changes" : "Add Address"}</button>
         </footer>
       </motion.form>
-    </div>
+    </div>,
+    document.body
   );
 }
 
@@ -293,7 +313,8 @@ export function AccountPanel({ session, initialSection = "My Orders" }: { sessio
   };
 
   return (
-    <AccountShell profile={profile} active={active} onActive={handleSectionSelect}>
+    <>
+      <AccountShell profile={profile} active={active} onActive={handleSectionSelect}>
       {active === "My Orders" && (
         <>
           <SectionHead title="My Orders" copy="View your order history or track the status of a recent reservation." />
@@ -424,32 +445,33 @@ export function AccountPanel({ session, initialSection = "My Orders" }: { sessio
       )}
       {active === "My Subscriptions" && <><SectionHead title="Subscriptions" copy="View and manage the subscriptions you've purchased." /><EmptyState title="No purchased subscriptions" copy="When you purchase a subscription, it'll appear here." /></>}
       {active === "My Account" && <AccountForm profile={profile} onSave={saveProfile} />}
-      
-      <AnimatePresence>
-        {(showAddress || editingAddress !== null) && (
-          <AddressModal
-            profile={profile}
-            initialAddress={editingAddress}
-            onClose={() => {
-              setShowAddress(false);
-              setEditingAddress(null);
-            }}
-            onSave={(savedAddr) => {
-              let updated = editingAddress
-                ? profile.addresses.map((a) => (a.id === savedAddr.id ? savedAddr : a))
-                : [...profile.addresses, savedAddr];
-              if (savedAddr.isDefault) {
-                updated = updated.map((a) => ({ ...a, isDefault: a.id === savedAddr.id }));
-              }
-              saveProfile({ ...profile, addresses: updated });
-              setShowAddress(false);
-              setEditingAddress(null);
-            }}
-          />
-        )}
-      </AnimatePresence>
     </AccountShell>
-  );
+
+    <AnimatePresence>
+      {(showAddress || editingAddress !== null) && (
+        <AddressModal
+          profile={profile}
+          initialAddress={editingAddress}
+          onClose={() => {
+            setShowAddress(false);
+            setEditingAddress(null);
+          }}
+          onSave={(savedAddr) => {
+            let updated = editingAddress
+              ? profile.addresses.map((a) => (a.id === savedAddr.id ? savedAddr : a))
+              : [...profile.addresses, savedAddr];
+            if (savedAddr.isDefault) {
+              updated = updated.map((a) => ({ ...a, isDefault: a.id === savedAddr.id }));
+            }
+            saveProfile({ ...profile, addresses: updated });
+            setShowAddress(false);
+            setEditingAddress(null);
+          }}
+        />
+      )}
+    </AnimatePresence>
+  </>
+);
 }
 
 function AccountForm({ profile, onSave }: { profile: CustomerProfile; onSave: (profile: CustomerProfile) => void }) {

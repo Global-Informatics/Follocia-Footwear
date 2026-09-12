@@ -566,7 +566,7 @@ export function ShopPage({
     return null;
   });
 
-  const [selectedSize, setSelectedSize] = useState("");
+  const [selectedSize, setSelectedSize] = useState("38");
   const [activeImage, setActiveImage] = useState("");
   const [addedToBag, setAddedToBag] = useState(false);
   const [openAccordion, setOpenAccordion] = useState("Product Details");
@@ -586,7 +586,7 @@ export function ShopPage({
       if (match) {
         setSelectedProduct(match);
         setActiveImage(productPrimaryImage(match));
-        setSelectedSize("");
+        setSelectedSize("38");
       }
     }
   }, [initialProductId, products]);
@@ -594,7 +594,7 @@ export function ShopPage({
   useEffect(() => {
     if (selectedProduct) {
       setActiveImage(productPrimaryImage(selectedProduct));
-      setSelectedSize("");
+      setSelectedSize("38");
     }
   }, [selectedProduct?.id]);
 
@@ -780,7 +780,7 @@ export function ShopPage({
   const handleSelectProduct = (product: CommerceProduct) => {
     setSelectedProduct(product);
     setActiveImage(productPrimaryImage(product));
-    setSelectedSize("");
+    setSelectedSize("38");
     window.location.hash = `#/shop/${product.id.toLowerCase()}`;
     const el = document.getElementById("selected-product-order");
     if (el) {
@@ -808,8 +808,10 @@ export function ShopPage({
   const activeVariantSku = activeVariant?.colourVariantSku || selectedProduct?.colourVariantSku || `${(selectedProduct?.designId || selectedProduct?.id || "").toUpperCase()}-${activeColourCode}`;
 
   const handleAddToBag = () => {
-    if (!selectedProduct || !selectedSize) return;
-    const cleanSz = selectedSize.replace(/\D/g, "");
+    if (!selectedProduct) return;
+    const effectiveSize = selectedSize || "38";
+    if (!selectedSize) setSelectedSize("38");
+    const cleanSz = effectiveSize.replace(/\D/g, "");
     const itemSku = activeVariant?.fullSkus?.[cleanSz] || selectedProduct.fullSkus?.[cleanSz] || computeFullSku(selectedProduct.designId || selectedProduct.id, activeHeroColour, cleanSz);
     add(
       {
@@ -818,7 +820,7 @@ export function ShopPage({
         price: selectedProduct.price,
         image: activeImage || productPrimaryImage(selectedProduct),
         tone: activeHeroColour,
-        size: selectedSize,
+        size: effectiveSize,
       },
       1
     );
@@ -828,8 +830,10 @@ export function ShopPage({
   };
 
   const handleBuyNow = () => {
-    if (!selectedProduct || !selectedSize) return;
-    const cleanSz = selectedSize.replace(/\D/g, "");
+    if (!selectedProduct) return;
+    const effectiveSize = selectedSize || "38";
+    if (!selectedSize) setSelectedSize("38");
+    const cleanSz = effectiveSize.replace(/\D/g, "");
     const itemSku = activeVariant?.fullSkus?.[cleanSz] || selectedProduct.fullSkus?.[cleanSz] || computeFullSku(selectedProduct.designId || selectedProduct.id, activeHeroColour, cleanSz);
     add(
       {
@@ -838,7 +842,7 @@ export function ShopPage({
         price: selectedProduct.price,
         image: activeImage || productPrimaryImage(selectedProduct),
         tone: activeHeroColour,
-        size: selectedSize,
+        size: effectiveSize,
       },
       1
     );
@@ -1187,7 +1191,7 @@ export function ShopPage({
                   {/* Size Selector */}
                   <div className="mt-8 border-t border-[#4b261a12] pt-6">
                     <div className="flex items-center justify-between">
-                      <span className="eyebrow text-[#4b261a80]">Select EU</span>
+                      <span className="eyebrow text-[#4b261a80]">Select Size</span>
                       <span className="text-[10px] uppercase tracking-widest text-[#4b261a60]">EU Sizing</span>
                     </div>
 
@@ -1225,25 +1229,27 @@ export function ShopPage({
                     <button
                       type="button"
                       onClick={handleAddToBag}
-                      disabled={!selectedSize}
-                      className={`flex-1 rounded-full py-4 px-6 text-xs font-semibold uppercase tracking-widest transition-all ${
-                        selectedSize
-                          ? "bg-[#24130d] text-[#fffdf8] hover:bg-[#3d1f14] shadow-lg hover:shadow-xl cursor-pointer"
-                          : "bg-gray-200 text-gray-400 cursor-not-allowed"
-                      }`}
+                      style={{
+                        backgroundColor: "#15803d",
+                        backgroundImage: "linear-gradient(135deg, #16a34a, #15803d)",
+                        color: "#ffffff",
+                        border: "none",
+                        boxShadow: "0 4px 16px rgba(22, 163, 74, 0.4)",
+                      }}
+                      className="btn-green-action flex-1 rounded-full py-4 px-6 text-xs font-semibold uppercase tracking-widest text-white transition-all hover:brightness-110 cursor-pointer shadow-lg"
                     >
-                      {addedToBag ? "✓ Added to Bag!" : selectedSize ? "Add to Bag / Reserve Pair →" : "Select Size First"}
+                      {addedToBag ? "✓ Added to Bag!" : "Add to Bag / Reserve Pair →"}
                     </button>
 
                     <button
                       type="button"
                       onClick={handleBuyNow}
-                      disabled={!selectedSize}
-                      className={`rounded-full py-4 px-8 text-xs font-semibold uppercase tracking-widest border transition-all ${
-                        selectedSize
-                          ? "border-[#24130d] bg-white text-[#24130d] hover:bg-[#24130d] hover:text-white cursor-pointer"
-                          : "border-gray-200 text-gray-300 cursor-not-allowed"
-                      }`}
+                      style={{
+                        borderColor: "#16a34a",
+                        color: "#15803d",
+                        backgroundColor: "#ffffff",
+                      }}
+                      className="btn-green-outline rounded-full py-4 px-8 text-xs font-semibold uppercase tracking-widest border transition-all cursor-pointer shadow-sm hover:brightness-95"
                     >
                       Buy Now (Card / UPI / COD)
                     </button>
@@ -1755,7 +1761,19 @@ export function SecureCheckoutPage({ session, onLogout, onLogin }: { session: Au
             <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="glass border border-[var(--ink)]/10 p-16 shadow-[var(--shadow-soft)] bg-white/80">
               <h1 className="font-display text-6xl">Sign in to checkout.</h1>
               <p className="mt-4 text-[var(--ink)]/60">Reserve your pair from the private atelier.</p>
-              <button onClick={onLogin} className="magnetic-btn mt-8 bg-[var(--ink)] px-8 py-4 eyebrow text-white transition-colors hover:bg-[var(--gold)] hover:text-[var(--ink)]">Open Login</button>
+              <button
+                onClick={onLogin}
+                style={{
+                  backgroundColor: "#15803d",
+                  backgroundImage: "linear-gradient(135deg, #16a34a, #15803d)",
+                  color: "#ffffff",
+                  border: "none",
+                  boxShadow: "0 4px 16px rgba(22, 163, 74, 0.4)",
+                }}
+                className="btn-green-action mt-8 px-8 py-4 eyebrow text-white transition-all duration-300 hover:brightness-110 cursor-pointer"
+              >
+                Open Login
+              </button>
             </motion.div>
           </div>
         ) : items.length === 0 && step !== "done" ? (
@@ -1796,7 +1814,19 @@ export function SecureCheckoutPage({ session, onLogout, onLogin }: { session: Au
                 )}
 
                 <div className="mt-8 flex flex-col sm:flex-row gap-4 justify-center">
-                  <a href="#/account/my-orders" className="magnetic-btn bg-[var(--ink)] px-8 py-4 eyebrow text-white transition-colors hover:bg-[var(--gold)] hover:text-[var(--ink)] shadow-md">View Orders Timeline</a>
+                  <a
+                    href="#/account/my-orders"
+                    style={{
+                      backgroundColor: "#15803d",
+                      backgroundImage: "linear-gradient(135deg, #16a34a, #15803d)",
+                      color: "#ffffff",
+                      border: "none",
+                      boxShadow: "0 4px 16px rgba(22, 163, 74, 0.4)",
+                    }}
+                    className="btn-green-action px-8 py-4 eyebrow text-white transition-all duration-300 hover:brightness-110"
+                  >
+                    View Orders Timeline
+                  </a>
                   <a href="#/shop" className="border border-[var(--ink)]/20 px-8 py-4 eyebrow text-[var(--ink)] transition-colors hover:border-[var(--gold)] hover:text-[var(--gold)]">Continue Shopping</a>
                 </div>
               </div>
@@ -1876,7 +1906,20 @@ export function SecureCheckoutPage({ session, onLogout, onLogin }: { session: Au
                         )}
                       </AnimatePresence>
                       
-                      <button disabled={selectedAddress === "new" && (!draft.firstName || !draft.lastName || !draft.phone || !draft.address)} onClick={() => setStep("payment")} className="magnetic-btn ml-auto w-full bg-[var(--ink)] px-8 py-4 eyebrow text-[var(--bone)] disabled:opacity-50 md:w-auto transition-colors hover:bg-[var(--gold)] hover:text-[var(--ink)] hover:shadow-[var(--shadow-gold-glow)] cursor-pointer">Continue to Payment →</button>
+                      <button
+                        disabled={selectedAddress === "new" && (!draft.firstName || !draft.lastName || !draft.phone || !draft.address)}
+                        onClick={() => setStep("payment")}
+                        style={{
+                          backgroundColor: "#15803d",
+                          backgroundImage: "linear-gradient(135deg, #16a34a, #15803d)",
+                          color: "#ffffff",
+                          border: "none",
+                          boxShadow: "0 4px 16px rgba(22, 163, 74, 0.4)",
+                        }}
+                        className="btn-green-action ml-auto w-full px-8 py-4 eyebrow text-white disabled:opacity-50 disabled:cursor-not-allowed md:w-auto transition-all duration-300 hover:brightness-110 cursor-pointer font-medium"
+                      >
+                        Continue to Payment →
+                      </button>
                     </motion.div>
                   ) : (
                     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="grid gap-6 p-10 text-sm md:grid-cols-3 bg-[var(--bone)]/30">
@@ -2255,7 +2298,14 @@ export function SecureCheckoutPage({ session, onLogout, onLogin }: { session: Au
                       <button
                         onClick={placeOrder}
                         disabled={saving || (paymentMethod === "Cash on Delivery" && !codAgreed)}
-                        className="magnetic-btn w-full bg-[var(--ink)] px-8 py-5 eyebrow text-white disabled:opacity-50 transition-colors hover:bg-[var(--gold)] hover:text-[var(--ink)] hover:shadow-[var(--shadow-gold-glow)] cursor-pointer font-medium"
+                        style={{
+                          backgroundColor: "#15803d",
+                          backgroundImage: "linear-gradient(135deg, #16a34a, #15803d)",
+                          color: "#ffffff",
+                          border: "none",
+                          boxShadow: "0 4px 20px rgba(22, 163, 74, 0.4)",
+                        }}
+                        className="btn-green-action w-full px-8 py-5 eyebrow text-white disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-300 hover:brightness-110 cursor-pointer font-medium"
                       >
                         {saving ? (
                           payProcessingMessage || "Processing securely..."

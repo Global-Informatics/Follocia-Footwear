@@ -858,7 +858,7 @@ export const FOLLICIA_PRODUCTS: FolliciaProduct[] = [
     designId: "FM-04",
     collection: "Muse",
     name: "Muse Plume Oxford",
-    category: "Heel",
+    category: "Boot",
     silhouette: "Closed pointed toe",
     material: "Textured textile with feather-inspired finish",
     heroColour: "Cream Ivory",
@@ -874,7 +874,7 @@ export const FOLLICIA_PRODUCTS: FolliciaProduct[] = [
     price: 3500,
     productStatus: "Live",
     designStatus: "Final",
-    notes: "Heeled Oxford shoe; corrected from Boots.",
+    notes: "Heeled Oxford bootie; categorized as Boot.",
     image: "/products/fm-04.webp",
   },
   {

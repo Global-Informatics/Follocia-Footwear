@@ -30,3 +30,9 @@ public record EnsureCustomerRequest(string Id, string Name, string Email, string
 public record CreateOrderRequest(string CustomerId, string Customer, string Email, string ProductId, string Product, string Size, string Amount, int Quantity, string DeliveryAddress, string PaymentMethod);
 
 public record AdminRecordDto(string Id, string Module, string Title, string Meta, string Status);
+
+public record SendOtpRequest(string Email, string? Purpose);
+
+public record VerifyOtpRequest(string Email, string Otp);
+
+public record OtpResponseDto(bool Success, string Message, bool SentViaSmtp, string? PreviewCode);
