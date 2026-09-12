@@ -4,7 +4,7 @@ import { useCart } from "./CartContext";
 
 export type QuickItem = { id: string; title: string; edition: string; tone: string; price: string; image: string; description?: string; category?: string };
 const ease = [0.2, 0.8, 0.2, 1] as const;
-const sizes = ["38", "39", "40", "41"];
+const sizes = ["EU38", "EU39", "EU40", "EU41"];
 
 export function QuickView({ item, onClose }: { item: QuickItem | null; onClose: () => void }) {
   const { add } = useCart();
@@ -64,13 +64,13 @@ export function QuickView({ item, onClose }: { item: QuickItem | null; onClose: 
 
                 <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.7, duration: 0.6 }} className="mt-8">
                   <div className="flex items-center justify-between">
-                    <p className="eyebrow text-[var(--ink)]/60 font-medium tracking-widest">SELECT SIZE</p>
+                    <p className="eyebrow text-[var(--ink)]/60 font-medium tracking-widest">SELECT EU</p>
                     <span className="text-[10px] uppercase tracking-widest text-[var(--ink)]/40 font-medium">EU SIZING</span>
                   </div>
                   <div className="mt-3 flex flex-wrap gap-2">
                     {sizes.map(s => (
                       <motion.button key={s} onClick={() => setSize(s)} whileTap={{ scale: 0.92 }}
-                        className={`h-11 w-13 border text-sm transition-all duration-300 ${size === s
+                        className={`h-11 px-3.5 min-w-14 border text-sm transition-all duration-300 ${size === s
                           ? "border-[var(--gold)] bg-[var(--ink)] text-[var(--bone)] shadow-[0_0_12px_oklch(0.78_0.12_80/0.2)]"
                           : "border-[var(--ink)]/15 text-[var(--ink)] hover:border-[var(--gold)]/40"}`}>
                         {s}

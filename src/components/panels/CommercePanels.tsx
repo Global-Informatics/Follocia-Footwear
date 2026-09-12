@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import { readAuthSession } from "@/components/auth/AuthGateway";
 import {
   COMMERCE_EVENT,
   deleteCustomerRemote,
@@ -15,13 +16,20 @@ import {
   saveProductRemote,
   saveOrders,
   saveProducts,
+  resetToMasterCatalog,
   syncCommerceFromBackend,
+  computeFullSku,
+  computeAllFullSkus,
+  getHeroColorCode,
+  getProductVariants,
+  getActiveVariant,
   uploadProductImages,
   upsertCustomer,
   type CommerceAddress,
   type CommerceOrder,
   type CommerceProduct,
   type CustomerProfile,
+  type ProductVariant,
 } from "@/lib/commerceStore";
 import type { AuthSession } from "@/components/auth/AuthGateway";
 import { BrandLogo } from "@/components/BrandLogo";
@@ -817,7 +825,29 @@ function AdminField({ label, value, onChange, placeholder }: { label: string; va
   );
 }
 
-function ProductImagePicker({ images, onChange }: { images: string[]; onChange: (images: string[]) => void }) {
+function getColorHex(colorName?: string): string {
+  const c = (colorName || "").toLowerCase();
+  if (c.includes("black")) return "#171310";
+  if (c.includes("brown") || c.includes("chocolate")) return "#6c3d2c";
+  if (c.includes("burgundy")) return "#711f2c";
+  if (c.includes("olive")) return "#77704c";
+  if (c.includes("blush") || c.includes("rose")) return "#d8a9a2";
+  if (c.includes("silver") || c.includes("chrome")) return "#b8b8b5";
+  if (c.includes("gold") || c.includes("monarch") || c.includes("orange")) return "#d9a15c";
+  return "#f2e9d9";
+}
+
+function ProductImagePicker({
+  images,
+  onChange,
+  activeImage,
+  onSelectImage,
+}: {
+  images: string[];
+  onChange: (images: string[]) => void;
+  activeImage?: string;
+  onSelectImage?: (image: string) => void;
+}) {
   const [busy, setBusy] = useState(false);
   const slots = images.slice(0, 5);
   const acceptFiles = async (fileList: FileList | File[]) => {
@@ -856,18 +886,44 @@ function ProductImagePicker({ images, onChange }: { images: string[]; onChange: 
       </div>
       {slots.length > 0 && (
         <div className="grid grid-cols-5 gap-2">
-          {slots.map((image, index) => (
-            <div key={`${image}-${index}`} className="group relative aspect-square overflow-hidden border border-[var(--ink)]/10 bg-[var(--champagne)]/30">
-              <img src={image} alt="" className="h-full w-full object-cover" />
-              <button
-                type="button"
-                onClick={() => onChange(slots.filter((_, itemIndex) => itemIndex !== index))}
-                className="absolute inset-x-1 bottom-1 bg-white/90 px-1 py-1 text-[9px] uppercase tracking-widest opacity-0 transition-opacity group-hover:opacity-100"
+          {slots.map((image, index) => {
+            const cleanActive = (activeImage || "").trim().toLowerCase();
+            const cleanActiveFile = cleanActive.split("/").pop()?.split("?")[0] || cleanActive;
+            const cleanImg = image.trim().toLowerCase();
+            const cleanImgFile = cleanImg.split("/").pop()?.split("?")[0] || cleanImg;
+            const isActive = cleanActive ? (cleanActive === cleanImg || cleanActiveFile === cleanImgFile) : index === 0;
+            return (
+              <div
+                key={`${image}-${index}`}
+                onClick={() => onSelectImage?.(image)}
+                title={onSelectImage ? "Click to view & edit this colour variant" : undefined}
+                className={`group relative aspect-square overflow-hidden border bg-[var(--champagne)]/30 transition-all ${
+                  onSelectImage ? "cursor-pointer" : ""
+                } ${
+                  isActive
+                    ? "border-[var(--gold)] ring-2 ring-[var(--gold)] ring-offset-1 shadow-md scale-102 z-10"
+                    : "border-[var(--ink)]/15 hover:border-[var(--gold)]/70"
+                }`}
               >
-                Remove
-              </button>
-            </div>
-          ))}
+                <img src={image} alt="" className="h-full w-full object-cover" />
+                {isActive && (
+                  <span className="absolute top-1 left-1 bg-[#24130d] text-[#fffdf8] text-[8px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded shadow-sm">
+                    Active
+                  </span>
+                )}
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onChange(slots.filter((_, itemIndex) => itemIndex !== index));
+                  }}
+                  className="absolute inset-x-1 bottom-1 bg-white/90 px-1 py-1 text-[9px] uppercase tracking-widest opacity-0 transition-opacity group-hover:opacity-100 cursor-pointer"
+                >
+                  Remove
+                </button>
+              </div>
+            );
+          })}
         </div>
       )}
     </div>
@@ -968,6 +1024,188 @@ function getAdminSectionFromHash(): AdminSection {
   const raw = window.location.hash.toLowerCase().replace(/^#\/?/, "");
   const clean = raw.startsWith("admin/") ? raw.replace(/^admin\//, "") : raw === "admin" ? "dashboard" : raw;
   return adminSections.includes(clean as AdminSection) ? (clean as AdminSection) : "dashboard";
+}
+
+function AdminProductCard({
+  product,
+  products,
+  productStatuses,
+  persistProducts,
+  publishProduct,
+  archiveProduct,
+}: {
+  product: CommerceProduct;
+  products: CommerceProduct[];
+  productStatuses: readonly string[];
+  persistProducts: (next: CommerceProduct[]) => void;
+  publishProduct: (product: CommerceProduct) => void;
+  archiveProduct: (product: CommerceProduct) => void;
+}) {
+  const variants = useMemo(() => getProductVariants(product), [product]);
+  const [activeImage, setActiveImage] = useState<string>(() => productPrimaryImage(product));
+
+  useEffect(() => {
+    const images = productImages(product);
+    if (!images.includes(activeImage)) {
+      setActiveImage(productPrimaryImage(product));
+    }
+  }, [product]);
+
+  const currentVariant = useMemo(() => getActiveVariant(product, activeImage), [product, activeImage]);
+
+  const updateVariantField = (field: "heroColour" | "colourCode" | "colourVariantSku", val: string) => {
+    const updatedVariants = variants.map((v) => {
+      if (v.heroColour === currentVariant.heroColour || v.image === activeImage) {
+        const nextV = { ...v, [field]: val };
+        if (field === "heroColour") {
+          nextV.fullSkus = computeAllFullSkus(product.designId || product.id, val);
+        }
+        return nextV;
+      }
+      return v;
+    });
+
+    const updatedProduct: CommerceProduct = {
+      ...product,
+      variants: updatedVariants,
+    };
+
+    if (currentVariant.heroColour === product.heroColour || variants[0]?.heroColour === currentVariant.heroColour) {
+      if (field === "heroColour") {
+        updatedProduct.heroColour = val;
+        updatedProduct.tone = val;
+        updatedProduct.fullSkus = computeAllFullSkus(product.designId || product.id, val);
+      } else if (field === "colourCode") {
+        updatedProduct.colourCode = val;
+      } else if (field === "colourVariantSku") {
+        updatedProduct.colourVariantSku = val;
+      }
+    }
+
+    persistProducts(products.map((item) => (item.id === product.id ? updatedProduct : item)));
+  };
+
+  const handleSelectVariant = (v: ProductVariant) => {
+    setActiveImage(v.image);
+  };
+
+  return (
+    <article key={product.id} className="grid gap-5 border border-[var(--ink)]/10 bg-white p-5 xl:grid-cols-[150px_1fr]">
+      <div className="relative">
+        <img
+          src={activeImage || productPrimaryImage(product)}
+          alt={product.title}
+          onClick={() => {
+            if (variants.length > 1) {
+              const currIdx = variants.findIndex((v) => v.heroColour === currentVariant.heroColour);
+              const nextIdx = (currIdx + 1) % variants.length;
+              setActiveImage(variants[nextIdx].image);
+            }
+          }}
+          className={`aspect-[3/4] w-full object-cover rounded transition-transform ${
+            variants.length > 1 ? "cursor-pointer hover:opacity-95 hover:scale-[1.02]" : ""
+          }`}
+          title={variants.length > 1 ? "Click to switch variant photo" : undefined}
+        />
+        {currentVariant.heroColour && (
+          <div className="mt-2 text-center">
+            <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-[#FAF8F5] border border-[#4b261a20] text-[10px] font-semibold text-[#24130d]">
+              <span className="h-2 w-2 rounded-full border border-black/10 shrink-0" style={{ backgroundColor: getColorHex(currentVariant.heroColour) }} />
+              {currentVariant.heroColour} {currentVariant.colourCode ? `(${currentVariant.colourCode})` : ""}
+            </span>
+          </div>
+        )}
+      </div>
+
+      <div className="grid gap-3 md:grid-cols-3">
+        {variants.length > 1 && (
+          <div className="md:col-span-3 flex flex-wrap items-center gap-2 pb-2 border-b border-[#4b261a10]">
+            <span className="text-[10px] uppercase font-bold tracking-widest text-[#4b261a70]">
+              Active Colour Variant ({variants.length}):
+            </span>
+            <div className="flex flex-wrap gap-1.5">
+              {variants.map((v, vIdx) => {
+                const isSel = (activeImage ? v.image === activeImage : vIdx === 0) || currentVariant.heroColour === v.heroColour;
+                return (
+                  <button
+                    key={`${v.colourVariantSku || v.heroColour}-${vIdx}`}
+                    type="button"
+                    onClick={() => handleSelectVariant(v)}
+                    className={`px-3 py-1 rounded-full text-xs font-semibold uppercase tracking-wider transition-all flex items-center gap-1.5 cursor-pointer ${
+                      isSel
+                        ? "bg-[#24130d] text-[#fffdf8] shadow-sm ring-1 ring-[#24130d]"
+                        : "bg-white border border-[#4b261a20] text-[#4b261a90] hover:border-[#24130d] hover:text-[#24130d]"
+                    }`}
+                  >
+                    <span
+                      className="h-2.5 w-2.5 rounded-full border border-black/10 shrink-0"
+                      style={{ backgroundColor: getColorHex(v.heroColour) }}
+                    />
+                    <span>{v.colourCode ? `${v.colourCode} - ` : ""}{v.heroColour}</span>
+                    {isSel && <span className="text-[9px] text-[var(--gold)]">✓</span>}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        <AdminField label="Design ID" value={product.designId || product.id.toUpperCase()} onChange={(value) => persistProducts(products.map((item) => item.id === product.id ? { ...item, designId: value } : item))} />
+        <AdminField label="Title / Product Name" value={product.title} onChange={(value) => persistProducts(products.map((item) => item.id === product.id ? { ...item, title: value } : item))} />
+        <AdminField label="Collection" value={product.collection || product.edition} onChange={(value) => persistProducts(products.map((item) => item.id === product.id ? { ...item, collection: value, edition: `${value} Collection` } : item))} />
+        <AdminField label="Category" value={product.category || "Heel"} onChange={(value) => persistProducts(products.map((item) => item.id === product.id ? { ...item, category: value } : item))} />
+        <AdminField label="Silhouette / Toe" value={product.silhouette || ""} onChange={(value) => persistProducts(products.map((item) => item.id === product.id ? { ...item, silhouette: value } : item))} />
+        <AdminField label="Material" value={product.material || product.tone} onChange={(value) => persistProducts(products.map((item) => item.id === product.id ? { ...item, material: value } : item))} />
+
+        <AdminField label="Hero Colour" value={currentVariant.heroColour} onChange={(value) => updateVariantField("heroColour", value)} />
+        <AdminField label="Colour Code" value={currentVariant.colourCode || ""} onChange={(value) => updateVariantField("colourCode", value)} />
+        <AdminField label="Variant SKU" value={currentVariant.colourVariantSku || ""} onChange={(value) => updateVariantField("colourVariantSku", value)} />
+
+        <AdminField label="Price" value={product.price} onChange={(value) => persistProducts(products.map((item) => item.id === product.id ? { ...item, price: value } : item))} />
+        <label className="grid gap-2 text-[10px] uppercase tracking-[0.2em] text-[var(--ink)]/50">
+          Status
+          <select value={product.status} onChange={(event) => persistProducts(products.map((item) => item.id === product.id ? { ...item, status: event.target.value } : item))} className="border border-[var(--ink)]/10 bg-white/50 px-4 py-3 text-sm normal-case tracking-normal text-[var(--ink)] outline-none focus:border-[var(--gold)]">
+            {productStatuses.map((status) => <option key={status}>{status}</option>)}
+          </select>
+        </label>
+
+        {/* Dynamic Full SKUs for each size */}
+        <div className="md:col-span-3 bg-[#FAF8F5] border border-[#4b261a15] p-3 rounded-lg">
+          <div className="flex flex-wrap items-center justify-between gap-2 mb-1.5">
+            <p className="text-[10px] uppercase font-bold tracking-widest text-[#4b261a70]">
+              Dynamic Full SKUs ({`Formula: {Design ID}-${getHeroColorCode(currentVariant.heroColour)}-{Size}`})
+            </p>
+            <span className="text-[9px] uppercase tracking-wider text-[var(--gold)] font-semibold">
+              Showing: {currentVariant.heroColour}
+            </span>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            {["38", "39", "40", "41"].map((sz) => {
+              const dynSku = currentVariant.fullSkus?.[sz] || computeFullSku(product.designId || product.id, currentVariant.heroColour, sz);
+              return (
+                <span key={sz} className="inline-flex items-center gap-1.5 font-mono text-xs bg-white border border-[#4b261a20] px-2.5 py-1 rounded shadow-xs">
+                  <strong className="text-[var(--gold)]">EU{sz}:</strong> {dynSku}
+                </span>
+              );
+            })}
+          </div>
+        </div>
+
+        <AdminField label="Available Stock" value={product.available} onChange={(value) => persistProducts(products.map((item) => item.id === product.id ? { ...item, available: Number(value) || 0 } : item))} />
+        <div className="md:col-span-3">
+          <ProductImagePicker
+            images={productImages(product)}
+            activeImage={activeImage}
+            onSelectImage={(img) => setActiveImage(img)}
+            onChange={(images) => persistProducts(products.map((item) => item.id === product.id ? { ...item, image: images[0] || "", images } : item))}
+          />
+        </div>
+        <button onClick={() => product.status === "Draft" ? publishProduct(product) : archiveProduct(product)} className="border border-[var(--ink)] px-4 py-3 text-xs uppercase tracking-[0.18em] md:col-span-3 cursor-pointer">
+          {product.status === "Draft" ? "Publish to Storefront" : "Move to Draft"}
+        </button>
+      </div>
+    </article>
+  );
 }
 
 export function AdminPanel({ onLogout }: { onLogout?: () => void }) {
@@ -1224,10 +1462,25 @@ export function AdminPanel({ onLogout }: { onLogout?: () => void }) {
         <section className="border border-[var(--ink)]/10 bg-[var(--bone)]/35 p-5">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
-              <p className="eyebrow text-[var(--gold)]">New product</p>
-              <h3 className="mt-1 font-display text-3xl">Add catalogue piece</h3>
+              <p className="eyebrow text-[var(--gold)]">Catalogue CMS ({products.length} Products)</p>
+              <h3 className="mt-1 font-display text-3xl">Manage Atelier Pieces</h3>
             </div>
-            <button onClick={createProduct} className="bg-[var(--ink)] px-5 py-3 text-xs uppercase tracking-[0.2em] text-[var(--bone)]">Publish</button>
+            <div className="flex flex-wrap items-center gap-2">
+              <button
+                type="button"
+                onClick={() => {
+                  if (window.confirm("Reload all 40 products from Developer Master Excel Catalog? This will synchronize all product specifications, colors, SKUs, silhouettes, and materials.")) {
+                    const updated = resetToMasterCatalog();
+                    setProducts(updated);
+                    alert(`Success! ${updated.length} products synchronized with master catalog.`);
+                  }
+                }}
+                className="bg-[var(--gold)] hover:bg-[#b58032] text-white px-4 py-3 text-xs uppercase tracking-[0.16em] font-semibold transition-colors shadow-sm cursor-pointer"
+              >
+                ⚡ Re-Sync Master Excel Catalog
+              </button>
+              <button onClick={createProduct} className="bg-[var(--ink)] px-5 py-3 text-xs uppercase tracking-[0.2em] text-[var(--bone)]">Publish New</button>
+            </div>
           </div>
           <div className="mt-5 grid gap-3 md:grid-cols-3">
             <AdminField label="Title" value={draftProduct.title} onChange={(value) => updateDraftProduct("title", value)} />
@@ -1249,30 +1502,15 @@ export function AdminPanel({ onLogout }: { onLogout?: () => void }) {
           </div>
         </section>
         {products.map((product) => (
-          <article key={product.id} className="grid gap-5 border border-[var(--ink)]/10 bg-white p-5 xl:grid-cols-[150px_1fr]">
-            <img src={productPrimaryImage(product)} alt={product.title} className="aspect-[3/4] w-full object-cover" />
-            <div className="grid gap-3 md:grid-cols-3">
-              <AdminField label="Title" value={product.title} onChange={(value) => persistProducts(products.map((item) => item.id === product.id ? { ...item, title: value } : item))} />
-              <AdminField label="Edition" value={product.edition} onChange={(value) => persistProducts(products.map((item) => item.id === product.id ? { ...item, edition: value } : item))} />
-              <AdminField label="Tone / material" value={product.tone} onChange={(value) => persistProducts(products.map((item) => item.id === product.id ? { ...item, tone: value } : item))} />
-              <AdminField label="Price" value={product.price} onChange={(value) => persistProducts(products.map((item) => item.id === product.id ? { ...item, price: value } : item))} />
-              <label className="grid gap-2 text-[10px] uppercase tracking-[0.2em] text-[var(--ink)]/50">
-                Status
-                <select value={product.status} onChange={(event) => persistProducts(products.map((item) => item.id === product.id ? { ...item, status: event.target.value } : item))} className="border border-[var(--ink)]/10 bg-white/50 px-4 py-3 text-sm normal-case tracking-normal text-[var(--ink)] outline-none focus:border-[var(--gold)]">
-                  {productStatuses.map((status) => <option key={status}>{status}</option>)}
-                </select>
-              </label>
-              <AdminField label="Produced" value={product.produced} onChange={(value) => persistProducts(products.map((item) => item.id === product.id ? { ...item, produced: Number(value) || 0 } : item))} />
-              <AdminField label="Reserved" value={product.reserved} onChange={(value) => persistProducts(products.map((item) => item.id === product.id ? { ...item, reserved: Number(value) || 0 } : item))} />
-              <AdminField label="Available" value={product.available} onChange={(value) => persistProducts(products.map((item) => item.id === product.id ? { ...item, available: Number(value) || 0 } : item))} />
-              <div className="md:col-span-3">
-                <ProductImagePicker images={productImages(product)} onChange={(images) => persistProducts(products.map((item) => item.id === product.id ? { ...item, image: images[0] || "", images } : item))} />
-              </div>
-              <button onClick={() => product.status === "Draft" ? publishProduct(product) : archiveProduct(product)} className="border border-[var(--ink)] px-4 py-3 text-xs uppercase tracking-[0.18em] md:col-span-3">
-                {product.status === "Draft" ? "Publish to Storefront" : "Move to Draft"}
-              </button>
-            </div>
-          </article>
+          <AdminProductCard
+            key={product.id}
+            product={product}
+            products={products}
+            productStatuses={productStatuses}
+            persistProducts={persistProducts}
+            publishProduct={publishProduct}
+            archiveProduct={archiveProduct}
+          />
         ))}
       </div>
     </AdminCard>

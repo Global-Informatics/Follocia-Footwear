@@ -16,9 +16,15 @@ import {
   saveCustomerRemote,
   syncCommerceFromBackend,
   upsertCustomer,
+  computeFullSku,
+  computeAllFullSkus,
+  getHeroColorCode,
+  getProductVariants,
+  getActiveVariant,
   type CommerceAddress,
   type CommerceProduct,
   type CustomerProfile,
+  type ProductVariant,
 } from "@/lib/commerceStore";
 import type { AuthSession } from "@/components/auth/AuthGateway";
 import { readCheckoutCoupon } from "@/lib/coupons";
@@ -34,7 +40,7 @@ type PageShellProps = {
   darkNav?: boolean;
 };
 
-const sizes = ["38", "39", "40", "41"];
+const sizes = ["EU38", "EU39", "EU40", "EU41"];
 
 function getColorHex(colorName: string): string {
   const c = colorName.toLowerCase();
@@ -91,7 +97,7 @@ function stockMood(product: CommerceProduct) {
 
 function sizeConfidence(product: CommerceProduct, selectedSize: string) {
   if (!selectedSize) return "Select a size for atelier guidance.";
-  const sizeNumber = Number(selectedSize);
+  const sizeNumber = Number(selectedSize.replace(/\D/g, ""));
   if (product.tone.toLowerCase().includes("patent") && sizeNumber <= 37) return "Patent finish can feel structured. Concierge suggests reviewing half-size comfort.";
   if (product.tone.toLowerCase().includes("satin")) return "Satin edition fits true to size with a softer instep feel.";
   return "Fits true to size. Concierge can confirm against your usual European size.";
@@ -204,6 +210,191 @@ function FilterDropdown({
               >
                 <span>{opt}</span>
                 {value === opt && <span className="text-[var(--gold)] ml-2">✓</span>}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+const COLOR_SWATCHES = [
+  { name: "All", hex: "linear-gradient(135deg, #171310 0%, #d8a9a2 50%, #d9a15c 100%)" },
+  { name: "Black", hex: "#171310" },
+  { name: "Ivory / Nude", hex: "#f2e9d9" },
+  { name: "Brown / Tan", hex: "#6c3d2c" },
+  { name: "Blush / Rose", hex: "#d8a9a2" },
+  { name: "Silver / Chrome", hex: "#b8b8b5" },
+  { name: "Gold", hex: "#d9a15c" },
+];
+
+function PriceRangeDropdown({
+  maxPrice,
+  onChange,
+}: {
+  maxPrice: number;
+  onChange: (val: number) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) {
+        setOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  const displayVal = maxPrice >= 5000 ? "ALL" : `≤ ₹${maxPrice.toLocaleString("en-IN")}`;
+
+  return (
+    <div ref={ref} className="relative">
+      <button
+        type="button"
+        onClick={() => setOpen(!open)}
+        className="flex items-center gap-1.5 cursor-pointer text-[10px] uppercase tracking-widest text-[var(--ink)]/70 hover:text-[var(--ink)] transition-colors select-none py-1"
+      >
+        <span className="text-[var(--ink)]/40 font-medium">PRICE</span>
+        <span className="font-semibold text-[var(--ink)]">{displayVal}</span>
+        <svg
+          width="8"
+          height="8"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2.5"
+          className={`transition-transform duration-200 text-[var(--ink)]/50 ${open ? "rotate-180" : ""}`}
+        >
+          <path d="M6 9l6 6 6-6" />
+        </svg>
+      </button>
+
+      {open && (
+        <div className="absolute top-full left-0 mt-2 min-w-[240px] p-4 rounded-xl border border-[#4b261a22] bg-white shadow-[0_12px_32px_rgba(0,0,0,0.18)] z-50 animate-in fade-in zoom-in-95 duration-150">
+          <div className="flex items-center justify-between text-xs font-bold text-[#24130d] mb-2">
+            <span>PRICE RANGE</span>
+            <span className="text-[var(--gold)] font-bold">
+              {maxPrice >= 5000 ? "₹1,000 - ₹5,000+" : `Up to ₹${maxPrice.toLocaleString("en-IN")}`}
+            </span>
+          </div>
+
+          <input
+            type="range"
+            min="1400"
+            max="5000"
+            step="100"
+            value={maxPrice}
+            onChange={(e) => onChange(Number(e.target.value))}
+            className="w-full accent-[var(--gold)] cursor-pointer h-2 bg-[#4b261a15] rounded-lg mb-3"
+          />
+
+          <div className="flex items-center justify-between gap-1 text-[10px] uppercase text-[#4b261a80]">
+            <button
+              type="button"
+              onClick={() => onChange(5000)}
+              className={`px-2 py-1 rounded border transition-colors cursor-pointer ${maxPrice >= 5000 ? "border-[var(--gold)] bg-[#fffaf0] font-bold text-[#24130d]" : "border-[#4b261a15] hover:border-[#4b261a40]"}`}
+            >
+              All
+            </button>
+            <button
+              type="button"
+              onClick={() => onChange(2000)}
+              className={`px-2 py-1 rounded border transition-colors cursor-pointer ${maxPrice === 2000 ? "border-[var(--gold)] bg-[#fffaf0] font-bold text-[#24130d]" : "border-[#4b261a15] hover:border-[#4b261a40]"}`}
+            >
+              &lt; ₹2K
+            </button>
+            <button
+              type="button"
+              onClick={() => onChange(3000)}
+              className={`px-2 py-1 rounded border transition-colors cursor-pointer ${maxPrice === 3000 ? "border-[var(--gold)] bg-[#fffaf0] font-bold text-[#24130d]" : "border-[#4b261a15] hover:border-[#4b261a40]"}`}
+            >
+              &lt; ₹3K
+            </button>
+            <button
+              type="button"
+              onClick={() => onChange(4000)}
+              className={`px-2 py-1 rounded border transition-colors cursor-pointer ${maxPrice === 4000 ? "border-[var(--gold)] bg-[#fffaf0] font-bold text-[#24130d]" : "border-[#4b261a15] hover:border-[#4b261a40]"}`}
+            >
+              &lt; ₹4K
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function ColorFilterDropdown({
+  value,
+  onChange,
+}: {
+  value: string;
+  onChange: (val: string) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) {
+        setOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  return (
+    <div ref={ref} className="relative">
+      <button
+        type="button"
+        onClick={() => setOpen(!open)}
+        className="flex items-center gap-1.5 cursor-pointer text-[10px] uppercase tracking-widest text-[var(--ink)]/70 hover:text-[var(--ink)] transition-colors select-none py-1"
+      >
+        <span className="text-[var(--ink)]/40 font-medium">COLOR</span>
+        <span className="font-semibold text-[var(--ink)]">{value}</span>
+        <svg
+          width="8"
+          height="8"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2.5"
+          className={`transition-transform duration-200 text-[var(--ink)]/50 ${open ? "rotate-180" : ""}`}
+        >
+          <path d="M6 9l6 6 6-6" />
+        </svg>
+      </button>
+
+      {open && (
+        <div className="absolute top-full left-0 mt-2 min-w-[200px] overflow-hidden rounded-xl border border-[#4b261a22] bg-white p-2 shadow-[0_12px_32px_rgba(0,0,0,0.18)] z-50 animate-in fade-in zoom-in-95 duration-150">
+          <div className="px-3 py-1.5 text-[10px] font-bold uppercase tracking-widest text-[#4b261a80] border-b border-[#4b261a12] mb-1">
+            Filter by Color
+          </div>
+          <div className="py-1 grid gap-1">
+            {COLOR_SWATCHES.map((swatch) => (
+              <button
+                key={swatch.name}
+                type="button"
+                onClick={() => {
+                  onChange(swatch.name);
+                  setOpen(false);
+                }}
+                className={`flex w-full items-center gap-2.5 px-3 py-1.5 text-left text-xs rounded-lg transition-colors cursor-pointer ${
+                  value === swatch.name
+                    ? "bg-[#24130d] text-[#fffdf8] font-semibold"
+                    : "text-[#24130d] hover:bg-[#fffaf0]"
+                }`}
+              >
+                <span
+                  className="h-4 w-4 rounded-full border border-[#4b261a30] shrink-0 shadow-sm"
+                  style={{ background: swatch.hex }}
+                />
+                <span>{swatch.name}</span>
               </button>
             ))}
           </div>
@@ -353,6 +544,8 @@ export function ShopPage({
   const [materialFilter, setMaterialFilter] = useState("All");
   const [stock, setStock] = useState("All");
   const [sort, setSort] = useState("Featured");
+  const [maxPrice, setMaxPrice] = useState<number>(5000);
+  const [colorFilter, setColorFilter] = useState<string>("All");
 
   const MATERIAL_OPTIONS = [
     "All",
@@ -410,18 +603,19 @@ export function ShopPage({
     [query]
   );
 
-  const categoryIntent = useMemo<"flat" | "heel" | "mule" | null>(() => {
+  const categoryIntent = useMemo<"flat" | "heel" | "mule" | "boot" | null>(() => {
     for (const w of queryWords) {
       if (w === "flat" || w === "flats") return "flat";
       if (w === "heel" || w === "heels" || w === "heeled") return "heel";
       if (w === "mule" || w === "mules") return "mule";
+      if (w === "boot" || w === "boots" || w === "bootie" || w === "booties") return "boot";
     }
     return null;
   }, [queryWords]);
 
   const nonCategoryWords = useMemo(() => {
     return queryWords.filter(
-      (w) => !["flat", "flats", "heel", "heels", "heeled", "mule", "mules"].includes(w)
+      (w) => !["flat", "flats", "heel", "heels", "heeled", "mule", "mules", "boot", "boots", "bootie", "booties"].includes(w)
     );
   }, [queryWords]);
 
@@ -515,7 +709,24 @@ export function ShopPage({
           }
         }
 
-        // 5. Stock filter
+        // 5. Price Range filter
+        const pPrice = priceNumber(product.price);
+        if (maxPrice < 5000 && pPrice > maxPrice) return false;
+
+        // 6. Color filter
+        if (colorFilter !== "All") {
+          const pAny = product as any;
+          const col = `${pAny.color || ""} ${pAny.colors || ""} ${pAny.tone || ""}`.toLowerCase();
+          const target = colorFilter.toLowerCase();
+          if (target.includes("black") && !col.includes("black") && !col.includes("noir")) return false;
+          if (target.includes("ivory") && !col.includes("ivory") && !col.includes("nude") && !col.includes("cream") && !col.includes("beige") && !col.includes("white")) return false;
+          if (target.includes("brown") && !col.includes("brown") && !col.includes("tan") && !col.includes("chocolate") && !col.includes("fawn") && !col.includes("leopard") && !col.includes("caramel")) return false;
+          if (target.includes("blush") && !col.includes("blush") && !col.includes("rose")) return false;
+          if (target.includes("silver") && !col.includes("silver") && !col.includes("chrome") && !col.includes("gunmetal")) return false;
+          if (target.includes("gold") && !col.includes("gold") && !col.includes("monarch") && !col.includes("orange")) return false;
+        }
+
+        // 7. Stock filter
         if (stock === "Available now" && product.available <= 0) return false;
         if (stock === "Last pairs" && product.available > 12) return false;
 
@@ -530,7 +741,7 @@ export function ShopPage({
         if (sort === "Availability") return b.available - a.available;
         return a.title.localeCompare(b.title);
       });
-  }, [products, queryWords, categoryIntent, nonCategoryWords, selectedCollection, status, materialFilter, stock, sort]);
+  }, [products, queryWords, categoryIntent, nonCategoryWords, selectedCollection, status, materialFilter, stock, sort, maxPrice, colorFilter]);
 
   // Keep selected product FIRST in the catalogue ONLY when sort === "Featured"!
   // If user selected "Price low to high" or "Price high to low", strictly respect the price order!
@@ -577,15 +788,36 @@ export function ShopPage({
     }
   };
 
+  const selectedProductGallery = useMemo(() => {
+    if (!selectedProduct) return [];
+    return productImages(selectedProduct);
+  }, [selectedProduct]);
+
+  const selectedProductVariants = useMemo(() => {
+    if (!selectedProduct) return [];
+    return getProductVariants(selectedProduct);
+  }, [selectedProduct]);
+
+  const activeVariant = useMemo(() => {
+    if (!selectedProduct) return null;
+    return getActiveVariant(selectedProduct, activeImage);
+  }, [selectedProduct, activeImage]);
+
+  const activeHeroColour = activeVariant?.heroColour || selectedProduct?.heroColour || selectedProduct?.tone || "Warm Ivory";
+  const activeColourCode = activeVariant?.colourCode || selectedProduct?.colourCode || getHeroColorCode(activeHeroColour);
+  const activeVariantSku = activeVariant?.colourVariantSku || selectedProduct?.colourVariantSku || `${(selectedProduct?.designId || selectedProduct?.id || "").toUpperCase()}-${activeColourCode}`;
+
   const handleAddToBag = () => {
     if (!selectedProduct || !selectedSize) return;
+    const cleanSz = selectedSize.replace(/\D/g, "");
+    const itemSku = activeVariant?.fullSkus?.[cleanSz] || selectedProduct.fullSkus?.[cleanSz] || computeFullSku(selectedProduct.designId || selectedProduct.id, activeHeroColour, cleanSz);
     add(
       {
-        id: `${selectedProduct.id}-${selectedSize}`,
+        id: itemSku,
         title: selectedProduct.title,
         price: selectedProduct.price,
         image: activeImage || productPrimaryImage(selectedProduct),
-        tone: selectedProduct.tone,
+        tone: activeHeroColour,
         size: selectedSize,
       },
       1
@@ -597,13 +829,15 @@ export function ShopPage({
 
   const handleBuyNow = () => {
     if (!selectedProduct || !selectedSize) return;
+    const cleanSz = selectedSize.replace(/\D/g, "");
+    const itemSku = activeVariant?.fullSkus?.[cleanSz] || selectedProduct.fullSkus?.[cleanSz] || computeFullSku(selectedProduct.designId || selectedProduct.id, activeHeroColour, cleanSz);
     add(
       {
-        id: `${selectedProduct.id}-${selectedSize}`,
+        id: itemSku,
         title: selectedProduct.title,
         price: selectedProduct.price,
         image: activeImage || productPrimaryImage(selectedProduct),
-        tone: selectedProduct.tone,
+        tone: activeHeroColour,
         size: selectedSize,
       },
       1
@@ -611,56 +845,17 @@ export function ShopPage({
     setCartOpen(true);
   };
 
-  const selectedProductGallery = useMemo(() => {
-    if (!selectedProduct) return [];
-    return productImages(selectedProduct);
-  }, [selectedProduct]);
-
   const isWished = selectedProduct ? wishlist.includes(selectedProduct.id) : false;
 
   return (
-    <PageShell session={session} onLogout={onLogout} onLogin={onLogin} darkNav>
-      {/* Aurora Hero from Pic 1 */}
-      <section className="relative overflow-hidden bg-[var(--ink)] text-[var(--bone)] pt-20 pb-36 md:pt-24 md:pb-44 flex flex-col items-center justify-center min-h-[52svh]">
-        <div className="absolute inset-0 animate-aurora opacity-30" style={{ background: "linear-gradient(135deg, oklch(0.2 0.08 60), oklch(0.12 0.1 80), oklch(0.18 0.06 40))", backgroundSize: "300% 300%" }} />
-        <GoldenParticles count={30} className="z-[1] opacity-50" />
-        <div className="absolute inset-0 luxe-grain z-[2]" />
-        <div className="vignette absolute inset-0 z-[2]" />
-        
-        <div className="relative z-10 mx-auto flex flex-col items-center text-center max-w-4xl px-6 md:px-12 mt-4">
-          <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.8 }} className="flex items-center gap-3 mb-6">
-            <div className="h-px w-6 bg-[var(--gold)]/60" />
-            <p className="eyebrow text-[var(--gold)]">The Follocia Atelier</p>
-            <div className="h-px w-6 bg-[var(--gold)]/60" />
-          </motion.div>
-          
-          <motion.h1 initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 1, delay: 0.2, ease }} className="font-display text-[clamp(3rem,6vw,5.5rem)] leading-[0.95] tracking-[-0.01em]">
-            Limited Pairs, <br className="hidden md:block" />
-            <em className="font-light italic gradient-gold-text">Live Inventory.</em>
-          </motion.h1>
-          
-          <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 1, delay: 0.4 }} className="mt-8 max-w-2xl text-[13px] leading-relaxed text-[var(--bone)]/60">
-            A highly curated commerce experience. Browse exclusive editions with live stock synchronization, white-glove dispatch status, and sophisticated filtering.
-          </motion.p>
-
-          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 1, delay: 0.6 }} className="mt-10 flex flex-wrap justify-center gap-3">
-            {["FOLLOCIA10 active at checkout", "White-glove dispatch", "Dynamic inventory mapping"].map((item) => (
-              <div key={item} className="flex items-center gap-2 rounded-full border border-[var(--bone)]/10 bg-[var(--ink)]/40 backdrop-blur-md px-4 py-1.5 text-[10px] uppercase tracking-widest text-[var(--bone)]/80">
-                <span className="h-1 w-1 rounded-full bg-[var(--gold)] animate-pulse" />
-                {item}
-              </div>
-            ))}
-          </motion.div>
-        </div>
-      </section>
-
-      <section className="mx-auto max-w-[1500px] px-6 py-10 md:px-12">
+    <PageShell session={session} onLogout={onLogout} onLogin={onLogin}>
+      <section className="mx-auto max-w-[1500px] px-6 py-8 md:px-12 pt-6">
         {/* Floating Filter Bar matching Pic 1, 2, 3, 4 */}
         <motion.div 
           initial={{ opacity: 0, y: -20 }} 
           animate={{ opacity: 1, y: 0 }} 
           transition={{ duration: 0.8, delay: 0.4 }} 
-          className="mb-10 flex flex-wrap items-center justify-between gap-4 rounded-full border border-[var(--ink)]/10 bg-white/95 backdrop-blur-xl px-6 py-2.5 shadow-[var(--shadow-soft)] relative z-20 -mt-8 md:-mt-10 w-fit mx-auto max-w-full"
+          className="mb-10 flex flex-wrap items-center justify-between gap-4 rounded-full border border-[var(--ink)]/10 bg-white/95 backdrop-blur-xl px-6 py-2.5 shadow-[var(--shadow-soft)] relative z-20 w-fit mx-auto max-w-full"
         >
           <div className="flex flex-wrap items-center gap-4 md:gap-6">
             <div className="relative flex items-center">
@@ -699,6 +894,16 @@ export function ShopPage({
                 onChange={setMaterialFilter}
               />
 
+              <PriceRangeDropdown
+                maxPrice={maxPrice}
+                onChange={setMaxPrice}
+              />
+
+              <ColorFilterDropdown
+                value={colorFilter}
+                onChange={setColorFilter}
+              />
+
               <FilterDropdown
                 label="STOCK"
                 value={stock}
@@ -723,6 +928,8 @@ export function ShopPage({
               setQuery("");
               setStatus("All");
               setMaterialFilter("All");
+              setMaxPrice(5000);
+              setColorFilter("All");
               setStock("All");
               setSort("Featured");
               setSelectedCollection("All");
@@ -731,6 +938,54 @@ export function ShopPage({
           >
             CLEAR
           </button>
+        </motion.div>
+
+        {/* Interactive Price Range Slider & Color Swatches Bar */}
+        <motion.div
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5, delay: 0.45 }}
+          className="mb-8 mx-auto flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-[#4b261a15] bg-[#fffdf8] px-6 py-3 shadow-[0_4px_20px_rgba(75,38,26,0.04)] text-xs w-fit max-w-full"
+        >
+          {/* Price Range Slider */}
+          <div className="flex items-center gap-3">
+            <span className="text-[10px] uppercase font-bold tracking-widest text-[#4b261a80]">MAX PRICE:</span>
+            <span className="font-bold text-[#24130d] min-w-[85px]">
+              {maxPrice >= 5000 ? "₹1,000 - ₹5,000+" : `Under ₹${maxPrice.toLocaleString("en-IN")}`}
+            </span>
+            <input
+              type="range"
+              min="1400"
+              max="5000"
+              step="100"
+              value={maxPrice}
+              onChange={(e) => setMaxPrice(Number(e.target.value))}
+              className="w-28 sm:w-40 accent-[#4b261a] cursor-pointer h-1.5 bg-[#4b261a15] rounded-lg"
+            />
+          </div>
+
+          <div className="h-4 w-px bg-[#4b261a15] hidden sm:block" />
+
+          {/* Color Swatches */}
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="text-[10px] uppercase font-bold tracking-widest text-[#4b261a80]">COLOR:</span>
+            {COLOR_SWATCHES.map((s) => (
+              <button
+                key={s.name}
+                type="button"
+                title={s.name}
+                onClick={() => setColorFilter(s.name)}
+                className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-semibold border transition-all cursor-pointer ${
+                  colorFilter === s.name
+                    ? "border-[#24130d] bg-[#24130d] text-[#fffdf8] shadow-sm"
+                    : "border-[#4b261a20] bg-white text-[#24130d] hover:border-[#24130d]"
+                }`}
+              >
+                <span className="h-3 w-3 rounded-full border border-black/20 shrink-0" style={{ background: s.hex }} />
+                <span>{s.name}</span>
+              </button>
+            ))}
+          </div>
         </motion.div>
 
         {/* VIP Preview and Active access banners matching Pic 1 */}
@@ -807,7 +1062,23 @@ export function ShopPage({
                   <img
                     src={activeImage || productPrimaryImage(selectedProduct)}
                     alt={selectedProduct.title}
-                    className="max-h-[90%] max-w-[90%] object-contain mix-blend-multiply transition-transform duration-500 hover:scale-105"
+                    onClick={() => {
+                      if (selectedProductGallery.length > 1) {
+                        const currIdx = selectedProductGallery.findIndex((img) => {
+                          const cleanA = (activeImage || productPrimaryImage(selectedProduct)).trim().toLowerCase();
+                          const fileA = cleanA.split("/").pop()?.split("?")[0] || cleanA;
+                          const cleanI = img.trim().toLowerCase();
+                          const fileI = cleanI.split("/").pop()?.split("?")[0] || cleanI;
+                          return cleanA === cleanI || fileA === fileI;
+                        });
+                        const nextIdx = (currIdx + 1) % selectedProductGallery.length;
+                        setActiveImage(selectedProductGallery[nextIdx]);
+                      }
+                    }}
+                    className={`max-h-[90%] max-w-[90%] object-contain mix-blend-multiply transition-transform duration-500 ${
+                      selectedProductGallery.length > 1 ? "cursor-pointer hover:scale-105" : ""
+                    }`}
+                    title={selectedProductGallery.length > 1 ? "Click to view next colour photo" : undefined}
                   />
                   <div className="absolute left-3.5 top-3.5 rounded bg-white/90 px-2.5 py-1 text-[9px] font-semibold uppercase tracking-wider text-[#24130d] shadow-sm">
                     {selectedProduct.status || "AVAILABLE"}
@@ -817,20 +1088,29 @@ export function ShopPage({
                 {/* Thumbnails */}
                 {selectedProductGallery.length > 1 && (
                   <div className="flex flex-wrap gap-3">
-                    {selectedProductGallery.map((img, idx) => (
-                      <button
-                        key={`${img}-${idx}`}
-                        type="button"
-                        onClick={() => setActiveImage(img)}
-                        className={`h-16 w-16 overflow-hidden rounded-xl border p-1 bg-[#fffaf0] transition-all cursor-pointer ${
-                          (activeImage || productPrimaryImage(selectedProduct)) === img
-                            ? "border-[var(--gold)] ring-2 ring-[var(--gold)]/30 scale-105"
-                            : "border-[#4b261a1a] opacity-70 hover:opacity-100"
-                        }`}
-                      >
-                        <img src={img} alt="" className="h-full w-full object-contain mix-blend-multiply" />
-                      </button>
-                    ))}
+                    {selectedProductGallery.map((img, idx) => {
+                      const matchingVariant = selectedProductVariants.find((v) => v.image === img);
+                      const cleanActive = (activeImage || productPrimaryImage(selectedProduct)).trim().toLowerCase();
+                      const cleanActiveFile = cleanActive.split("/").pop()?.split("?")[0] || cleanActive;
+                      const cleanImg = img.trim().toLowerCase();
+                      const cleanImgFile = cleanImg.split("/").pop()?.split("?")[0] || cleanImg;
+                      const isCurrent = cleanActive === cleanImg || cleanActiveFile === cleanImgFile || (matchingVariant && activeVariant?.heroColour === matchingVariant.heroColour);
+                      return (
+                        <button
+                          key={`${img}-${idx}`}
+                          type="button"
+                          onClick={() => setActiveImage(img)}
+                          title={matchingVariant?.heroColour ? `Colour: ${matchingVariant.heroColour} (${matchingVariant.colourCode})` : undefined}
+                          className={`h-16 w-16 overflow-hidden rounded-xl border p-1 bg-[#fffaf0] transition-all cursor-pointer relative ${
+                            isCurrent
+                              ? "border-[var(--gold)] ring-2 ring-[var(--gold)]/40 scale-105 shadow-sm"
+                              : "border-[#4b261a1a] opacity-70 hover:opacity-100"
+                          }`}
+                        >
+                          <img src={img} alt="" className="h-full w-full object-contain mix-blend-multiply" />
+                        </button>
+                      );
+                    })}
                   </div>
                 )}
               </div>
@@ -844,9 +1124,39 @@ export function ShopPage({
                       <h2 className="mt-2 font-display text-4xl md:text-5xl text-[#24130d] leading-tight">
                         {selectedProduct.title}
                       </h2>
-                      <p className="mt-2 text-xs uppercase tracking-widest text-[#4b261a99]">
-                        Colour: <strong className="text-[#24130d] font-semibold">{selectedProduct.tone}</strong>
-                      </p>
+                      <div className="mt-2 flex flex-wrap items-center gap-2">
+                        <p className="text-xs uppercase tracking-widest text-[#4b261a99]">
+                          Colour: <strong className="text-[#24130d] font-semibold">{activeHeroColour}</strong>
+                          {activeColourCode ? <span className="ml-1 opacity-70">({activeColourCode})</span> : null}
+                        </p>
+                      </div>
+
+                      {selectedProductVariants.length > 1 && (
+                        <div className="mt-3 flex flex-wrap items-center gap-2">
+                          {selectedProductVariants.map((v, vIdx) => {
+                            const isSel = (activeImage ? v.image === activeImage : vIdx === 0) || activeVariant?.heroColour === v.heroColour;
+                            return (
+                              <button
+                                key={`${v.colourVariantSku || v.heroColour}-${vIdx}`}
+                                type="button"
+                                onClick={() => setActiveImage(v.image)}
+                                className={`px-3 py-1 rounded-full text-xs font-semibold uppercase tracking-wider transition-all flex items-center gap-1.5 cursor-pointer ${
+                                  isSel
+                                    ? "bg-[#24130d] text-[#fffdf8] shadow-sm ring-1 ring-[#24130d]"
+                                    : "bg-white border border-[#4b261a20] text-[#4b261a90] hover:border-[#24130d] hover:text-[#24130d]"
+                                }`}
+                              >
+                                <span
+                                  className="h-2.5 w-2.5 rounded-full border border-black/10 shrink-0"
+                                  style={{ backgroundColor: getColorHex(v.heroColour) }}
+                                />
+                                <span>{v.heroColour}</span>
+                                {isSel && <span className="text-[9px] text-[var(--gold)]">✓</span>}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      )}
                     </div>
                     <button
                       type="button"
@@ -877,8 +1187,8 @@ export function ShopPage({
                   {/* Size Selector */}
                   <div className="mt-8 border-t border-[#4b261a12] pt-6">
                     <div className="flex items-center justify-between">
-                      <span className="eyebrow text-[#4b261a80]">Select EU Size</span>
-                      <span className="text-[10px] uppercase tracking-widest text-[#4b261a60]">Italian Sizing</span>
+                      <span className="eyebrow text-[#4b261a80]">Select EU</span>
+                      <span className="text-[10px] uppercase tracking-widest text-[#4b261a60]">EU Sizing</span>
                     </div>
 
                     <div className="mt-3.5 flex flex-wrap gap-3">
@@ -887,7 +1197,7 @@ export function ShopPage({
                           key={s}
                           type="button"
                           onClick={() => setSelectedSize(s)}
-                          className={`h-12 w-14 rounded-xl border text-sm font-semibold transition-all cursor-pointer ${
+                          className={`h-12 px-4 min-w-16 rounded-xl border text-sm font-semibold transition-all cursor-pointer ${
                             selectedSize === s
                               ? "border-[#24130d] bg-[#24130d] text-[#fffdf8] shadow-md scale-105"
                               : "border-[#4b261a20] bg-white text-[#24130d] hover:border-[var(--gold)]"
@@ -966,9 +1276,117 @@ export function ShopPage({
                       {openAccordion === panel && (
                         <div className="pb-4 text-xs leading-relaxed text-[#4b261a99]">
                           {panel === "Product Details" && (
-                            <p>
-                              Numbered limited edition construction with memory foam cushioning, sculpted heel balance, and genuine leather lining. Constructed using traditional Florentine atelier techniques.
-                            </p>
+                            <div className="grid gap-2.5 pt-2">
+                              <div className="grid grid-cols-2 gap-2 border-b border-[#4b261a0d] pb-2">
+                                <span className="text-[10px] uppercase font-bold tracking-widest text-[#4b261a70]">Design ID / Base</span>
+                                <span className="text-xs font-mono font-bold text-[#24130d]">{selectedProduct.designId || selectedProduct.id.toUpperCase()}</span>
+                              </div>
+                              <div className="grid grid-cols-2 gap-2 border-b border-[#4b261a0d] pb-2">
+                                <span className="text-[10px] uppercase font-bold tracking-widest text-[#4b261a70]">Collection</span>
+                                <span className="text-xs font-semibold text-[#24130d]">{selectedProduct.collection || selectedProduct.edition}</span>
+                              </div>
+                              <div className="grid grid-cols-2 gap-2 border-b border-[#4b261a0d] pb-2">
+                                <span className="text-[10px] uppercase font-bold tracking-widest text-[#4b261a70]">Category</span>
+                                <span className="text-xs font-semibold text-[#24130d]">{selectedProduct.category || "Footwear"}</span>
+                              </div>
+                              {selectedProduct.silhouette && (
+                                <div className="grid grid-cols-2 gap-2 border-b border-[#4b261a0d] pb-2">
+                                  <span className="text-[10px] uppercase font-bold tracking-widest text-[#4b261a70]">Silhouette / Toe</span>
+                                  <span className="text-xs text-[#24130d]">{selectedProduct.silhouette}</span>
+                                </div>
+                              )}
+                              {selectedProduct.material && (
+                                <div className="grid grid-cols-2 gap-2 border-b border-[#4b261a0d] pb-2">
+                                  <span className="text-[10px] uppercase font-bold tracking-widest text-[#4b261a70]">Material</span>
+                                  <span className="text-xs text-[#24130d] leading-relaxed">{selectedProduct.material}</span>
+                                </div>
+                              )}
+                              <div className="grid grid-cols-2 gap-2 border-b border-[#4b261a0d] pb-2">
+                                <span className="text-[10px] uppercase font-bold tracking-widest text-[#4b261a70]">Hero Colour</span>
+                                <div className="flex items-center gap-1.5">
+                                  <span
+                                    className="h-3 w-3 rounded-full border border-black/10 shrink-0 inline-block"
+                                    style={{ backgroundColor: getColorHex(activeHeroColour) }}
+                                  />
+                                  <span className="text-xs font-semibold text-[#24130d]">{activeHeroColour}</span>
+                                </div>
+                              </div>
+                              {activeColourCode && (
+                                <div className="grid grid-cols-2 gap-2 border-b border-[#4b261a0d] pb-2">
+                                  <span className="text-[10px] uppercase font-bold tracking-widest text-[#4b261a70]">Colour Code</span>
+                                  <span className="text-xs font-mono text-[#24130d]">{activeColourCode}</span>
+                                </div>
+                              )}
+                              {activeVariantSku && (
+                                <div className="grid grid-cols-2 gap-2 border-b border-[#4b261a0d] pb-2">
+                                  <span className="text-[10px] uppercase font-bold tracking-widest text-[#4b261a70]">Colour Variant SKU</span>
+                                  <span className="text-xs font-mono font-bold text-[#24130d]">{activeVariantSku}</span>
+                                </div>
+                              )}
+
+                              {/* Full SKU - Dynamic Formula: {Design ID}-{Hero Color First 2 Letters}-{Size} */}
+                              <div className="border-b border-[#4b261a0d] pb-2.5">
+                                <div className="flex items-center justify-between gap-2 mb-1.5">
+                                  <div>
+                                    <span className="text-[10px] uppercase font-bold tracking-widest text-[#4b261a70]">
+                                      Full SKU {selectedSize ? `(${selectedSize})` : ""}
+                                    </span>
+                                    <p className="text-[9px] text-[#4b261a60] uppercase tracking-wider mt-0.5">
+                                      Formula: {`{Design ID}-${getHeroColorCode(activeHeroColour)}-{Size}`}
+                                    </p>
+                                  </div>
+                                  {selectedSize && (
+                                    <span className="font-mono text-[11px] font-bold text-[var(--gold)] bg-[#fffaf0] border border-[var(--gold)]/30 px-2.5 py-1 rounded shadow-sm">
+                                      {activeVariant?.fullSkus?.[selectedSize.replace(/\D/g, "")] || computeFullSku(
+                                        selectedProduct.designId || selectedProduct.id,
+                                        activeHeroColour,
+                                        selectedSize
+                                      )}
+                                    </span>
+                                  )}
+                                </div>
+                                <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5 mt-1.5">
+                                  {["38", "39", "40", "41"].map((sz) => {
+                                    const isSelected = selectedSize.includes(sz);
+                                    const dynamicSku = activeVariant?.fullSkus?.[sz] || computeFullSku(
+                                      selectedProduct.designId || selectedProduct.id,
+                                      activeHeroColour,
+                                      sz
+                                    );
+                                    return (
+                                      <div
+                                        key={sz}
+                                        onClick={() => setSelectedSize(`EU${sz}`)}
+                                        className={`p-2 rounded-lg border text-center transition-all cursor-pointer ${
+                                          isSelected
+                                            ? "border-[var(--gold)] bg-[#24130d] text-[#fffdf8] shadow-sm scale-102"
+                                            : "border-[#4b261a18] bg-[#FAF8F5] text-[#24130d] hover:border-[var(--gold)]/50"
+                                        }`}
+                                      >
+                                        <div className="text-[9px] uppercase font-bold tracking-wider opacity-70">EU {sz}</div>
+                                        <div className="font-mono text-[10px] font-bold mt-0.5 truncate" title={dynamicSku}>{dynamicSku}</div>
+                                      </div>
+                                    );
+                                  })}
+                                </div>
+                              </div>
+
+                              {selectedProduct.heelHeight && (
+                                <div className="grid grid-cols-2 gap-2 border-b border-[#4b261a0d] pb-2">
+                                  <span className="text-[10px] uppercase font-bold tracking-widest text-[#4b261a70]">Heel Height</span>
+                                  <span className="text-xs text-[#24130d]">{selectedProduct.heelHeight} mm</span>
+                                </div>
+                              )}
+                              <div className="grid grid-cols-2 gap-2 border-b border-[#4b261a0d] pb-2">
+                                <span className="text-[10px] uppercase font-bold tracking-widest text-[#4b261a70]">Size Range</span>
+                                <span className="text-xs font-semibold text-[#24130d]">{selectedProduct.sizeRange ? `EU ${selectedProduct.sizeRange}` : "EU 38–41"}</span>
+                              </div>
+                              {selectedProduct.notes && (
+                                <div className="mt-1 pt-1 text-[11px] italic text-[#4b261a80] leading-relaxed">
+                                  * {selectedProduct.notes}
+                                </div>
+                              )}
+                            </div>
                           )}
                           {panel === "Delivery & Returns" && (
                             <p>
@@ -1041,7 +1459,7 @@ export function ShopPage({
                 onClick={() => {
                   setQuery("");
                   setStatus("All");
-                  setTone("All");
+                  setMaterialFilter("All");
                   setStock("All");
                 }}
                 className="magnetic-btn mt-8 bg-[var(--ink)] px-8 py-4 eyebrow text-[var(--bone)] transition-colors hover:bg-[var(--gold)] hover:text-[var(--ink)] cursor-pointer"
@@ -1903,88 +2321,27 @@ export function SecureCheckoutPage({ session, onLogout, onLogin }: { session: Au
 }
 
 export function ContactPage({ session, onLogout, onLogin }: { session: AuthSession | null; onLogout: () => void; onLogin: () => void }) {
-  const [sent, setSent] = useState(false);
-  return (
-    <PageShell session={session} onLogout={onLogout} onLogin={onLogin} darkNav>
-      <section className="bg-[var(--ink)] text-[var(--bone)] -mt-20 pt-32 pb-16 relative overflow-hidden">
-        <div className="absolute inset-0 animate-aurora opacity-30" style={{ background: "linear-gradient(135deg, oklch(0.2 0.08 60), oklch(0.12 0.1 80), oklch(0.18 0.06 40))", backgroundSize: "300% 300%" }} />
-        <GoldenParticles count={20} className="z-[1] opacity-50" />
-        <div className="absolute inset-0 luxe-grain z-[2]" />
-        <div className="vignette absolute inset-0 z-[2]" />
-        
-        <div className="relative z-10 mx-auto max-w-[1300px] px-6 md:px-12 pt-10">
-          <motion.p initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="eyebrow text-[var(--gold)]">Contact Follocia</motion.p>
-          <motion.h1 initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="mt-5 font-display text-[clamp(4rem,8vw,8rem)] leading-[0.86]">Private concierge.</motion.h1>
-        </div>
-      </section>
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      window.location.hash = "#our-story";
+    }
+  }, []);
 
-      <section className="bg-[var(--bone)] py-20 relative">
-        <div className="mx-auto grid max-w-[1300px] gap-12 px-6 md:px-12 lg:grid-cols-[0.8fr_1fr]">
-          <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.2 }}>
-            <h2 className="font-display text-4xl">At your service.</h2>
-            <p className="mt-6 max-w-md text-[var(--ink)]/60 text-lg leading-relaxed">For sizing, delivery updates, bespoke fittings, restoration and private collection previews. Our atelier responds within 2 hours.</p>
-            
-            <div className="mt-12 grid gap-6">
-              <div className="glass border border-[var(--gold)]/20 bg-white/50 p-6 flex items-start gap-4">
-                <div className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-[var(--gold)]/10 text-[var(--gold)]">✉</div>
-                <div>
-                  <p className="eyebrow text-[var(--ink)]/50">Direct Email</p>
-                  <a href="mailto:concierge@follocia.com" className="mt-1 block text-lg font-semibold hover:text-[var(--gold)] transition-colors">concierge@follocia.com</a>
-                </div>
-              </div>
-              
-              <div className="glass border border-[var(--gold)]/20 bg-white/50 p-6 flex items-start gap-4">
-                <div className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-[var(--gold)]/10 text-[var(--gold)]">📍</div>
-                <div>
-                  <p className="eyebrow text-[var(--ink)]/50">Private Fittings</p>
-                  <p className="mt-1 font-semibold">Milan · Paris · Mumbai</p>
-                  <p className="mt-2 text-sm text-[var(--ink)]/60">By appointment only for VIP tiers.</p>
-                </div>
-              </div>
-            </div>
-          </motion.div>
-          
-          <motion.div initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }} className="relative">
-            {/* Decorative elements behind form */}
-            <div className="absolute -inset-4 bg-gradient-to-r from-[var(--gold)]/20 to-[var(--champagne)]/20 blur-2xl opacity-50 z-0 rounded-[3rem]" />
-            
-            <form
-              onSubmit={(event) => {
-                event.preventDefault();
-                setSent(true);
-                event.currentTarget.reset();
-              }}
-              className="relative z-10 grid gap-5 glass border border-[var(--gold)]/20 bg-white/90 p-8 md:p-10 shadow-[var(--shadow-luxe)] backdrop-blur-xl"
-            >
-              <h3 className="font-display text-2xl mb-2">Send a Request</h3>
-              <div className="grid gap-5 md:grid-cols-2">
-                <label className="grid gap-2 text-xs uppercase tracking-[0.18em] text-[var(--ink)]/50">Name
-                  <input name="name" required className="h-12 border border-[var(--ink)]/15 bg-transparent px-4 normal-case tracking-normal outline-none transition-all focus:border-[var(--gold)] focus:shadow-[0_0_10px_oklch(0.78_0.12_80/0.1)]" />
-                </label>
-                <label className="grid gap-2 text-xs uppercase tracking-[0.18em] text-[var(--ink)]/50">Email
-                  <input name="email" required type="email" className="h-12 border border-[var(--ink)]/15 bg-transparent px-4 normal-case tracking-normal outline-none transition-all focus:border-[var(--gold)] focus:shadow-[0_0_10px_oklch(0.78_0.12_80/0.1)]" />
-                </label>
-              </div>
-              <label className="grid gap-2 text-xs uppercase tracking-[0.18em] text-[var(--ink)]/50">Request type
-                <select name="requestType" className="h-12 border border-[var(--ink)]/15 bg-transparent px-4 normal-case tracking-normal outline-none transition-all focus:border-[var(--gold)] cursor-pointer">
-                  {["Sizing help", "Delivery update", "Private preview", "Restoration", "General"].map((item) => <option key={item}>{item}</option>)}
-                </select>
-              </label>
-              <label className="grid gap-2 text-xs uppercase tracking-[0.18em] text-[var(--ink)]/50">Message
-                <textarea name="message" required rows={6} className="border border-[var(--ink)]/15 bg-transparent p-4 normal-case tracking-normal outline-none transition-all focus:border-[var(--gold)] focus:shadow-[0_0_10px_oklch(0.78_0.12_80/0.1)] resize-none" />
-              </label>
-              
-              <AnimatePresence>
-                {sent && (
-                  <motion.p initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} className="border border-emerald-500/30 bg-emerald-50 text-emerald-800 px-4 py-3 text-sm flex items-center gap-2">
-                    <span className="text-emerald-500">✓</span> Request received. Our atelier will follow up shortly.
-                  </motion.p>
-                )}
-              </AnimatePresence>
-              
-              <button className="magnetic-btn mt-2 bg-[var(--ink)] px-8 py-4 eyebrow text-[var(--bone)] transition-all hover:bg-[var(--gold)] hover:text-[var(--ink)] hover:shadow-[var(--shadow-gold-glow)]">Submit Request →</button>
-            </form>
-          </motion.div>
+  return (
+    <PageShell session={session} onLogout={onLogout} onLogin={onLogin}>
+      <section className="story py-20" id="our-story">
+        <div className="story-image">
+          <img src="/campaigns/aura-motion.webp" alt="Follicia Aura footwear worn in motion" />
+        </div>
+        <div className="story-copy">
+          <p className="eyebrow">Designed around movement</p>
+          <h2>Beauty begins with how it feels.</h2>
+          <p>
+            From soft flats to sculptural heels and confident mules, each Follicia design balances a distinct point of view with thoughtful proportions for real movement.
+          </p>
+          <a className="button outline" href="#/shop">
+            Discover the collection
+          </a>
         </div>
       </section>
     </PageShell>

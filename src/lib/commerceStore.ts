@@ -3,16 +3,31 @@ import c2 from "@/assets/collection-2.jpg";
 import c3 from "@/assets/collection-3.jpg";
 import atelier from "@/assets/atelier.jpg";
 import type { CartItem } from "@/components/cart/CartContext";
-import { FOLLICIA_PRODUCTS } from "@/data/folliciaCatalogue";
+import { FOLLICIA_PRODUCTS, type ProductVariant } from "@/data/folliciaCatalogue";
+
+export type { ProductVariant };
 
 export type CommerceProduct = {
   id: string;
+  designId?: string;
   title: string;
   edition: string;
   tone: string;
+  color?: string;
+  colors?: string;
+  availableColors?: string[];
+  heroColour?: string;
+  colourName?: string;
+  colourCode?: string;
+  colourFamily?: string;
+  colourVariantSku?: string;
+  fullSkus?: Record<string, string>;
+  sizeRange?: string;
+  heelHeight?: string;
   price: string;
   image: string;
   images?: string[];
+  variants?: ProductVariant[];
   status: string;
   produced: number;
   reserved: number;
@@ -21,6 +36,8 @@ export type CommerceProduct = {
   material?: string;
   silhouette?: string;
   collection?: string;
+  subCollection?: string;
+  notes?: string;
 };
 
 export type CommerceOrder = {
@@ -70,29 +87,183 @@ export type CustomerProfile = {
   subscriptions: string[];
 };
 
-const PRODUCTS_KEY = "follocia_products";
+const PRODUCTS_KEY = "follocia_products_v6";
 const ORDERS_KEY = "follocia_orders";
 const CUSTOMERS_KEY = "follocia_customers";
 export const COMMERCE_EVENT = "follocia-commerce-change";
 const API_ROOT = "/api/commerce";
 
-const catalogueCommerceProducts: CommerceProduct[] = FOLLICIA_PRODUCTS.map((p) => ({
-  id: p.id.toLowerCase(),
-  title: p.name,
-  edition: `${p.collection} Collection`,
-  tone: p.color,
-  price: `₹ ${p.price.toLocaleString("en-IN")}`,
-  image: p.image,
-  images: [p.image, ...(p.variantImages ? Object.values(p.variantImages) : [])],
-  status: "Live",
-  produced: 120,
-  reserved: 24,
-  available: 96,
-  category: p.category,
-  material: p.material,
-  silhouette: p.silhouette,
-  collection: p.collection,
-}));
+if (typeof window !== "undefined") {
+  try {
+    localStorage.removeItem("follocia_products");
+    localStorage.removeItem("follocia_products_v2");
+    localStorage.removeItem("follocia_products_v3");
+    localStorage.removeItem("follocia_products_v4");
+    localStorage.removeItem("follocia_products_v5");
+  } catch {
+    // Ignore in SSR / restricted storage
+  }
+}
+
+export function getHeroColorCode(heroColor?: string): string {
+  if (!heroColor) return "WA";
+  const clean = heroColor.trim().replace(/[^a-zA-Z]/g, "");
+  if (clean.length >= 2) {
+    return clean.slice(0, 2).toUpperCase();
+  }
+  return clean.toUpperCase().padEnd(2, "X");
+}
+
+export function computeFullSku(designId?: string, heroColor?: string, size?: string | number): string {
+  const dId = (designId || "FA-01").toUpperCase().trim();
+  const colorPrefix = getHeroColorCode(heroColor);
+  const sz = String(size || "38").replace(/\D/g, "") || "38";
+  return `${dId}-${colorPrefix}-${sz}`;
+}
+
+export function computeAllFullSkus(designId?: string, heroColor?: string): Record<string, string> {
+  const sizes = ["38", "39", "40", "41"];
+  const map: Record<string, string> = {};
+  for (const sz of sizes) {
+    map[sz] = computeFullSku(designId, heroColor, sz);
+  }
+  return map;
+}
+
+export function getProductVariants(product: CommerceProduct): ProductVariant[] {
+  const pId = (product.designId || product.id || "").toLowerCase();
+  const matched = FOLLICIA_PRODUCTS.find(
+    (p) => p.id.toLowerCase() === pId || p.designId.toLowerCase() === pId
+  );
+
+  if (matched?.variants && matched.variants.length > 0) {
+    if (product.variants && product.variants.length >= matched.variants.length) {
+      return product.variants.map((pv, idx) => ({
+        ...matched.variants![idx],
+        ...pv,
+        image: pv.image || matched.variants![idx]?.image || product.image,
+        fullSkus: pv.fullSkus || matched.variants![idx]?.fullSkus || computeAllFullSkus(product.designId || product.id, pv.heroColour),
+      }));
+    }
+    return matched.variants;
+  }
+
+  if (product.variants && product.variants.length > 0) {
+    return product.variants;
+  }
+
+  const defaultHero = product.heroColour || product.tone || "Warm Ivory";
+  const defaultCode = product.colourCode || getHeroColorCode(defaultHero);
+  const defaultSku = product.colourVariantSku || `${(product.designId || product.id).toUpperCase()}-${defaultCode}`;
+  const defaultFullSkus = product.fullSkus || computeAllFullSkus(product.designId || product.id, defaultHero);
+
+  return [
+    {
+      heroColour: defaultHero,
+      colourName: product.colourName || defaultHero,
+      colourCode: defaultCode,
+      colourVariantSku: defaultSku,
+      image: product.image,
+      fullSkus: defaultFullSkus,
+    },
+  ];
+}
+
+export function getActiveVariant(product: CommerceProduct, activeImageOrColor?: string): ProductVariant {
+  const variants = getProductVariants(product);
+  if (!variants || variants.length === 0) {
+    const defaultHero = product.heroColour || product.tone || "Warm Ivory";
+    return {
+      heroColour: defaultHero,
+      colourName: defaultHero,
+      colourCode: product.colourCode || getHeroColorCode(defaultHero),
+      colourVariantSku: product.colourVariantSku || `${(product.designId || product.id).toUpperCase()}-${getHeroColorCode(defaultHero)}`,
+      image: product.image,
+      fullSkus: product.fullSkus || computeAllFullSkus(product.designId || product.id, defaultHero),
+    };
+  }
+
+  if (activeImageOrColor) {
+    const clean = activeImageOrColor.trim().toLowerCase();
+    const cleanFileName = clean.split("/").pop()?.split("?")[0] || clean;
+
+    // 1. Direct or filename match with variant image
+    const matchByImage = variants.find((v) => {
+      if (!v.image) return false;
+      const vClean = v.image.trim().toLowerCase();
+      const vFileName = vClean.split("/").pop()?.split("?")[0] || vClean;
+      return vClean === clean || vFileName === cleanFileName;
+    });
+    if (matchByImage) return matchByImage;
+
+    // 2. Color name or code match
+    const matchByColor = variants.find(
+      (v) =>
+        v.heroColour.toLowerCase() === clean ||
+        (v.colourName && v.colourName.toLowerCase() === clean) ||
+        (v.colourCode && v.colourCode.toLowerCase() === clean)
+    );
+    if (matchByColor) return matchByColor;
+
+    // 3. Match by index in gallery
+    const images = productImages(product);
+    const imgIndex = images.findIndex((img) => {
+      const iClean = img.trim().toLowerCase();
+      const iFileName = iClean.split("/").pop()?.split("?")[0] || iClean;
+      return iClean === clean || iFileName === cleanFileName;
+    });
+    if (imgIndex >= 0 && variants[imgIndex]) {
+      return variants[imgIndex];
+    }
+  }
+
+  return variants[0];
+}
+
+const catalogueCommerceProducts: CommerceProduct[] = FOLLICIA_PRODUCTS.map((p) => {
+  const dId = p.designId || p.id.toUpperCase();
+  const heroCol = p.heroColour || p.color || "Warm Ivory";
+  const dynamicFullSkus = p.fullSkus || computeAllFullSkus(dId, heroCol);
+  const rawImages = [
+    p.image,
+    ...(p.variants?.map((v) => v.image) || []),
+    ...(p.variantImages ? Object.values(p.variantImages) : []),
+  ];
+  const uniqueImages = Array.from(new Set(rawImages.filter(Boolean)));
+
+  return {
+    id: p.id.toLowerCase(),
+    designId: dId,
+    title: p.name,
+    edition: `${p.collection} Collection`,
+    tone: p.color,
+    color: p.color,
+    colors: p.colors,
+    availableColors: p.availableColors,
+    heroColour: heroCol,
+    colourName: p.colourName || p.color,
+    colourCode: p.colourCode || getHeroColorCode(heroCol),
+    colourFamily: p.colourFamily || "",
+    colourVariantSku: p.colourVariantSku || `${dId}-${getHeroColorCode(heroCol)}`,
+    fullSkus: dynamicFullSkus,
+    sizeRange: p.sizeRange || "38–41",
+    heelHeight: p.heelHeight,
+    price: `₹ ${p.price.toLocaleString("en-IN")}`,
+    image: p.image,
+    images: uniqueImages,
+    variants: p.variants,
+    status: p.productStatus || "Live",
+    produced: 120,
+    reserved: 24,
+    available: 96,
+    category: p.category,
+    material: p.material,
+    silhouette: p.silhouette,
+    collection: p.collection,
+    subCollection: p.subCollection,
+    notes: p.notes,
+  };
+});
 
 export const seedProducts: CommerceProduct[] = [
   ...catalogueCommerceProducts,
@@ -143,7 +314,23 @@ function write<T>(key: string, value: T) {
 }
 
 export function productImages(product: CommerceProduct) {
-  const gallery = [...(product.images ?? []), product.image].filter(Boolean);
+  const pId = (product.designId || product.id || "").toLowerCase();
+  const matched = FOLLICIA_PRODUCTS.find(
+    (p) => p.id.toLowerCase() === pId || p.designId.toLowerCase() === pId
+  );
+  const variantImgs = (matched?.variants?.map((v) => v.image) || []).filter(Boolean);
+  const matchedVariantDict = matched?.variantImages ? Object.values(matched.variantImages) : [];
+  const prodVariantImgs = (product.variants?.map((v) => v.image) || []).filter(Boolean);
+
+  const gallery = [
+    product.image,
+    matched?.image,
+    ...(product.images ?? []),
+    ...prodVariantImgs,
+    ...variantImgs,
+    ...matchedVariantDict,
+  ].filter(Boolean);
+
   return Array.from(new Set(gallery)).slice(0, 5);
 }
 
@@ -165,32 +352,79 @@ export function isOldProduct(product: CommerceProduct): boolean {
 }
 
 function normalizeProduct(product: CommerceProduct): CommerceProduct {
+  const pId = (product.designId || product.id || "").toLowerCase();
+  const matched = FOLLICIA_PRODUCTS.find(
+    (p) => p.id.toLowerCase() === pId || p.designId.toLowerCase() === pId
+  );
   const images = productImages(product);
-  const matched = FOLLICIA_PRODUCTS.find((p) => p.id.toLowerCase() === product.id.toLowerCase());
+  const dId = matched?.designId || product.designId || product.id.toUpperCase();
+  const heroCol = product.heroColour || matched?.heroColour || product.tone || "Warm Ivory";
+  const colorCode = product.colourCode || matched?.colourCode || getHeroColorCode(heroCol);
+
+  const variants = (product.variants && product.variants.length > 1)
+    ? product.variants
+    : (matched?.variants || product.variants || [
+        {
+          heroColour: heroCol,
+          colourName: product.colourName || heroCol,
+          colourCode: colorCode,
+          colourVariantSku: product.colourVariantSku || `${dId}-${colorCode}`,
+          image: images[0] || product.image || "",
+          fullSkus: computeAllFullSkus(dId, heroCol),
+        }
+      ]);
+
   return {
     ...product,
+    designId: dId,
     image: images[0] || product.image || "",
     images,
+    variants,
+    availableColors: matched?.availableColors || product.availableColors,
+    colors: matched?.colors || product.colors,
     category: matched?.category || product.category || "Heel",
     material: matched?.material || product.material || "Vegan Leather",
     silhouette: matched?.silhouette || product.silhouette || "",
     collection: matched?.collection || product.collection || product.edition.replace(/ Collection$/i, ""),
+    subCollection: matched?.subCollection || product.subCollection,
+    heroColour: heroCol,
+    colourName: product.colourName || matched?.colourName || heroCol,
+    colourCode: colorCode,
+    colourFamily: product.colourFamily || matched?.colourFamily || "",
+    colourVariantSku: product.colourVariantSku || matched?.colourVariantSku || `${dId}-${colorCode}`,
+    fullSkus: computeAllFullSkus(dId, heroCol),
+    sizeRange: matched?.sizeRange || product.sizeRange || "38–41",
+    heelHeight: matched?.heelHeight || product.heelHeight,
+    notes: matched?.notes || product.notes,
   };
 }
 
 export function getProducts() {
   const raw = read<CommerceProduct[]>(PRODUCTS_KEY, seedProducts);
-  const products = raw.filter((p) => !isOldProduct(p)).map(normalizeProduct);
-  if (products.length === 0 || products.length < raw.length) {
-    const next = products.length === 0 ? seedProducts.map(normalizeProduct) : products;
-    write(PRODUCTS_KEY, next);
-    return next;
+  let products = raw.filter((p) => !isOldProduct(p)).map(normalizeProduct);
+  
+  const existingIds = new Set(products.map((p) => p.id.toLowerCase()));
+  const missingSeedProducts = seedProducts
+    .filter((sp) => !existingIds.has(sp.id.toLowerCase()))
+    .map(normalizeProduct);
+
+  if (missingSeedProducts.length > 0) {
+    products = [...products, ...missingSeedProducts];
+    write(PRODUCTS_KEY, products);
+  } else if (products.length < raw.length) {
+    write(PRODUCTS_KEY, products);
   }
   return products;
 }
 
 export function saveProducts(products: CommerceProduct[]) {
   write(PRODUCTS_KEY, products.filter((p) => !isOldProduct(p)).map(normalizeProduct));
+}
+
+export function resetToMasterCatalog() {
+  const master = seedProducts.map(normalizeProduct);
+  write(PRODUCTS_KEY, master);
+  return master;
 }
 
 export function getOrders() {
@@ -265,7 +499,8 @@ export async function syncCommerceFromBackend() {
   const data = await api<{ products: CommerceProduct[]; orders: CommerceOrder[]; customers: CustomerProfile[] }>("/bootstrap");
   if (!data) return false;
   const filteredProducts = (data.products || []).filter((p) => !isOldProduct(p)).map(normalizeProduct);
-  localStorage.setItem(PRODUCTS_KEY, JSON.stringify(filteredProducts.length > 0 ? filteredProducts : seedProducts));
+  const productsToStore = filteredProducts.length > 0 ? filteredProducts : seedProducts.map(normalizeProduct);
+  localStorage.setItem(PRODUCTS_KEY, JSON.stringify(productsToStore));
   localStorage.setItem(ORDERS_KEY, JSON.stringify(data.orders));
   localStorage.setItem(CUSTOMERS_KEY, JSON.stringify(data.customers));
   window.dispatchEvent(new CustomEvent(COMMERCE_EVENT));

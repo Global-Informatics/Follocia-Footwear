@@ -55,38 +55,71 @@ export function Navigation({
     };
   }, [searchOpen]);
 
+  const [maxPrice, setMaxPrice] = useState<number>(5000);
+  const [colorFilter, setColorFilter] = useState<string>("All");
+
   const searchResults = useMemo(() => {
     const q = searchQuery.trim().toLowerCase();
-    if (!q) return FOLLICIA_PRODUCTS.slice(0, 10);
-    const words = q.split(/\s+/).filter(Boolean);
     return FOLLICIA_PRODUCTS.filter((p) => {
-      const pCat = p.category.toLowerCase();
-      const catKeywords = [
-        pCat,
-        pCat === "heel" ? "heels heeled" : "",
-        pCat === "flat" ? "flats" : "",
-        pCat === "mule" ? "mules" : "",
-      ].filter(Boolean).join(" ");
+      // 1. Text Search Filter
+      if (q) {
+        const words = q.split(/\s+/).filter(Boolean);
+        const pCat = (p.category || "").toLowerCase();
+        const catKeywords = [
+          pCat,
+          pCat === "heel" ? "heels heeled" : "",
+          pCat === "flat" ? "flats" : "",
+          pCat === "mule" ? "mules" : "",
+          pCat === "boot" ? "boots bootie booties" : "",
+        ].filter(Boolean).join(" ");
 
-      const searchable = [
-        p.name,
-        p.collection,
-        p.category,
-        catKeywords,
-        p.color,
-        p.colors,
-        p.silhouette,
-        p.material,
-        p.id,
-        String(p.price),
-      ].join(" ").toLowerCase();
+        const pCol = (p.collection || "").toLowerCase();
+        const colKeywords = `${pCol} ${pCol} collection`;
 
-      return words.every((w) => {
-        const root = w.replace(/s$/, "");
-        return searchable.includes(w) || searchable.includes(root);
-      });
+        const searchable = [
+          p.name,
+          p.collection,
+          colKeywords,
+          p.category,
+          catKeywords,
+          p.color,
+          p.colors || "",
+          p.silhouette || "",
+          p.material || "",
+          p.id,
+          String(p.price),
+        ].join(" ").toLowerCase();
+
+        const matchesText = words.every((w) => {
+          const rootS = w.replace(/s$/, "");
+          const rootES = w.replace(/es$/, "");
+          return (
+            searchable.includes(w) ||
+            searchable.includes(rootS) ||
+            searchable.includes(rootES)
+          );
+        });
+        if (!matchesText) return false;
+      }
+
+      // 2. Price Range Filter
+      if (maxPrice < 5000 && p.price > maxPrice) return false;
+
+      // 3. Color Filter
+      if (colorFilter !== "All") {
+        const col = `${p.color || ""} ${p.colors || ""}`.toLowerCase();
+        const target = colorFilter.toLowerCase();
+        if (target.includes("black") && !col.includes("black") && !col.includes("noir")) return false;
+        if (target.includes("ivory") && !col.includes("ivory") && !col.includes("nude") && !col.includes("cream") && !col.includes("beige") && !col.includes("white")) return false;
+        if (target.includes("brown") && !col.includes("brown") && !col.includes("tan") && !col.includes("chocolate") && !col.includes("fawn") && !col.includes("leopard") && !col.includes("caramel")) return false;
+        if (target.includes("blush") && !col.includes("blush") && !col.includes("rose")) return false;
+        if (target.includes("silver") && !col.includes("silver") && !col.includes("chrome") && !col.includes("gunmetal")) return false;
+        if (target.includes("gold") && !col.includes("gold") && !col.includes("monarch") && !col.includes("orange")) return false;
+      }
+
+      return true;
     });
-  }, [searchQuery]);
+  }, [searchQuery, maxPrice, colorFilter]);
 
   return (
     <>
@@ -139,10 +172,16 @@ export function Navigation({
             Shop
           </a>
           <a
-            href="#/contact"
-            onClick={() => {
+            href="#our-story"
+            onClick={(e) => {
               setNavOpen(false);
-              window.scrollTo({ top: 0, behavior: "smooth" });
+              const el = document.getElementById("our-story");
+              if (el) {
+                e.preventDefault();
+                el.scrollIntoView({ behavior: "smooth" });
+              } else {
+                window.location.hash = "#our-story";
+              }
             }}
           >
             Our Story
@@ -330,6 +369,55 @@ export function Navigation({
               >
                 ✕ Close
               </button>
+            </div>
+
+            {/* Price Range & Color Filters Bar matching Pic 1 */}
+            <div className="border-b border-[#4b261a15] bg-[#fffdf8] px-6 py-3.5 flex flex-wrap items-center justify-between gap-4">
+              {/* Price Range Slider */}
+              <div className="flex items-center gap-3">
+                <span className="text-[10px] uppercase font-bold tracking-widest text-[#4b261a80]">PRICE:</span>
+                <span className="text-xs font-bold text-[#24130d]">
+                  {maxPrice >= 5000 ? "₹1,000 - ₹5,000+" : `Up to ₹${maxPrice.toLocaleString("en-IN")}`}
+                </span>
+                <input
+                  type="range"
+                  min="1400"
+                  max="5000"
+                  step="100"
+                  value={maxPrice}
+                  onChange={(e) => setMaxPrice(Number(e.target.value))}
+                  className="w-28 sm:w-36 accent-[#4b261a] cursor-pointer h-1.5 bg-[#4b261a15] rounded-lg"
+                />
+              </div>
+
+              {/* Color Swatches */}
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="text-[10px] uppercase font-bold tracking-widest text-[#4b261a80]">COLOR:</span>
+                {[
+                  { name: "All", hex: "linear-gradient(135deg, #171310 0%, #d8a9a2 50%, #d9a15c 100%)" },
+                  { name: "Black", hex: "#171310" },
+                  { name: "Ivory / Nude", hex: "#f2e9d9" },
+                  { name: "Brown / Tan", hex: "#6c3d2c" },
+                  { name: "Blush / Rose", hex: "#d8a9a2" },
+                  { name: "Silver / Chrome", hex: "#b8b8b5" },
+                  { name: "Gold", hex: "#d9a15c" },
+                ].map((s) => (
+                  <button
+                    key={s.name}
+                    type="button"
+                    title={s.name}
+                    onClick={() => setColorFilter(s.name)}
+                    className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-semibold border transition-all cursor-pointer ${
+                      colorFilter === s.name
+                        ? "border-[#24130d] bg-[#24130d] text-[#fffdf8] shadow-sm"
+                        : "border-[#4b261a20] bg-white text-[#24130d] hover:border-[#24130d]"
+                    }`}
+                  >
+                    <span className="h-3 w-3 rounded-full border border-black/20 shrink-0" style={{ background: s.hex }} />
+                    <span>{s.name}</span>
+                  </button>
+                ))}
+              </div>
             </div>
 
             <div className="search-results">

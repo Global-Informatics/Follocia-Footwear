@@ -9,6 +9,7 @@ import {
 } from "@/data/folliciaCatalogue";
 import { getProducts, COMMERCE_EVENT, type CommerceProduct } from "@/lib/commerceStore";
 import { ProductCard } from "@/components/pages/ShopPages";
+import logo from "@/assets/follocia-logo-new.png";
 import "./follicia.css";
 
 interface BagItem {
@@ -19,7 +20,7 @@ interface BagItem {
 }
 
 const COLLECTION_FILTERS = ["All", "Aura", "Bloom", "Muse", "Noire"] as const;
-const STYLE_FILTERS = ["All styles", "Flat", "Heel", "Mule"] as const;
+const STYLE_FILTERS = ["All styles", "Flat", "Heel", "Mule", "Boot"] as const;
 const SIZES = [38, 39, 40, 41] as const;
 
 function getColorHex(colorName: string): string {
@@ -139,6 +140,16 @@ export function FolliciaHomePage({
     return () => document.removeEventListener("pointerdown", closeProfile);
   }, []);
 
+  // Auto-scroll to #our-story section if navigated with hash
+  useEffect(() => {
+    if (typeof window !== "undefined" && window.location.hash.includes("our-story")) {
+      const timer = setTimeout(() => {
+        document.getElementById("our-story")?.scrollIntoView({ behavior: "smooth" });
+      }, 150);
+      return () => clearTimeout(timer);
+    }
+  }, []);
+
   // Prevent background body scroll when any modal or drawer is open
   useEffect(() => {
     if (bagOpen || checkoutOpen || searchOpen) {
@@ -151,21 +162,68 @@ export function FolliciaHomePage({
     };
   }, [bagOpen, checkoutOpen, searchOpen]);
 
+  const [searchMaxPrice, setSearchMaxPrice] = useState<number>(5000);
+  const [searchColorFilter, setSearchColorFilter] = useState<string>("All");
+
   const searchResults = useMemo(() => {
     const q = searchQuery.trim().toLowerCase();
-    if (!q) return FOLLICIA_PRODUCTS.slice(0, 10);
     return FOLLICIA_PRODUCTS.filter((p) => {
-      return (
-        p.name.toLowerCase().includes(q) ||
-        p.collection.toLowerCase().includes(q) ||
-        p.category.toLowerCase().includes(q) ||
-        p.color.toLowerCase().includes(q) ||
-        (p.colors && p.colors.toLowerCase().includes(q)) ||
-        p.silhouette.toLowerCase().includes(q) ||
-        String(p.price).includes(q)
-      );
+      if (q) {
+        const words = q.split(/\s+/).filter(Boolean);
+        const pCat = (p.category || "").toLowerCase();
+        const catKeywords = [
+          pCat,
+          pCat === "heel" ? "heels heeled" : "",
+          pCat === "flat" ? "flats" : "",
+          pCat === "mule" ? "mules" : "",
+          pCat === "boot" ? "boots bootie booties" : "",
+        ].filter(Boolean).join(" ");
+
+        const pCol = (p.collection || "").toLowerCase();
+        const colKeywords = `${pCol} ${pCol} collection`;
+
+        const searchable = [
+          p.name,
+          p.collection,
+          colKeywords,
+          p.category,
+          catKeywords,
+          p.color,
+          p.colors || "",
+          p.silhouette || "",
+          p.material || "",
+          p.id,
+          String(p.price),
+        ].join(" ").toLowerCase();
+
+        const matchesText = words.every((w) => {
+          const rootS = w.replace(/s$/, "");
+          const rootES = w.replace(/es$/, "");
+          return (
+            searchable.includes(w) ||
+            searchable.includes(rootS) ||
+            searchable.includes(rootES)
+          );
+        });
+        if (!matchesText) return false;
+      }
+
+      if (searchMaxPrice < 5000 && p.price > searchMaxPrice) return false;
+
+      if (searchColorFilter !== "All") {
+        const col = `${p.color || ""} ${p.colors || ""}`.toLowerCase();
+        const target = searchColorFilter.toLowerCase();
+        if (target.includes("black") && !col.includes("black") && !col.includes("noir")) return false;
+        if (target.includes("ivory") && !col.includes("ivory") && !col.includes("nude") && !col.includes("cream") && !col.includes("beige") && !col.includes("white")) return false;
+        if (target.includes("brown") && !col.includes("brown") && !col.includes("tan") && !col.includes("chocolate") && !col.includes("fawn") && !col.includes("leopard") && !col.includes("caramel")) return false;
+        if (target.includes("blush") && !col.includes("blush") && !col.includes("rose")) return false;
+        if (target.includes("silver") && !col.includes("silver") && !col.includes("chrome") && !col.includes("gunmetal")) return false;
+        if (target.includes("gold") && !col.includes("gold") && !col.includes("monarch") && !col.includes("orange")) return false;
+      }
+
+      return true;
     });
-  }, [searchQuery]);
+  }, [searchQuery, searchMaxPrice, searchColorFilter]);
 
   const showToast = (msg: string) => {
     setToastMessage(msg);
@@ -688,10 +746,13 @@ export function FolliciaHomePage({
       {/* Footer */}
       <footer>
         <div className="footer-brand">
-          <a className="footer-wordmark" href="#top">
-            FOLLICIA
+          <a className="footer-logo-link inline-flex flex-col items-start transition-opacity hover:opacity-90" href="#top" aria-label="Follicia Home">
+            <img
+              src={logo}
+              alt="FOLLICIA - Every Step, A Statement."
+              className="h-28 w-auto max-w-[240px] object-contain -ml-2"
+            />
           </a>
-          <p>Every Step, A Statement.</p>
         </div>
 
         <div>
@@ -712,6 +773,7 @@ export function FolliciaHomePage({
           <a href="#shop" onClick={() => { setSelectedCollection("All"); setSelectedStyle("Flat"); }}>Flats</a>
           <a href="#shop" onClick={() => { setSelectedCollection("All"); setSelectedStyle("Heel"); }}>Heels</a>
           <a href="#shop" onClick={() => { setSelectedCollection("All"); setSelectedStyle("Mule"); }}>Mules</a>
+          <a href="#shop" onClick={() => { setSelectedCollection("All"); setSelectedStyle("Boot"); }}>Boots</a>
         </div>
 
         <div>
@@ -935,6 +997,55 @@ export function FolliciaHomePage({
               >
                 ✕ Close
               </button>
+            </div>
+
+            {/* Price & Color Filter Bar in Search */}
+            <div className="flex flex-wrap items-center justify-between gap-3 px-6 py-3 border-b border-[#4b261a15] bg-[#FAF8F5] text-xs">
+              {/* Price Range Slider */}
+              <div className="flex items-center gap-3">
+                <span className="text-[10px] uppercase font-bold tracking-widest text-[#4b261a80]">MAX PRICE:</span>
+                <span className="font-bold text-[#24130d] min-w-[70px]">
+                  {searchMaxPrice >= 5000 ? "₹5,000+" : `Under ${formatINR.format(searchMaxPrice)}`}
+                </span>
+                <input
+                  type="range"
+                  min="1000"
+                  max="5000"
+                  step="250"
+                  value={searchMaxPrice}
+                  onChange={(e) => setSearchMaxPrice(Number(e.target.value))}
+                  className="w-28 sm:w-36 accent-[#4b261a] cursor-pointer h-1.5 bg-[#4b261a15] rounded-lg"
+                />
+              </div>
+
+              {/* Color Swatches */}
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="text-[10px] uppercase font-bold tracking-widest text-[#4b261a80]">COLOR:</span>
+                {[
+                  { name: "All", hex: "linear-gradient(135deg, #171310 0%, #d8a9a2 50%, #d9a15c 100%)" },
+                  { name: "Black", hex: "#171310" },
+                  { name: "Ivory / Nude", hex: "#f2e9d9" },
+                  { name: "Brown / Tan", hex: "#6c3d2c" },
+                  { name: "Blush / Rose", hex: "#d8a9a2" },
+                  { name: "Silver / Chrome", hex: "#b8b8b5" },
+                  { name: "Gold", hex: "#d9a15c" },
+                ].map((s) => (
+                  <button
+                    key={s.name}
+                    type="button"
+                    title={s.name}
+                    onClick={() => setSearchColorFilter(s.name)}
+                    className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-semibold border transition-all cursor-pointer ${
+                      searchColorFilter === s.name
+                        ? "border-[#24130d] bg-[#24130d] text-[#fffdf8] shadow-sm"
+                        : "border-[#4b261a20] bg-white text-[#24130d] hover:border-[#24130d]"
+                    }`}
+                  >
+                    <span className="h-3 w-3 rounded-full border border-black/20 shrink-0" style={{ background: s.hex }} />
+                    <span>{s.name}</span>
+                  </button>
+                ))}
+              </div>
             </div>
 
             <div className="search-results">

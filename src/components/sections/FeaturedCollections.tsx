@@ -156,11 +156,12 @@ export function FeaturedCollections() {
           if (w === "flat" || w === "flats") catIntent = "flat";
           if (w === "heel" || w === "heels" || w === "heeled") catIntent = "heel";
           if (w === "mule" || w === "mules") catIntent = "mule";
+          if (w === "boot" || w === "boots" || w === "bootie" || w === "booties") catIntent = "boot";
         }
         if (catIntent && (item.category || "").toLowerCase() !== catIntent) {
           return false;
         }
-        const nonCatWords = qWords.filter((w) => !["flat", "flats", "heel", "heels", "heeled", "mule", "mules"].includes(w));
+        const nonCatWords = qWords.filter((w) => !["flat", "flats", "heel", "heels", "heeled", "mule", "mules", "boot", "boots", "bootie", "booties"].includes(w));
         if (nonCatWords.length > 0) {
           const haystack = `${item.title} ${item.edition} ${item.tone}`.toLowerCase();
           const matches = nonCatWords.every((w) => haystack.includes(w) || haystack.includes(w.replace(/s$/, "")));

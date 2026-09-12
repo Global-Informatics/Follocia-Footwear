@@ -8,11 +8,13 @@ type BrandLogoProps = {
 
 export function BrandLogo({ className = "", imageClassName = "", compact = false }: BrandLogoProps) {
   return (
-    <span className={`inline-flex items-center ${className}`}>
+    <span className={`inline-flex items-center justify-center ${className}`}>
       <img
         src={logo}
-        alt="Follocia logo"
-        className={`block bg-transparent object-contain ${compact ? "h-24 w-24" : "h-32 w-32"} ${imageClassName}`}
+        alt="Follicia logo"
+        className={`block bg-transparent object-contain transition-transform hover:scale-105 ${
+          compact ? "h-13 w-auto max-w-[130px]" : "h-24 w-auto max-w-[180px]"
+        } ${imageClassName}`}
       />
     </span>
   );

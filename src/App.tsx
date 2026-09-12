@@ -189,14 +189,22 @@ export function App() {
     );
   }
 
-  if (wantsCollections || wantsContact) {
+  if (wantsContact) {
+    if (typeof window !== "undefined" && !window.location.hash.includes("our-story")) {
+      window.location.hash = "#our-story";
+    }
+    return (
+      <>
+        <Storefront session={session} onLogout={logout} onLogin={() => setLoginOpen(true)} />
+        {loginOpen && <LoginOverlay onClose={() => setLoginOpen(false)} onAuthenticated={handleAuthenticated} />}
+      </>
+    );
+  }
+
+  if (wantsCollections) {
     return (
       <CartProvider>
-        {wantsCollections ? (
-          <CollectionsPage session={session} onLogout={logout} onLogin={() => setLoginOpen(true)} />
-        ) : (
-          <ContactPage session={session} onLogout={logout} onLogin={() => setLoginOpen(true)} />
-        )}
+        <CollectionsPage session={session} onLogout={logout} onLogin={() => setLoginOpen(true)} />
         {loginOpen && <LoginOverlay onClose={() => setLoginOpen(false)} onAuthenticated={handleAuthenticated} />}
       </CartProvider>
     );
