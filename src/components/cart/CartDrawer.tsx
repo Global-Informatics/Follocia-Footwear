@@ -150,12 +150,12 @@ export function CartDrawer({ session, onLogin }: { session?: AuthSession | null;
 
                   <div className="flex items-center justify-between text-xs text-[#4b261a90]">
                     <span>Subtotal</span>
-                    <span className="font-semibold text-[#24130d]">₹ {subtotal.toLocaleString("en-IN")}</span>
+                    <span className="font-semibold text-[#24130d]">Rs. {subtotal.toLocaleString("en-IN")}</span>
                   </div>
                   {discount > 0 && (
                     <div className="mt-1.5 flex items-center justify-between text-xs text-emerald-700 font-semibold">
                       <span>{couponQuote?.title}</span>
-                      <span>− ₹ {discount.toLocaleString("en-IN")}</span>
+                      <span>− Rs. {discount.toLocaleString("en-IN")}</span>
                     </div>
                   )}
 
@@ -163,7 +163,7 @@ export function CartDrawer({ session, onLogin }: { session?: AuthSession | null;
 
                   <div className="flex items-center justify-between">
                     <span className="eyebrow text-xs text-[#4b261a80] font-semibold">Total</span>
-                    <span className="font-display text-2xl font-bold text-[#24130d]">₹ {total.toLocaleString("en-IN")}</span>
+                    <span className="font-display text-2xl font-bold text-[#24130d]">Rs. {total.toLocaleString("en-IN")}</span>
                   </div>
 
                   <button

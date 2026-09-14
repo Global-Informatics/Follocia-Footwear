@@ -71,7 +71,7 @@ export function Hero() {
               className="flex items-center gap-3 mb-6"
             >
               <div className="h-px w-6 bg-[var(--gold)]/60" />
-              <p className="eyebrow text-[var(--gold)]">Maison Follocia · MMXXV</p>
+              <p className="eyebrow text-[var(--gold)]">Maison Follicia · MMXXV</p>
             </motion.div>
 
             <h1 className="font-display text-[clamp(2.5rem,7vw,6.5rem)] leading-[0.9] tracking-[-0.02em] text-[var(--bone)]">

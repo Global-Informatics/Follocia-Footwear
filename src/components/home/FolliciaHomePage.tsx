@@ -47,6 +47,8 @@ export function FolliciaHomePage({
   const [navOpen, setNavOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
   const profileRef = useRef<HTMLDivElement>(null);
+  const [collectionsOpen, setCollectionsOpen] = useState(false);
+  const collectionsRef = useRef<HTMLDivElement>(null);
   const [selectedCollection, setSelectedCollection] = useState<string>("All");
   const [selectedStyle, setSelectedStyle] = useState<string>("All styles");
   const [motionIndex, setMotionIndex] = useState(0);
@@ -116,7 +118,7 @@ export function FolliciaHomePage({
     return () => window.clearInterval(interval);
   }, [motionPaused, motionHovered]);
 
-  // Escape key for modals
+  // Escape key for modals & dropdowns
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === "Escape") {
@@ -124,6 +126,7 @@ export function FolliciaHomePage({
         setCheckoutOpen(false);
         setSearchOpen(false);
         setProfileOpen(false);
+        setCollectionsOpen(false);
       }
     };
     window.addEventListener("keydown", handleKeyDown);
@@ -131,13 +134,16 @@ export function FolliciaHomePage({
   }, []);
 
   useEffect(() => {
-    const closeProfile = (event: PointerEvent) => {
+    const closeDropdowns = (event: PointerEvent) => {
       if (!profileRef.current?.contains(event.target as Node)) {
         setProfileOpen(false);
       }
+      if (!collectionsRef.current?.contains(event.target as Node)) {
+        setCollectionsOpen(false);
+      }
     };
-    document.addEventListener("pointerdown", closeProfile);
-    return () => document.removeEventListener("pointerdown", closeProfile);
+    document.addEventListener("pointerdown", closeDropdowns);
+    return () => document.removeEventListener("pointerdown", closeDropdowns);
   }, []);
 
   // Auto-scroll to #our-story section if navigated with hash
@@ -148,6 +154,34 @@ export function FolliciaHomePage({
       }, 150);
       return () => clearTimeout(timer);
     }
+  }, []);
+
+  // Auto-select collection & scroll if navigated with collection hash
+  useEffect(() => {
+    const handleHashCollection = () => {
+      if (typeof window === "undefined") return;
+      const hash = (window.location.hash || "").toLowerCase();
+      const collections: Array<"Aura" | "Bloom" | "Muse" | "Noire"> = ["Aura", "Bloom", "Muse", "Noire"];
+      for (const col of collections) {
+        if (hash.includes(col.toLowerCase())) {
+          setSelectedCollection(col);
+          setSelectedStyle("All styles");
+          const scrollToShop = () => {
+            const el = document.getElementById("shop");
+            if (el) {
+              el.scrollIntoView({ behavior: "smooth" });
+            }
+          };
+          setTimeout(scrollToShop, 60);
+          setTimeout(scrollToShop, 260);
+          break;
+        }
+      }
+    };
+
+    handleHashCollection();
+    window.addEventListener("hashchange", handleHashCollection);
+    return () => window.removeEventListener("hashchange", handleHashCollection);
   }, []);
 
   // Prevent background body scroll when any modal or drawer is open
@@ -162,7 +196,7 @@ export function FolliciaHomePage({
     };
   }, [bagOpen, checkoutOpen, searchOpen]);
 
-  const [searchMaxPrice, setSearchMaxPrice] = useState<number>(5000);
+  const [searchMaxPrice, setSearchMaxPrice] = useState<number>(40000);
   const [searchColorFilter, setSearchColorFilter] = useState<string>("All");
 
   const searchResults = useMemo(() => {
@@ -208,7 +242,7 @@ export function FolliciaHomePage({
         if (!matchesText) return false;
       }
 
-      if (searchMaxPrice < 5000 && p.price > searchMaxPrice) return false;
+      if (searchMaxPrice < 40000 && p.price > searchMaxPrice) return false;
 
       if (searchColorFilter !== "All") {
         const col = `${p.color || ""} ${p.colors || ""}`.toLowerCase();
@@ -233,7 +267,10 @@ export function FolliciaHomePage({
   const handleSelectCollectionAndScroll = (collectionName: string) => {
     setSelectedCollection(collectionName);
     setSelectedStyle("All styles");
-    const el = document.querySelector("#shop");
+    try {
+      window.history.replaceState(null, "", `#/collection/${collectionName.toLowerCase()}`);
+    } catch {}
+    const el = document.getElementById("shop");
     if (el) el.scrollIntoView({ behavior: "smooth" });
   };
 
@@ -307,7 +344,7 @@ export function FolliciaHomePage({
     <div className="follicia-home">
       {/* Announcement Bar */}
       <div className="announcement">
-        Complimentary shipping across India on orders above ₹2,999
+        Complimentary shipping across India on orders above Rs. 2,999
       </div>
 
       {/* Site Header */}
@@ -327,32 +364,107 @@ export function FolliciaHomePage({
           >
             Home
           </a>
+          <div className="nav-dropdown-wrap" ref={collectionsRef}>
+            <div className="flex items-center">
+              <a
+                href="#/collections"
+                onClick={() => {
+                  setCollectionsOpen(false);
+                  setNavOpen(false);
+                }}
+                className="nav-collections-link"
+              >
+                Collections
+              </a>
+              <button
+                type="button"
+                className={`nav-dropdown-chevron-btn ${collectionsOpen ? "active" : ""}`}
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  setCollectionsOpen((prev) => !prev);
+                }}
+                aria-expanded={collectionsOpen}
+                aria-haspopup="true"
+                aria-label="Toggle collections menu"
+              >
+                <svg
+                  className={`nav-dropdown-chevron ${collectionsOpen ? "open" : ""}`}
+                  width="10"
+                  height="10"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2.5"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <polyline points="6 9 12 15 18 9"></polyline>
+                </svg>
+              </button>
+            </div>
+
+            {collectionsOpen && (
+              <div className="nav-dropdown-menu" role="menu">
+                <div className="nav-dropdown-header">
+                  <span className="nav-dropdown-eyebrow">Signature Editions</span>
+                  <span className="nav-dropdown-count">4 Collections</span>
+                </div>
+                <div className="nav-dropdown-grid">
+                  {FOLLICIA_COLLECTIONS.map((col) => (
+                    <button
+                      key={col.name}
+                      type="button"
+                      className="nav-dropdown-item"
+                      onClick={() => {
+                        setCollectionsOpen(false);
+                        setNavOpen(false);
+                        window.location.hash = `#/collection/${col.name.toLowerCase()}`;
+                      }}
+                    >
+                      <div className="nav-dropdown-thumb">
+                        <img src={col.image} alt={`${col.name} preview`} />
+                      </div>
+                      <div className="nav-dropdown-info">
+                        <span className="nav-dropdown-name">{col.name}</span>
+                        <span className="nav-dropdown-line">{col.line}</span>
+                        <span className="nav-dropdown-badge">{col.count} Designs</span>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
           <a
-            href="#collections"
+            href="#/shop"
             onClick={(e) => {
               e.preventDefault();
               setNavOpen(false);
-              document.getElementById("collections")?.scrollIntoView({ behavior: "smooth" });
-            }}
-          >
-            Collections
-          </a>
-          <a
-            href="#shop"
-            onClick={(e) => {
-              e.preventDefault();
-              setNavOpen(false);
-              document.getElementById("shop")?.scrollIntoView({ behavior: "smooth" });
+              window.location.hash = "#/shop";
+              window.scrollTo({ top: 0, behavior: "smooth" });
             }}
           >
             Shop
           </a>
           <a
-            href="#our-story"
+            href="#/new-arrivals"
             onClick={(e) => {
               e.preventDefault();
               setNavOpen(false);
-              document.getElementById("our-story")?.scrollIntoView({ behavior: "smooth" });
+              window.location.hash = "#/new-arrivals";
+              window.scrollTo({ top: 0, behavior: "smooth" });
+            }}
+          >
+            New Arrivals
+          </a>
+          <a
+            href="#/our-story"
+            onClick={(e) => {
+              e.preventDefault();
+              setNavOpen(false);
+              window.location.hash = "#/our-story";
+              window.scrollTo({ top: 0, behavior: "smooth" });
             }}
           >
             Our Story
@@ -522,23 +634,24 @@ export function FolliciaHomePage({
           <div className="button-row">
             <a
               className="button dark"
-              href="#shop"
+              href="#/collections"
               onClick={(e) => {
                 e.preventDefault();
-                document.getElementById("shop")?.scrollIntoView({ behavior: "smooth" });
+                window.location.hash = "#/collections";
+                window.scrollTo({ top: 0, behavior: "smooth" });
               }}
             >
-              Shop all designs
+              Explore collections
             </a>
             <a
               className="text-link"
-              href="#our-story"
+              href="#motion"
               onClick={(e) => {
                 e.preventDefault();
-                document.getElementById("our-story")?.scrollIntoView({ behavior: "smooth" });
+                document.getElementById("motion")?.scrollIntoView({ behavior: "smooth" });
               }}
             >
-              Contact Us <span>→</span>
+              See Follicia in motion <span>→</span>
             </a>
           </div>
         </div>
@@ -591,12 +704,12 @@ export function FolliciaHomePage({
                 <span key={style}>{style}</span>
               ))}
             </div>
-            <button
+            <a
               className="button light"
-              onClick={() => handleSelectCollectionAndScroll(activeMotionCollection.name)}
+              href={`#/collection/${activeMotionCollection.name.toLowerCase()}`}
             >
               Explore {activeMotionCollection.name}
-            </button>
+            </a>
           </div>
           <span className="cursor-note">Slide with cursor ↗</span>
         </div>
@@ -621,120 +734,41 @@ export function FolliciaHomePage({
         </div>
       </section>
 
-      {/* Collections Intro & Grid */}
-      <section className="intro" id="collections">
-        <p className="eyebrow">The collections</p>
-        <h2>
-          Four moods.<br />
-          <em>One signature.</em>
-        </h2>
-        <p>
-          Every collection has its own visual language, material story and pace—united by Follicia's expressive femininity.
-        </p>
-      </section>
-
-      <section className="collection-grid">
-        {FOLLICIA_COLLECTIONS.map((col) => (
-          <article key={col.name} className={`collection-card collection-${col.name.toLowerCase()}`}>
-            <img src={col.image} alt={`${col.name} campaign`} />
-            <div className="collection-overlay"></div>
-            <div className="collection-content">
-              <h3>{col.name}</h3>
-              <p>{col.line}</p>
-              <button onClick={() => handleSelectCollectionAndScroll(col.name)}>
-                View collection <span>→</span>
-              </button>
-            </div>
-          </article>
-        ))}
-      </section>
-
-      {/* Shop Section */}
-      <section className="shop" id="shop">
-        <div className="section-head">
-          <div>
-            <p className="eyebrow">The complete catalogue</p>
-            <h2>{selectedCollection === "All" ? "All designs" : selectedCollection}</h2>
-          </div>
-          <p>EU 38–41</p>
-        </div>
-
-        <div className="filter-group">
-          <div className="filters" aria-label="Collection filters">
-            {COLLECTION_FILTERS.map((filter) => (
-              <button
-                key={filter}
-                className={selectedCollection === filter ? "active" : ""}
-                onClick={() => setSelectedCollection(filter)}
-              >
-                {filter}
-              </button>
-            ))}
-          </div>
-
-          <div className="filters category-filters" aria-label="Style filters">
-            {STYLE_FILTERS.map((style) => (
-              <button
-                key={style}
-                className={selectedStyle === style ? "active" : ""}
-                onClick={() => setSelectedStyle(style)}
-              >
-                {style}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
-          {filteredProducts.map((product, idx) => (
-            <ProductCard
-              key={product.id}
-              product={product}
-              index={idx}
-              onSelect={() => {
-                window.location.hash = `#/shop/${product.id}`;
-              }}
-            />
-          ))}
-        </div>
-      </section>
-
-      {/* Story Section */}
-      <section className="story" id="our-story">
-        <div className="story-image">
-          <img
-            src="/campaigns/aura-motion.webp"
-            alt="Follicia Aura footwear worn in motion"
-          />
-        </div>
-        <div className="story-copy">
-          <p className="eyebrow">Designed around movement</p>
-          <h2>Beauty begins with how it feels.</h2>
-          <p>
-            From soft flats to sculptural heels and confident mules, each Follicia design balances a distinct point of view with thoughtful proportions for real movement.
-          </p>
+      {/* Find your Follicia - Home Links */}
+      <section className="home-links">
+        <p className="eyebrow">Find your Follicia</p>
+        <h2>Four worlds, designed to move with you.</h2>
+        <div>
           <a
-            className="button outline"
-            href="#/shop"
+            href="#/collections"
+            onClick={(e) => {
+              e.preventDefault();
+              window.location.hash = "#/collections";
+              window.scrollTo({ top: 0, behavior: "smooth" });
+            }}
           >
-            Discover the collection
+            Shop the collections <span>→</span>
           </a>
-        </div>
-      </section>
-
-      {/* Promise Section */}
-      <section className="promise">
-        <div>
-          <h3>Distinct worlds</h3>
-          <p>Aura, Bloom, Muse and Noire—each with a clear design identity.</p>
-        </div>
-        <div>
-          <h3>Comfort in every curve</h3>
-          <p>Thoughtful silhouettes and wearable proportions across EU sizes 38–41.</p>
-        </div>
-        <div>
-          <h3>Made to be remembered</h3>
-          <p>Original details, expressive materials and a quiet Follicia signature.</p>
+          <a
+            href="#/new-arrivals"
+            onClick={(e) => {
+              e.preventDefault();
+              window.location.hash = "#/new-arrivals";
+              window.scrollTo({ top: 0, behavior: "smooth" });
+            }}
+          >
+            Discover Walk Light <span>→</span>
+          </a>
+          <a
+            href="#/our-story"
+            onClick={(e) => {
+              e.preventDefault();
+              window.location.hash = "#/our-story";
+              window.scrollTo({ top: 0, behavior: "smooth" });
+            }}
+          >
+            Read our story <span>→</span>
+          </a>
         </div>
       </section>
 
@@ -770,30 +804,28 @@ export function FolliciaHomePage({
         <div>
           <h4>Collections</h4>
           {FOLLICIA_COLLECTIONS.map((c) => (
-            <button
+            <a
               key={c.name}
-              onClick={() => handleSelectCollectionAndScroll(c.name)}
+              href={`#/collection/${c.name.toLowerCase()}`}
             >
               {c.name}
-            </button>
+            </a>
           ))}
         </div>
 
         <div>
           <h4>Shop</h4>
-          <a href="#shop" onClick={() => { setSelectedCollection("All"); setSelectedStyle("All styles"); }}>All designs</a>
-          <a href="#shop" onClick={() => { setSelectedCollection("All"); setSelectedStyle("Flat"); }}>Flats</a>
-          <a href="#shop" onClick={() => { setSelectedCollection("All"); setSelectedStyle("Heel"); }}>Heels</a>
-          <a href="#shop" onClick={() => { setSelectedCollection("All"); setSelectedStyle("Mule"); }}>Mules</a>
-          <a href="#shop" onClick={() => { setSelectedCollection("All"); setSelectedStyle("Boot"); }}>Boots</a>
+          <a href="#/collections">All collections</a>
+          <a href="#/new-arrivals">New arrivals</a>
+          <a href="#/our-story">Our story</a>
         </div>
 
         <div>
           <h4>Help</h4>
-          <a href="#our-story">Contact</a>
-          <a href="#our-story">Shipping &amp; Returns</a>
-          <a href="#shop">Size guide</a>
-          <a href="#our-story">FAQs</a>
+          <a href="#/our-story">Contact</a>
+          <a href="#/our-story">Shipping &amp; Returns</a>
+          <a href="#/shop">Size guide</a>
+          <a href="#/our-story">FAQs</a>
         </div>
 
         <small>© 2026 Follicia. All rights reserved.</small>
@@ -1016,14 +1048,14 @@ export function FolliciaHomePage({
               {/* Price Range Slider */}
               <div className="flex items-center gap-3">
                 <span className="text-[10px] uppercase font-bold tracking-widest text-[#4b261a80]">MAX PRICE:</span>
-                <span className="font-bold text-[#24130d] min-w-[70px]">
-                  {searchMaxPrice >= 5000 ? "₹5,000+" : `Under ${formatINR.format(searchMaxPrice)}`}
+                <span className="font-bold text-[#24130d] min-w-[85px]">
+                  {searchMaxPrice >= 40000 ? "All Prices (Up to Rs. 40k)" : `Under ${formatINR.format(searchMaxPrice)}`}
                 </span>
                 <input
                   type="range"
-                  min="1000"
-                  max="5000"
-                  step="250"
+                  min="3000"
+                  max="40000"
+                  step="500"
                   value={searchMaxPrice}
                   onChange={(e) => setSearchMaxPrice(Number(e.target.value))}
                   className="w-28 sm:w-36 accent-[#4b261a] cursor-pointer h-1.5 bg-[#4b261a15] rounded-lg"

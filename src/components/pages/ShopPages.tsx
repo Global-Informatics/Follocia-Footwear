@@ -67,6 +67,28 @@ function productPath(product: CommerceProduct) {
   return `#/shop/${product.id}`;
 }
 
+export async function shareProduct(product: { id: string; title: string; price?: string | number }, onCopied?: () => void) {
+  const pId = product.id.toLowerCase();
+  const shareUrl = `${window.location.origin}${window.location.pathname}#/shop/${pId}`;
+  if (typeof navigator !== "undefined" && navigator.share) {
+    try {
+      await navigator.share({
+        title: `Follicia | ${product.title}`,
+        text: `Discover ${product.title} on Follicia Footwear`,
+        url: shareUrl,
+      });
+      return;
+    } catch {}
+  }
+  if (typeof navigator !== "undefined" && navigator.clipboard) {
+    try {
+      await navigator.clipboard.writeText(shareUrl);
+      onCopied?.();
+      return;
+    } catch {}
+  }
+}
+
 function liveProducts() {
   return getProducts().filter((product) => product.status !== "Draft");
 }
@@ -249,7 +271,7 @@ function PriceRangeDropdown({
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  const displayVal = maxPrice >= 5000 ? "ALL" : `≤ ₹${maxPrice.toLocaleString("en-IN")}`;
+  const displayVal = maxPrice >= 40000 ? "ALL" : `≤ Rs. ${maxPrice.toLocaleString("en-IN")}`;
 
   return (
     <div ref={ref} className="relative">
@@ -278,15 +300,15 @@ function PriceRangeDropdown({
           <div className="flex items-center justify-between text-xs font-bold text-[#24130d] mb-2">
             <span>PRICE RANGE</span>
             <span className="text-[var(--gold)] font-bold">
-              {maxPrice >= 5000 ? "₹1,000 - ₹5,000+" : `Up to ₹${maxPrice.toLocaleString("en-IN")}`}
+              {maxPrice >= 40000 ? "All Prices (Up to Rs. 40k)" : `Up to Rs. ${maxPrice.toLocaleString("en-IN")}`}
             </span>
           </div>
 
           <input
             type="range"
-            min="1400"
-            max="5000"
-            step="100"
+            min="3000"
+            max="40000"
+            step="500"
             value={maxPrice}
             onChange={(e) => onChange(Number(e.target.value))}
             className="w-full accent-[var(--gold)] cursor-pointer h-2 bg-[#4b261a15] rounded-lg mb-3"
@@ -295,31 +317,31 @@ function PriceRangeDropdown({
           <div className="flex items-center justify-between gap-1 text-[10px] uppercase text-[#4b261a80]">
             <button
               type="button"
-              onClick={() => onChange(5000)}
-              className={`px-2 py-1 rounded border transition-colors cursor-pointer ${maxPrice >= 5000 ? "border-[var(--gold)] bg-[#fffaf0] font-bold text-[#24130d]" : "border-[#4b261a15] hover:border-[#4b261a40]"}`}
+              onClick={() => onChange(40000)}
+              className={`px-2 py-1 rounded border transition-colors cursor-pointer ${maxPrice >= 40000 ? "border-[var(--gold)] bg-[#fffaf0] font-bold text-[#24130d]" : "border-[#4b261a15] hover:border-[#4b261a40]"}`}
             >
               All
             </button>
             <button
               type="button"
-              onClick={() => onChange(2000)}
-              className={`px-2 py-1 rounded border transition-colors cursor-pointer ${maxPrice === 2000 ? "border-[var(--gold)] bg-[#fffaf0] font-bold text-[#24130d]" : "border-[#4b261a15] hover:border-[#4b261a40]"}`}
+              onClick={() => onChange(10000)}
+              className={`px-2 py-1 rounded border transition-colors cursor-pointer ${maxPrice === 10000 ? "border-[var(--gold)] bg-[#fffaf0] font-bold text-[#24130d]" : "border-[#4b261a15] hover:border-[#4b261a40]"}`}
             >
-              &lt; ₹2K
+              &lt; Rs. 10K
             </button>
             <button
               type="button"
-              onClick={() => onChange(3000)}
-              className={`px-2 py-1 rounded border transition-colors cursor-pointer ${maxPrice === 3000 ? "border-[var(--gold)] bg-[#fffaf0] font-bold text-[#24130d]" : "border-[#4b261a15] hover:border-[#4b261a40]"}`}
+              onClick={() => onChange(20000)}
+              className={`px-2 py-1 rounded border transition-colors cursor-pointer ${maxPrice === 20000 ? "border-[var(--gold)] bg-[#fffaf0] font-bold text-[#24130d]" : "border-[#4b261a15] hover:border-[#4b261a40]"}`}
             >
-              &lt; ₹3K
+              &lt; Rs. 20K
             </button>
             <button
               type="button"
-              onClick={() => onChange(4000)}
-              className={`px-2 py-1 rounded border transition-colors cursor-pointer ${maxPrice === 4000 ? "border-[var(--gold)] bg-[#fffaf0] font-bold text-[#24130d]" : "border-[#4b261a15] hover:border-[#4b261a40]"}`}
+              onClick={() => onChange(30000)}
+              className={`px-2 py-1 rounded border transition-colors cursor-pointer ${maxPrice === 30000 ? "border-[var(--gold)] bg-[#fffaf0] font-bold text-[#24130d]" : "border-[#4b261a15] hover:border-[#4b261a40]"}`}
             >
-              &lt; ₹4K
+              &lt; Rs. 30K
             </button>
           </div>
         </div>
@@ -509,16 +531,44 @@ export function ProductCard({
 
         <div className="mt-2.5 flex items-center justify-between border-t border-[#4b261a0d] pt-2 text-[11px] text-[#4b261a99]">
           <span>EU 38–41</span>
-          <button
-            type="button"
-            onClick={(e) => {
-              e.stopPropagation();
-              toggleWish(product.id);
-            }}
-            className={`transition-colors ${wished ? "font-semibold text-[var(--gold)]" : "hover:text-[#24130d]"}`}
-          >
-            {wished ? "Saved" : "♡ Save"}
-          </button>
+          <div className="flex items-center gap-3">
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                void shareProduct(product);
+              }}
+              className="hover:text-[#24130d] flex items-center gap-1 transition-colors cursor-pointer"
+              title="Share piece"
+              aria-label={`Share ${product.title}`}
+            >
+              <svg
+                width="11"
+                height="11"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8" />
+                <polyline points="16 6 12 2 8 6" />
+                <line x1="12" y1="2" x2="12" y2="15" />
+              </svg>
+              <span>Share</span>
+            </button>
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                toggleWish(product.id);
+              }}
+              className={`transition-colors ${wished ? "font-semibold text-[var(--gold)]" : "hover:text-[#24130d]"}`}
+            >
+              {wished ? "Saved" : "♡ Save"}
+            </button>
+          </div>
         </div>
       </div>
     </article>
@@ -544,7 +594,7 @@ export function ShopPage({
   const [materialFilter, setMaterialFilter] = useState("All");
   const [stock, setStock] = useState("All");
   const [sort, setSort] = useState("Featured");
-  const [maxPrice, setMaxPrice] = useState<number>(5000);
+  const [maxPrice, setMaxPrice] = useState<number>(40000);
   const [colorFilter, setColorFilter] = useState<string>("All");
 
   const MATERIAL_OPTIONS = [
@@ -576,6 +626,56 @@ export function ShopPage({
     window.addEventListener(COMMERCE_EVENT, sync);
     void syncCommerceFromBackend();
     return () => window.removeEventListener(COMMERCE_EVENT, sync);
+  }, []);
+
+  useEffect(() => {
+    const updateFromUrl = () => {
+      try {
+        const hash = window.location.hash || "";
+        const search = window.location.search || "";
+        const queryStr = hash.includes("?") ? hash.split("?")[1] : search.replace(/^\?/, "");
+        const valid = ["Aura", "Bloom", "Muse", "Noire"];
+
+        // 1. Check path format: #/collection/aura or #/collections/aura
+        const cleanHash = hash.replace(/^#\/?/, "").toLowerCase().split("?")[0];
+        if (cleanHash.startsWith("collection/")) {
+          const colParam = cleanHash.replace("collection/", "");
+          const matched = valid.find((c) => c.toLowerCase() === colParam.toLowerCase());
+          if (matched) {
+            setSelectedCollection(matched);
+            return;
+          }
+        } else if (cleanHash.startsWith("collections/") && cleanHash !== "collections") {
+          const colParam = cleanHash.replace("collections/", "");
+          const matched = valid.find((c) => c.toLowerCase() === colParam.toLowerCase());
+          if (matched) {
+            setSelectedCollection(matched);
+            return;
+          }
+        }
+
+        // 2. Check query string: ?collection=aura
+        if (queryStr) {
+          const params = new URLSearchParams(queryStr);
+          const col = params.get("collection") || params.get("col");
+          if (col) {
+            const matched = valid.find((c) => c.toLowerCase() === col.toLowerCase());
+            if (matched) {
+              setSelectedCollection(matched);
+              return;
+            }
+          }
+        }
+
+        // If navigated to plain #/shop without collection specified, show All
+        if (cleanHash === "shop" || cleanHash === "/shop") {
+          setSelectedCollection("All");
+        }
+      } catch {}
+    };
+    updateFromUrl();
+    window.addEventListener("hashchange", updateFromUrl);
+    return () => window.removeEventListener("hashchange", updateFromUrl);
   }, []);
 
   useEffect(() => {
@@ -711,7 +811,7 @@ export function ShopPage({
 
         // 5. Price Range filter
         const pPrice = priceNumber(product.price);
-        if (maxPrice < 5000 && pPrice > maxPrice) return false;
+        if (maxPrice < 40000 && pPrice > maxPrice) return false;
 
         // 6. Color filter
         if (colorFilter !== "All") {
@@ -932,7 +1032,7 @@ export function ShopPage({
               setQuery("");
               setStatus("All");
               setMaterialFilter("All");
-              setMaxPrice(5000);
+              setMaxPrice(40000);
               setColorFilter("All");
               setStock("All");
               setSort("Featured");
@@ -955,13 +1055,13 @@ export function ShopPage({
           <div className="flex items-center gap-3">
             <span className="text-[10px] uppercase font-bold tracking-widest text-[#4b261a80]">MAX PRICE:</span>
             <span className="font-bold text-[#24130d] min-w-[85px]">
-              {maxPrice >= 5000 ? "₹1,000 - ₹5,000+" : `Under ₹${maxPrice.toLocaleString("en-IN")}`}
+              {maxPrice >= 40000 ? "All Prices (Up to Rs. 40k)" : `Under Rs. ${maxPrice.toLocaleString("en-IN")}`}
             </span>
             <input
               type="range"
-              min="1400"
-              max="5000"
-              step="100"
+              min="3000"
+              max="40000"
+              step="500"
               value={maxPrice}
               onChange={(e) => setMaxPrice(Number(e.target.value))}
               className="w-28 sm:w-40 accent-[#4b261a] cursor-pointer h-1.5 bg-[#4b261a15] rounded-lg"
@@ -1162,12 +1262,35 @@ export function ShopPage({
                         </div>
                       )}
                     </div>
-                    <button
-                      type="button"
-                      onClick={() => toggleWish(selectedProduct.id)}
-                      aria-label="Wishlist"
-                      className="grid h-12 w-12 shrink-0 place-items-center rounded-full border border-[#4b261a1a] bg-white shadow-sm transition-transform hover:scale-110 cursor-pointer"
-                    >
+                    <div className="flex items-center gap-2 shrink-0">
+                      <button
+                        type="button"
+                        onClick={() => void shareProduct(selectedProduct)}
+                        aria-label="Share design"
+                        title="Share this design"
+                        className="grid h-12 w-12 shrink-0 place-items-center rounded-full border border-[#4b261a1a] bg-white shadow-sm transition-transform hover:scale-110 cursor-pointer hover:border-[var(--gold)]"
+                      >
+                        <svg
+                          width="18"
+                          height="18"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth="1.8"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                        >
+                          <path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8" />
+                          <polyline points="16 6 12 2 8 6" />
+                          <line x1="12" y1="2" x2="12" y2="15" />
+                        </svg>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => toggleWish(selectedProduct.id)}
+                        aria-label="Wishlist"
+                        className="grid h-12 w-12 shrink-0 place-items-center rounded-full border border-[#4b261a1a] bg-white shadow-sm transition-transform hover:scale-110 cursor-pointer"
+                      >
                       <svg
                         width="20"
                         height="20"
@@ -1180,6 +1303,7 @@ export function ShopPage({
                       </svg>
                     </button>
                   </div>
+                </div>
 
                   <div className="mt-4 flex items-baseline gap-4">
                     <span className="font-display text-3xl font-semibold text-[#24130d]">{selectedProduct.price}</span>
@@ -1501,77 +1625,7 @@ export function ProductDetailPage({
   );
 }
 
-export function CollectionsPage({ session, onLogout, onLogin }: { session: AuthSession | null; onLogout: () => void; onLogin: () => void }) {
-  const [products, setProducts] = useState<CommerceProduct[]>(() => liveProducts());
-  useEffect(() => {
-    const sync = () => setProducts(liveProducts());
-    window.addEventListener(COMMERCE_EVENT, sync);
-    void syncCommerceFromBackend();
-    return () => window.removeEventListener(COMMERCE_EVENT, sync);
-  }, []);
 
-  return (
-    <PageShell session={session} onLogout={onLogout} onLogin={onLogin} darkNav>
-      <section className="bg-[var(--ink)] text-[var(--bone)] -mt-20 pt-40 pb-20">
-        <div className="mx-auto max-w-[1500px] px-6 md:px-12">
-          <motion.p initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="eyebrow text-[var(--gold)]">The Archives</motion.p>
-          <motion.h1 initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="mt-5 max-w-5xl font-display text-[clamp(4rem,9vw,8.5rem)] leading-[0.86]">
-            Numbered editions,<br/>never repeated.
-          </motion.h1>
-          <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.3 }} className="mt-8 max-w-xl text-[var(--bone)]/60 text-lg">
-            Explore the complete history of Follocia drops. Once a collection sells out, its molds are destroyed.
-          </motion.p>
-        </div>
-      </section>
-
-      <section className="mx-auto max-w-[1500px] px-6 py-20 md:px-12 bg-[var(--bone)]">
-        <div className="grid gap-y-32">
-          {products.map((product, index) => (
-            <motion.a 
-              key={product.id} 
-              href={productPath(product)} 
-              initial={{ opacity: 0, y: 40 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true, margin: "-10%" }}
-              transition={{ duration: 0.8, ease }}
-              className="group grid gap-8 md:grid-cols-[1fr_1fr] lg:grid-cols-[1.2fr_0.8fr] items-center"
-            >
-              <div className={`overflow-hidden relative bg-[var(--champagne)]/30 ${index % 2 !== 0 ? 'md:order-2' : ''}`}>
-                <motion.div whileHover={{ scale: 1.05 }} transition={{ duration: 1.5, ease: "easeOut" }} className="aspect-[4/3] w-full">
-                  <img src={productPrimaryImage(product)} alt={product.title} className="h-full w-full object-cover" />
-                </motion.div>
-                <div className="absolute inset-0 bg-black/20 opacity-0 transition-opacity duration-500 group-hover:opacity-100 flex items-center justify-center backdrop-blur-sm">
-                  <span className="bg-white/90 px-6 py-3 eyebrow text-[var(--ink)]">View Collection</span>
-                </div>
-              </div>
-              
-              <div className={`flex flex-col justify-center ${index % 2 !== 0 ? 'md:order-1 md:pr-16 lg:pr-24' : 'md:pl-16 lg:pl-24'}`}>
-                <div className="flex items-center gap-4">
-                  <span className="font-display text-5xl text-[var(--gold)]/30">No. {String(index + 1).padStart(2, "0")}</span>
-                  <div className="h-px w-16 bg-[var(--gold)]/30" />
-                </div>
-                <h2 className="mt-6 font-display text-[clamp(2.5rem,4vw,4rem)] leading-tight group-hover:text-[var(--gold)] transition-colors duration-500">{product.title}</h2>
-                <div className="mt-6 grid grid-cols-2 gap-4 border-y border-[var(--ink)]/10 py-6">
-                  <div>
-                    <p className="text-xs uppercase tracking-[0.2em] text-[var(--ink)]/40">Edition</p>
-                    <p className="mt-1 font-semibold text-[var(--ink)]">{product.edition}</p>
-                  </div>
-                  <div>
-                    <p className="text-xs uppercase tracking-[0.2em] text-[var(--ink)]/40">Material</p>
-                    <p className="mt-1 font-semibold text-[var(--ink)]">{product.tone}</p>
-                  </div>
-                </div>
-                <p className="mt-6 text-[var(--ink)]/60 leading-relaxed">
-                  Produced in a strictly limited run of {product.produced} pairs. {product.available === 0 ? "Fully archived and no longer available." : `Only ${product.available} remaining in the atelier.`}
-                </p>
-              </div>
-            </motion.a>
-          ))}
-        </div>
-      </section>
-    </PageShell>
-  );
-}
 
 function CheckoutInput({ label, value, onChange, wide }: { label: string; value: string; onChange: (value: string) => void; wide?: boolean }) {
   return (
@@ -1750,7 +1804,7 @@ export function SecureCheckoutPage({ session, onLogout, onLogin }: { session: Au
     <PageShell session={session} onLogout={onLogout} onLogin={onLogin} darkNav>
       <section className="border-b border-[var(--ink)]/10 bg-[var(--ink)] text-[var(--bone)] -mt-20 pt-20">
         <div className="mx-auto flex max-w-[1200px] items-center justify-between px-6 py-8 md:px-12">
-          <a href="/" className="font-display text-3xl hover:text-[var(--gold)] transition-colors">Follocia</a>
+          <a href="/" className="font-display text-3xl hover:text-[var(--gold)] transition-colors">Follicia</a>
           <span className="eyebrow text-[var(--gold)]">Secure Checkout</span>
         </div>
       </section>
@@ -1796,7 +1850,7 @@ export function SecureCheckoutPage({ session, onLogout, onLogin }: { session: Au
                   Your luxury atelier footwear has been reserved and registered for preparation.
                 </p>
 
-                {placedOrderSummary && (
+                    {placedOrderSummary && (
                   <div className="my-6 p-5 rounded-xl bg-[#fbf6ed] border border-[var(--gold)]/30 max-w-md mx-auto text-sm text-left shadow-sm">
                     <div className="flex justify-between py-2 border-b border-[var(--ink)]/10">
                       <span className="text-[var(--ink)]/60 text-xs uppercase tracking-wider">Order ID</span>
@@ -1808,7 +1862,7 @@ export function SecureCheckoutPage({ session, onLogout, onLogin }: { session: Au
                     </div>
                     <div className="flex justify-between py-2">
                       <span className="text-[var(--ink)]/60 text-xs uppercase tracking-wider">Total Paid / Payable</span>
-                      <span className="font-bold text-lg text-[var(--gold)]">₹ {placedOrderSummary.total.toLocaleString("en-IN")}</span>
+                      <span className="font-bold text-lg text-[var(--gold)]">Rs. {placedOrderSummary.total.toLocaleString("en-IN")}</span>
                     </div>
                   </div>
                 )}
@@ -2197,10 +2251,10 @@ export function SecureCheckoutPage({ session, onLogout, onLogin }: { session: Au
                                       <rect key={idx} x={x} y={y} width="8" height="8" fill="#351c13" />
                                     ))}
                                     <circle cx="100" cy="100" r="16" fill="#fff" stroke="#a87648" strokeWidth="2" />
-                                    <text x="100" y="104" textAnchor="middle" fontSize="10" fontWeight="bold" fill="#351c13">FOLLOCIA</text>
+                                    <text x="100" y="104" textAnchor="middle" fontSize="10" fontWeight="bold" fill="#351c13">FOLLICIA</text>
                                   </svg>
                                 </div>
-                                <p className="mt-4 font-display text-lg text-[var(--ink)]">Scan to pay ₹ {orderTotal.toLocaleString("en-IN")}</p>
+                                <p className="mt-4 font-display text-lg text-[var(--ink)]">Scan to pay Rs. {orderTotal.toLocaleString("en-IN")}</p>
                                 <p className="text-xs text-[var(--ink)]/60 mt-1">Open Google Pay, PhonePe, Paytm or BHIM on your mobile phone to scan</p>
                                 <div className="mt-3 flex items-center gap-2 rounded-full border border-[var(--gold)]/30 bg-[var(--gold)]/10 px-4 py-1.5 text-xs text-[var(--gold)] font-mono">
                                   <span>VPA: follicia.atelier@icici</span>
@@ -2259,7 +2313,7 @@ export function SecureCheckoutPage({ session, onLogout, onLogin }: { session: Au
                               <div className="rounded-lg bg-[#fbf6ed] p-4 border border-[#4b261a]/10 text-sm text-[var(--ink)]/80 leading-relaxed">
                                 <p className="font-semibold text-[var(--ink)] mb-1">How Cash on Delivery works:</p>
                                 <ul className="list-disc pl-5 space-y-1 text-xs text-[var(--ink)]/70">
-                                  <li>Pay exact amount of <strong className="text-[var(--ink)] font-semibold">₹ {orderTotal.toLocaleString("en-IN")}</strong> when the delivery agent arrives.</li>
+                                  <li>Pay exact amount of <strong className="text-[var(--ink)] font-semibold">Rs. {orderTotal.toLocaleString("en-IN")}</strong> when the delivery agent arrives.</li>
                                   <li>Cash or UPI QR scan at the door are both accepted by our courier partner.</li>
                                   <li>Zero advance payment required. Your pairs will be dispatched immediately.</li>
                                 </ul>
@@ -2275,7 +2329,7 @@ export function SecureCheckoutPage({ session, onLogout, onLogin }: { session: Au
                                   }}
                                   className="mt-0.5 w-4 h-4 accent-[var(--gold)] rounded"
                                 />
-                                <span>I confirm this reservation with Cash on Delivery and agree to pay ₹ {orderTotal.toLocaleString("en-IN")} upon delivery.</span>
+                                <span>I confirm this reservation with Cash on Delivery and agree to pay Rs. {orderTotal.toLocaleString("en-IN")} upon delivery.</span>
                               </label>
                             </div>
                           </div>
@@ -2310,11 +2364,11 @@ export function SecureCheckoutPage({ session, onLogout, onLogin }: { session: Au
                         {saving ? (
                           payProcessingMessage || "Processing securely..."
                         ) : paymentMethod === "Card Authorization" ? (
-                          `Authorize & Pay ₹ ${orderTotal.toLocaleString("en-IN")}`
+                          `Authorize & Pay Rs. ${orderTotal.toLocaleString("en-IN")}`
                         ) : paymentMethod === "UPI Intent" ? (
-                          `Pay ₹ ${orderTotal.toLocaleString("en-IN")} via UPI`
+                          `Pay Rs. ${orderTotal.toLocaleString("en-IN")} via UPI`
                         ) : (
-                          `Confirm Order (Cash on Delivery) · ₹ ${orderTotal.toLocaleString("en-IN")}`
+                          `Confirm Order (Cash on Delivery) · Rs. ${orderTotal.toLocaleString("en-IN")}`
                         )}
                       </button>
                     </motion.div>
@@ -2349,8 +2403,8 @@ export function SecureCheckoutPage({ session, onLogout, onLogin }: { session: Au
 
               <div className="mt-8 border-t border-[var(--ink)]/10 pt-6">
                 <div className="grid gap-3 text-sm text-[var(--ink)]/70">
-                  <div className="flex justify-between"><span>Subtotal</span><span>₹ {subtotal.toLocaleString("en-IN")}</span></div>
-                  {discount > 0 && <div className="flex justify-between text-emerald-600 font-medium"><span>{checkoutCoupon?.title}</span><span>- ₹ {discount.toLocaleString("en-IN")}</span></div>}
+                  <div className="flex justify-between"><span>Subtotal</span><span>Rs. {subtotal.toLocaleString("en-IN")}</span></div>
+                  {discount > 0 && <div className="flex justify-between text-emerald-600 font-medium"><span>{checkoutCoupon?.title}</span><span>- Rs. {discount.toLocaleString("en-IN")}</span></div>}
                   <div className="flex justify-between"><span>Shipping</span><span>Complimentary</span></div>
                   <div className="flex justify-between"><span>Taxes & Duties</span><span>Included</span></div>
                 </div>
@@ -2358,7 +2412,7 @@ export function SecureCheckoutPage({ session, onLogout, onLogin }: { session: Au
                 <div className="mt-6 border-t border-[var(--gold)]/30 pt-6">
                   <div className="flex justify-between items-end">
                     <span className="eyebrow text-[var(--ink)]/60">Estimated Total</span>
-                    <span className="font-display text-3xl gradient-gold-text">₹ {orderTotal.toLocaleString("en-IN")}</span>
+                    <span className="font-display text-3xl gradient-gold-text">Rs. {orderTotal.toLocaleString("en-IN")}</span>
                   </div>
                 </div>
               </div>
@@ -2397,3 +2451,7 @@ export function ContactPage({ session, onLogout, onLogin }: { session: AuthSessi
     </PageShell>
   );
 }
+
+export { NewArrivalsPage } from "./NewArrivalsPage";
+export { OurStoryPage } from "./OurStoryPage";
+export { CollectionsPage } from "./CollectionsPage";

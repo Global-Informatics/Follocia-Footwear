@@ -67,7 +67,7 @@ export function Atelier() {
           </Reveal>
           <Reveal delay={0.2}>
             <p className="mt-8 max-w-md text-base leading-[1.9] text-[var(--bone)]/65">
-              Each Follocia is hand-lasted over thirty-two hours, stitched with golden silk thread, and finished by a
+              Each Follicia is hand-lasted over thirty-two hours, stitched with golden silk thread, and finished by a
               single artisan whose initials live inside the heel.
             </p>
           </Reveal>

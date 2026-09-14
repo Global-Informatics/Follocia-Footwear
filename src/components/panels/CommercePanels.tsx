@@ -378,7 +378,7 @@ export function AccountPanel({ session, initialSection = "My Orders" }: { sessio
           <SectionHead title="My Coupons" copy="Private atelier coupons and limited drop benefits." />
           <div className="grid gap-4 py-6 md:grid-cols-2">
             {[
-              ["FOLLOCIA10", "10% off your next reservation", "Valid on live editions"],
+              ["FOLLICIA10", "10% off your next reservation", "Valid on live editions"],
               ["ATELIERCARE", "Complimentary care kit", "Auto-applied on premium pairs"],
             ].map(([code, title, copy]) => (
               <article key={code} className="glass border border-dashed border-[var(--gold)]/40 p-6 bg-[var(--champagne)]/10 hover:shadow-[var(--shadow-luxe)] transition-shadow">
@@ -1190,6 +1190,16 @@ function AdminProductCard({
             {productStatuses.map((status) => <option key={status}>{status}</option>)}
           </select>
         </label>
+        <AdminField label="Upcoming Drop Date / Expected (e.g. 25 Oct 2026)" value={product.dropDate || ""} onChange={(value) => persistProducts(products.map((item) => item.id === product.id ? { ...item, dropDate: value } : item))} />
+        <label className="flex items-center gap-2.5 text-xs text-[#24130d] font-medium cursor-pointer pt-6">
+          <input
+            type="checkbox"
+            checked={!!product.isNewArrival}
+            onChange={(e) => persistProducts(products.map((item) => item.id === product.id ? { ...item, isNewArrival: e.target.checked } : item))}
+            className="w-4 h-4 accent-[#4b261a] rounded"
+          />
+          <span>Featured in New Arrivals Page</span>
+        </label>
 
         {/* Dynamic Full SKUs for each size */}
         <div className="md:col-span-3 bg-[#FAF8F5] border border-[#4b261a15] p-3 rounded-lg">
@@ -1252,12 +1262,12 @@ export function AdminPanel({ onLogout }: { onLogout?: () => void }) {
     { id: "story-care", title: "Care Promise", meta: "Care kit, restoration guidance and post-purchase check-in", status: "Published" },
   ]));
   const [seoRecords, setSeoRecords] = useState<AdminRecord[]>(() => readAdminRecords("follocia_admin_seo", [
-    { id: "seo-home", title: "Follocia - Private Luxury Footwear Atelier", meta: "Limited-edition handcrafted footwear with concierge reservations.", status: "Live" },
-    { id: "seo-shop", title: "Shop Limited Follocia Editions", meta: "Browse live stock, private previews and numbered atelier pieces.", status: "Live" },
-    { id: "seo-product", title: "Follocia Product Detail", meta: "Product gallery, sizing confidence, reservations and craft story.", status: "Live" },
+    { id: "seo-home", title: "Follicia - Private Luxury Footwear Atelier", meta: "Limited-edition handcrafted footwear with concierge reservations.", status: "Live" },
+    { id: "seo-shop", title: "Shop Limited Follicia Editions", meta: "Browse live stock, private previews and numbered atelier pieces.", status: "Live" },
+    { id: "seo-product", title: "Follicia Product Detail", meta: "Product gallery, sizing confidence, reservations and craft story.", status: "Live" },
   ]));
   const [coupons, setCoupons] = useState<AdminRecord[]>(() => readAdminRecords("follocia_admin_coupons", [
-    { id: "coupon-1", title: "FOLLOCIA10", meta: "10% off - Live editions", status: "Active" },
+    { id: "coupon-1", title: "FOLLICIA10", meta: "10% off - Live editions", status: "Active" },
     { id: "coupon-2", title: "ATELIERCARE", meta: "Free care kit - Delivered orders", status: "Active" },
     { id: "coupon-3", title: "VIPFIRST", meta: "Priority fitting - Private members", status: "Paused" },
   ]));
@@ -1301,13 +1311,15 @@ export function AdminPanel({ onLogout }: { onLogout?: () => void }) {
     title: "",
     edition: "Edition of 100",
     tone: "Italian satin",
-    price: "₹ 14,990",
+    price: "Rs. 14,990",
     image: getProducts()[0]?.image || "",
     images: [] as string[],
     status: "Live",
     produced: "100",
     reserved: "0",
     available: "100",
+    isNewArrival: false,
+    dropDate: "",
   });
   const [draftCustomer, setDraftCustomer] = useState({
     name: "",
@@ -1318,7 +1330,7 @@ export function AdminPanel({ onLogout }: { onLogout?: () => void }) {
 
   const metrics = useMemo(() => [
     { label: "Total orders", value: String(orders.length).padStart(2, "0"), delta: "Backend synced" },
-    { label: "Reserved value", value: `₹ ${orders.reduce((sum, order) => sum + (Number(order.amount.replace(/[^\d.]/g, "")) || 0), 0).toLocaleString("en-IN")}`, delta: "Live order value" },
+    { label: "Reserved value", value: `Rs. ${orders.reduce((sum, order) => sum + (Number(order.amount.replace(/[^\d.]/g, "")) || 0), 0).toLocaleString("en-IN")}`, delta: "Live order value" },
     { label: "VIP customers", value: String(customers.length).padStart(2, "0"), delta: "Customer ecosystem" },
     { label: "Pairs remaining", value: String(products.reduce((sum, product) => sum + product.available, 0)), delta: "Across catalogue", tone: "warn" },
   ], [customers.length, orders, products]);
@@ -1328,7 +1340,7 @@ export function AdminPanel({ onLogout }: { onLogout?: () => void }) {
     saveProducts(next);
     next.forEach((product) => void saveProductRemote(product));
   };
-  const updateDraftProduct = (field: Exclude<keyof typeof draftProduct, "images">, value: string) => setDraftProduct((current) => ({ ...current, [field]: value }));
+  const updateDraftProduct = (field: Exclude<keyof typeof draftProduct, "images" | "isNewArrival">, value: string) => setDraftProduct((current) => ({ ...current, [field]: value }));
   const updateDraftImages = (images: string[]) => setDraftProduct((current) => ({ ...current, image: images[0] || "", images }));
   const createProduct = () => {
     if (!draftProduct.title.trim()) return;
@@ -1338,17 +1350,19 @@ export function AdminPanel({ onLogout }: { onLogout?: () => void }) {
       title: draftProduct.title.trim(),
       edition: draftProduct.edition.trim() || "Edition of 100",
       tone: draftProduct.tone.trim() || "Italian satin",
-      price: draftProduct.price.trim() || "₹ 14,990",
+      price: draftProduct.price.trim() || "Rs. 14,990",
       image: images[0] || "",
       images,
       status: draftProduct.status.trim() || "Live",
       produced: Number(draftProduct.produced) || 0,
       reserved: Number(draftProduct.reserved) || 0,
       available: Number(draftProduct.available) || 0,
+      isNewArrival: draftProduct.isNewArrival,
+      dropDate: draftProduct.dropDate.trim() || undefined,
     };
     persistProducts([nextProduct, ...products]);
-    appendAdminRecord("audit", "Product created", `${nextProduct.title} added to catalogue`, "Logged");
-    setDraftProduct((current) => ({ ...current, title: "", reserved: "0", image: "", images: [] }));
+    appendAdminRecord("audit", "Product created", `${nextProduct.title} added to catalogue (${nextProduct.status})`, "Logged");
+    setDraftProduct((current) => ({ ...current, title: "", reserved: "0", image: "", images: [], isNewArrival: false, dropDate: "" }));
   };
   const archiveProduct = (product: CommerceProduct) => {
     persistProducts(products.map((item) => item.id === product.id ? { ...item, status: "Draft", available: 0 } : item));
@@ -1518,6 +1532,16 @@ export function AdminPanel({ onLogout }: { onLogout?: () => void }) {
             <AdminField label="Produced" value={draftProduct.produced} onChange={(value) => updateDraftProduct("produced", value)} />
             <AdminField label="Reserved" value={draftProduct.reserved} onChange={(value) => updateDraftProduct("reserved", value)} />
             <AdminField label="Available" value={draftProduct.available} onChange={(value) => updateDraftProduct("available", value)} />
+            <AdminField label="Upcoming Drop Date / Launch Date (Optional)" value={draftProduct.dropDate} onChange={(value) => updateDraftProduct("dropDate", value)} />
+            <label className="flex items-center gap-2.5 text-xs text-[#24130d] font-medium cursor-pointer pt-6">
+              <input
+                type="checkbox"
+                checked={draftProduct.isNewArrival}
+                onChange={(e) => setDraftProduct((curr) => ({ ...curr, isNewArrival: e.target.checked }))}
+                className="w-4 h-4 accent-[#4b261a] rounded"
+              />
+              <span>Feature in New Arrivals Drop</span>
+            </label>
             <div className="md:col-span-3">
               <ProductImagePicker images={draftProduct.images} onChange={updateDraftImages} />
             </div>
@@ -1610,7 +1634,7 @@ export function AdminPanel({ onLogout }: { onLogout?: () => void }) {
     <main className="min-h-screen bg-[var(--bone)] text-[var(--ink)]">
       <header className="sticky top-0 z-40 border-b border-[var(--ink)]/10 bg-[var(--bone)]/95 px-4 backdrop-blur-xl">
         <div className="mx-auto flex h-16 max-w-[1500px] items-center justify-between gap-4">
-          <a href="#/" aria-label="Follocia home" className="flex shrink-0 items-center">
+          <a href="#/" aria-label="Follicia home" className="flex shrink-0 items-center">
             <BrandLogo compact />
           </a>
           <nav className="hidden flex-1 items-center gap-1 overflow-x-auto md:flex">
@@ -1664,7 +1688,7 @@ function LegacyAdminPanel({ onLogout }: { onLogout?: () => void }) {
   const [orders, setOrders] = useState<CommerceOrder[]>(() => getOrders());
   const [customers, setCustomers] = useState<CustomerProfile[]>(() => getCustomers());
   const [coupons, setCoupons] = useState<AdminRecord[]>(() => readAdminRecords("follocia_admin_coupons", [
-    { id: "coupon-1", title: "FOLLOCIA10", meta: "10% off - Live editions", status: "Active" },
+    { id: "coupon-1", title: "FOLLICIA10", meta: "10% off - Live editions", status: "Active" },
     { id: "coupon-2", title: "ATELIERCARE", meta: "Free care kit - Delivered orders", status: "Active" },
     { id: "coupon-3", title: "VIPFIRST", meta: "Priority fitting - Private members", status: "Paused" },
   ]));
@@ -1696,7 +1720,7 @@ function LegacyAdminPanel({ onLogout }: { onLogout?: () => void }) {
   ]));
   const metrics = useMemo(() => [
     { label: "Total orders", value: String(orders.length).padStart(2, "0"), delta: "Backend synced" },
-    { label: "Reserved value", value: `₹ ${orders.reduce((sum, order) => sum + (Number(order.amount.replace(/[^\d.]/g, "")) || 0), 0).toLocaleString("en-IN")}`, delta: "Live order value" },
+    { label: "Reserved value", value: `Rs. ${orders.reduce((sum, order) => sum + (Number(order.amount.replace(/[^\d.]/g, "")) || 0), 0).toLocaleString("en-IN")}`, delta: "Live order value" },
     { label: "VIP customers", value: String(customers.length).padStart(2, "0"), delta: "Customer ecosystem" },
     { label: "Pairs remaining", value: String(products.reduce((sum, product) => sum + product.available, 0)), delta: "Across catalogue", tone: "warn" },
     { label: "Open queries", value: String(contactQueries.filter((item) => item.status === "Open").length).padStart(2, "0"), delta: "Support desk" },
@@ -1706,7 +1730,7 @@ function LegacyAdminPanel({ onLogout }: { onLogout?: () => void }) {
     title: "",
     edition: "Edition of 100",
     tone: "Italian satin",
-    price: "₹ 14,990",
+    price: "Rs. 14,990",
     image: products[0]?.image || "",
     images: [] as string[],
     status: "Live",
@@ -1732,7 +1756,7 @@ function LegacyAdminPanel({ onLogout }: { onLogout?: () => void }) {
       title: draftProduct.title.trim(),
       edition: draftProduct.edition.trim() || "Edition of 100",
       tone: draftProduct.tone.trim() || "Italian satin",
-      price: draftProduct.price.trim() || "₹ 14,990",
+      price: draftProduct.price.trim() || "Rs. 14,990",
       image: images[0] || "",
       images,
       status: draftProduct.status.trim() || "Live",
@@ -1777,11 +1801,11 @@ function LegacyAdminPanel({ onLogout }: { onLogout?: () => void }) {
       {/* Glass Header */}
       <header className="sticky top-0 z-40 border-b border-[var(--ink)]/10 bg-white/70 backdrop-blur-xl shadow-[var(--shadow-soft)]">
         <div className="mx-auto flex h-20 max-w-[1600px] items-center justify-between px-6 lg:px-12">
-          <a href="/" aria-label="Follocia home" className="flex items-center gap-4 group">
+          <a href="/" aria-label="Follicia home" className="flex items-center gap-4 group">
             <div className="relative overflow-hidden w-10 h-10 rounded-full border border-[var(--gold)] flex items-center justify-center bg-[var(--ink)] group-hover:bg-[var(--gold)] transition-colors">
               <span className="text-[var(--bone)] font-display text-xl group-hover:text-[var(--ink)]">F</span>
             </div>
-            <span className="font-display text-xl uppercase tracking-widest hidden md:block group-hover:text-[var(--gold)] transition-colors">Atelier Follocia</span>
+            <span className="font-display text-xl uppercase tracking-widest hidden md:block group-hover:text-[var(--gold)] transition-colors">Atelier Follicia</span>
           </a>
           <div className="flex gap-4 items-center">
             <span className="text-xs uppercase tracking-[0.2em] text-[var(--gold)] hidden sm:block">Admin Console</span>

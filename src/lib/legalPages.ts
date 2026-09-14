@@ -12,14 +12,14 @@ export const legalPageConfig: Record<LegalSlug, { label: string; title: string; 
     label: "Privacy",
     title: "Privacy Policy",
     eyebrow: "Client Data Charter",
-    intro: "How Maison Follocia collects, protects and uses client information across the online boutique, concierge service and private atelier appointments.",
+    intro: "How Maison Follicia collects, protects and uses client information across the online boutique, concierge service and private atelier appointments.",
     updated: "Updated May 2026",
   },
   terms: {
     label: "Terms",
     title: "Terms & Conditions",
     eyebrow: "Boutique Agreement",
-    intro: "The terms that govern browsing, reservations, purchases, delivery, returns and use of Follocia ecommerce services.",
+    intro: "The terms that govern browsing, reservations, purchases, delivery, returns and use of Follicia ecommerce services.",
     updated: "Updated May 2026",
   },
   cookies: {
@@ -77,7 +77,7 @@ export const defaultLegalRecords: LegalRecord[] = [
   {
     id: "terms-site-use",
     title: "Site use",
-    meta: "All content, imagery, marks, product names and design assets belong to Maison Follocia or its licensors. The site may not be copied, scraped, misused or used for fraudulent activity.",
+    meta: "All content, imagery, marks, product names and design assets belong to Maison Follicia or its licensors. The site may not be copied, scraped, misused or used for fraudulent activity.",
     status: "Published",
   },
   {

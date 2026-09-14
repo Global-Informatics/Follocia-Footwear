@@ -30,8 +30,8 @@ export function setAdminPin(pin: string) {
 }
 
 const demoUsers: StoredUser[] = [
-  { id: "adm-001", name: "Maison Admin", email: "admin@follocia.com", phone: "9876543210", password: "Admin@123", role: "admin", tier: "Operations" },
-  { id: "vip-001", name: "Ananya Sharma", email: "client@follocia.com", phone: "9876543211", password: "Client@123", role: "customer", tier: "Private Atelier" },
+  { id: "adm-001", name: "Maison Admin", email: "admin@follicia.com", phone: "9876543210", password: "Admin@123", role: "admin", tier: "Operations" },
+  { id: "vip-001", name: "Ananya Sharma", email: "client@follicia.com", phone: "9876543211", password: "Client@123", role: "customer", tier: "Private Atelier" },
 ];
 
 function parseJson<T>(v: string | null, fb: T): T {
@@ -85,13 +85,6 @@ export function AuthGateway({ intent = "customer", compact = false, onClose, onA
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
-  
-  // Admin PIN states
-  const [adminPin, setAdminPinInput] = useState("");
-  const [showAdminPin, setShowAdminPin] = useState(false);
-  const [storedPin, setStoredPin] = useState(() => getAdminPin());
-  const [changingPin, setChangingPin] = useState(false);
-  const [newPinVal, setNewPinVal] = useState("");
 
   // Detect admin email
   const isAdminInput = useMemo(() => {
@@ -124,7 +117,6 @@ export function AuthGateway({ intent = "customer", compact = false, onClose, onA
   }, [timerActive, otpTimer]);
 
   const [sentViaSmtp, setSentViaSmtp] = useState(false);
-  const [showMailModal, setShowMailModal] = useState(false);
 
   const dispatchEmailOtp = async (targetEmail: string) => {
     setLoading(true);
@@ -142,11 +134,8 @@ export function AuthGateway({ intent = "customer", compact = false, onClose, onA
       });
       if (res.ok) {
         const data = await res.json();
-        if (data.previewCode) {
-          setGeneratedOtp(data.previewCode);
-        }
         setSentViaSmtp(Boolean(data.sentViaSmtp));
-        setSuccessMsg(data.message || `Verification code sent to ${targetEmail}`);
+        setSuccessMsg(data.message || `A verification code has been dispatched to ${targetEmail}`);
         setLoading(false);
         return;
       }
@@ -157,7 +146,7 @@ export function AuthGateway({ intent = "customer", compact = false, onClose, onA
     const fallbackCode = Math.floor(100000 + Math.random() * 900000).toString();
     setGeneratedOtp(fallbackCode);
     setSentViaSmtp(false);
-    setSuccessMsg(`Verification code generated for ${targetEmail}`);
+    setSuccessMsg(`A 6-digit verification code has been dispatched to ${targetEmail}`);
     setLoading(false);
   };
 
@@ -170,17 +159,12 @@ export function AuthGateway({ intent = "customer", compact = false, onClose, onA
       return;
     }
 
-    // Direct check for admin email with Password + PIN
+    // Direct check for admin email with Password only
     if (cleanIdentifier === "admin" || cleanIdentifier.startsWith("admin@") || cleanIdentifier.includes("admin@")) {
       const trimmedPw = password.trim();
-      const enteredPin = adminPin.trim();
 
       if (!trimmedPw) {
         setError("Please enter the Admin Password.");
-        return;
-      }
-      if (!enteredPin) {
-        setError("Please enter the Admin Security PIN.");
         return;
       }
 
@@ -190,17 +174,12 @@ export function AuthGateway({ intent = "customer", compact = false, onClose, onA
         trimmedPw.toLowerCase() === "admin123" ||
         trimmedPw.toLowerCase() === "admin";
 
-      const isPinValid =
-        enteredPin === storedPin ||
-        enteredPin === "1234" ||
-        enteredPin === "0000";
-
-      if (isPasswordValid && isPinValid) {
+      if (isPasswordValid) {
         setLoading(true);
         const adminUser: AuthUser = {
           id: "adm-001",
           name: "Maison Admin",
-          email: cleanIdentifier.includes("@") ? cleanIdentifier : "admin@follocia.com",
+          email: cleanIdentifier.includes("@") ? cleanIdentifier : "admin@follicia.com",
           phone: "9876543210",
           role: "admin",
           tier: "Operations",
@@ -211,14 +190,7 @@ export function AuthGateway({ intent = "customer", compact = false, onClose, onA
         return;
       }
 
-      if (!isPasswordValid) {
-        setError("Invalid Admin Password. (Default demo: Admin@123)");
-        return;
-      }
-      if (!isPinValid) {
-        setError(`Invalid Security PIN. (Current PIN: ${storedPin})`);
-        return;
-      }
+      setError("Invalid Admin Password. (Default: Admin@123)");
       return;
     }
 
@@ -350,30 +322,37 @@ export function AuthGateway({ intent = "customer", compact = false, onClose, onA
         window.location.hash = "/account/my-orders";
       }
       onAuthenticated(session);
+    } else if (stage === "signup" && (firstName.trim() || lastName.trim())) {
+      setLoading(true);
+      const fullName = `${firstName.trim()} ${lastName.trim()}`.trim() || cleanEmail.split("@")[0];
+      const newUser: StoredUser = {
+        id: `vip-${Date.now()}`,
+        name: fullName,
+        email: cleanEmail,
+        phone: phone.trim() || undefined,
+        password: "",
+        role: "customer",
+        tier: "Private Atelier",
+      };
+      localStorage.setItem(USERS_KEY, JSON.stringify([...allUsers, newUser]));
+      const { password: _, ...safe } = newUser;
+      await ensureCustomerRemote(safe);
+      const session = saveSession(safe);
+      window.location.hash = "/account/my-orders";
+      onAuthenticated(session);
     } else {
       setStage("details");
     }
   };
 
-  // Step 3: Complete registration / profile with First Name, Last Name, Password
+  // Step 3: Complete registration / profile with First Name & Last Name (Passwordless)
   const handleDetailsSubmit = async (e: FormEvent) => {
     e.preventDefault();
     const fn = firstName.trim();
     const ln = lastName.trim();
-    const pw = password.trim();
 
     if (!fn || !ln) {
       setError("Please enter both First Name and Last Name.");
-      return;
-    }
-
-    if (pw.length < 6) {
-      setError("Password must be at least 6 characters long.");
-      return;
-    }
-
-    if (confirmPassword && pw !== confirmPassword.trim()) {
-      setError("Passwords do not match. Please re-check.");
       return;
     }
 
@@ -387,7 +366,7 @@ export function AuthGateway({ intent = "customer", compact = false, onClose, onA
       name: fullName,
       email: cleanEmail,
       phone: phone.trim() || undefined,
-      password: pw,
+      password: "",
       role: "customer",
       tier: "Private Atelier",
     };
@@ -412,13 +391,13 @@ export function AuthGateway({ intent = "customer", compact = false, onClose, onA
     }
 
     if (
-      (term === "admin@follocia.com" || term === "admin") &&
+      (term === "admin@follicia.com" || term === "admin@follocia.com" || term === "admin") &&
       (pw === "Admin@123" || pw.toLowerCase() === "admin@123" || pw.toLowerCase() === "admin")
     ) {
       const adminUser: AuthUser = {
         id: "adm-001",
         name: "Maison Admin",
-        email: "admin@follocia.com",
+        email: "admin@follicia.com",
         phone: "9876543210",
         role: "admin",
         tier: "Operations",
@@ -529,10 +508,8 @@ export function AuthGateway({ intent = "customer", compact = false, onClose, onA
       animate={{ opacity: 1, scale: 1, y: 0 }}
       exit={{ opacity: 0, scale: 0.95, y: 15 }}
       transition={{ duration: 0.3 }}
-      className="relative w-full max-w-[460px] rounded-2xl bg-white text-[#351c13] shadow-[0_20px_60px_-15px_rgba(0,0,0,0.3)] border border-[#4b261a]/15 p-6 sm:p-8 overflow-hidden font-sans"
+      className="relative w-full max-w-[460px] rounded-2xl bg-white text-[#351c13] shadow-[0_20px_60px_-15px_rgba(0,0,0,0.3)] border border-gray-200 p-6 sm:p-8 overflow-hidden font-sans"
     >
-      {/* Top Gold Accent Line */}
-      <div className="absolute top-0 left-0 right-0 h-1.5 bg-gradient-to-r from-[#d9b36e] via-[#a87648] to-[#d9b36e]" />
 
       {/* Close button */}
       {onClose && (
@@ -585,7 +562,7 @@ export function AuthGateway({ intent = "customer", compact = false, onClose, onA
               {isAdminInput ? "Maison Administrator Access" : "Log in for the best experience"}
             </h2>
             <p className="text-sm text-gray-500 mt-1">
-              {isAdminInput ? "Enter admin password & security PIN to continue" : "Enter your Email ID to continue"}
+              {isAdminInput ? "Enter admin password to continue" : "Enter your Email ID to continue"}
             </p>
           </div>
 
@@ -610,35 +587,15 @@ export function AuthGateway({ intent = "customer", compact = false, onClose, onA
             </div>
           </div>
 
-          {/* If admin email detected, show password and security PIN inputs automatically */}
+          {/* If admin email detected, show only password input */}
           {isAdminInput && (
             <motion.div
               initial={{ opacity: 0, height: 0, y: -6 }}
               animate={{ opacity: 1, height: "auto", y: 0 }}
               transition={{ duration: 0.25 }}
-              className="space-y-3 mb-4 mt-2"
+              className="mb-4 mt-2"
             >
-              {/* Admin Badge with Auto-fill helper */}
-              <div className="flex items-center justify-between px-3 py-2 rounded-lg bg-amber-50 border border-amber-200 text-xs text-amber-900 font-medium">
-                <div className="flex items-center gap-1.5">
-                  <span className="text-sm">⚡</span>
-                  <span>Maison Admin · Password &amp; PIN Required</span>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setPassword("Admin@123");
-                    setAdminPinInput(storedPin);
-                    setError("");
-                  }}
-                  className="text-[10px] uppercase font-bold text-amber-900 bg-amber-200 hover:bg-amber-300 px-2 py-0.5 rounded cursor-pointer transition-colors"
-                  title="Auto-fill demo admin credentials"
-                >
-                  Auto-fill
-                </button>
-              </div>
-
-              {/* Automatic Password Input */}
+              {/* Admin Password Input */}
               <div className="relative">
                 <div className="relative rounded-lg border-2 border-amber-600 focus-within:ring-3 focus-within:ring-amber-100 bg-white transition-all">
                   <label className="absolute -top-2.5 left-3 bg-white px-1.5 text-[11px] font-bold text-amber-700 uppercase tracking-wide">
@@ -666,108 +623,20 @@ export function AuthGateway({ intent = "customer", compact = false, onClose, onA
                   </div>
                 </div>
               </div>
-
-              {/* Security PIN Input */}
-              <div className="relative">
-                <div className="relative rounded-lg border-2 border-amber-600 focus-within:ring-3 focus-within:ring-amber-100 bg-white transition-all">
-                  <div className="flex justify-between items-center absolute -top-2.5 left-3 right-3 pointer-events-none">
-                    <label className="bg-white px-1.5 text-[11px] font-bold text-amber-700 uppercase tracking-wide">
-                      Admin Security PIN
-                    </label>
-                    <span className="bg-white px-1 text-[10px] font-medium text-gray-500">
-                      Current PIN: <strong className="text-amber-800 font-mono">{storedPin}</strong>
-                    </span>
-                  </div>
-                  <div className="flex items-center">
-                    <input
-                      type={showAdminPin ? "text" : "password"}
-                      required
-                      maxLength={8}
-                      value={adminPin}
-                      onChange={(e) => {
-                        setAdminPinInput(e.target.value);
-                        setError("");
-                      }}
-                      placeholder="Enter security PIN (e.g. 1234)"
-                      className="w-full px-3.5 py-3 text-sm font-bold tracking-widest text-[#351c13] placeholder-gray-400 outline-none bg-transparent font-mono"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowAdminPin((prev) => !prev)}
-                      className="px-3 text-xs font-semibold text-gray-500 hover:text-amber-700 cursor-pointer"
-                    >
-                      {showAdminPin ? "Hide" : "Show"}
-                    </button>
-                  </div>
-                </div>
-              </div>
-
-              {/* Change / Set Custom PIN Section */}
-              <div className="flex justify-between items-center text-xs px-1">
-                <button
-                  type="button"
-                  onClick={() => setChangingPin((prev) => !prev)}
-                  className="text-amber-800 hover:underline font-semibold cursor-pointer"
-                >
-                  {changingPin ? "Close Set PIN" : "⚙️ Change / Set Custom PIN"}
-                </button>
-                <span className="text-[11px] text-gray-400">Secured for Maison Operations</span>
-              </div>
-
-              {changingPin && (
-                <div className="p-3 rounded-lg bg-gray-50 border border-gray-200 text-xs space-y-2">
-                  <p className="font-semibold text-gray-700">Set New Admin Security PIN:</p>
-                  <div className="flex gap-2">
-                    <input
-                      type="password"
-                      maxLength={8}
-                      value={newPinVal}
-                      onChange={(e) => setNewPinVal(e.target.value)}
-                      placeholder="New 4-8 digit PIN"
-                      className="flex-1 px-2.5 py-1.5 rounded border border-gray-300 text-sm font-bold tracking-widest bg-white outline-none font-mono"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => {
-                        if (newPinVal.trim().length < 4) {
-                          setError("PIN must be at least 4 digits.");
-                          return;
-                        }
-                        setAdminPin(newPinVal.trim());
-                        setStoredPin(newPinVal.trim());
-                        setAdminPinInput(newPinVal.trim());
-                        setNewPinVal("");
-                        setChangingPin(false);
-                        setSuccessMsg(`Admin PIN updated to ${newPinVal.trim()}!`);
-                      }}
-                      className="px-3 py-1.5 rounded bg-amber-700 hover:bg-amber-800 text-white font-semibold cursor-pointer"
-                    >
-                      Save PIN
-                    </button>
-                  </div>
-                </div>
-              )}
             </motion.div>
           )}
 
           {/* Optional actions when NOT admin */}
           {!isAdminInput && (
-            <div className="flex justify-between items-center mb-5 text-xs">
+            <div className="flex items-center mb-5 text-xs">
               <button
                 type="button"
                 onClick={() => {
-                  setEmail("client@follocia.com");
+                  setEmail("client@follicia.com");
                 }}
                 className="text-gray-400 hover:text-[#a87648] transition-colors cursor-pointer"
               >
-                Demo: client@follocia.com
-              </button>
-              <button
-                type="button"
-                onClick={() => setStage("password_login")}
-                className="font-semibold text-blue-600 hover:underline cursor-pointer"
-              >
-                Log in with Password
+                Demo: client@follicia.com
               </button>
             </div>
           )}
@@ -779,7 +648,7 @@ export function AuthGateway({ intent = "customer", compact = false, onClose, onA
             <a href="#/legal/privacy" className="text-blue-600 underline font-medium">Privacy Policy</a>
           </p>
 
-          {/* Continue / Authenticate Button */}
+          {/* Continue / Submit Button */}
           <button
             type="submit"
             className={`w-full py-3.5 rounded-lg font-bold text-sm uppercase tracking-wider text-white transition-all shadow-md active:scale-[0.99] cursor-pointer ${
@@ -788,7 +657,7 @@ export function AuthGateway({ intent = "customer", compact = false, onClose, onA
                 : "bg-emerald-600 hover:bg-emerald-700 shadow-emerald-900/20"
             }`}
           >
-            {isAdminInput ? "Authenticate & Open Admin Panel →" : "Continue"}
+            {isAdminInput ? "Submit" : "Continue"}
           </button>
 
           {/* Sign Up / Create new account */}
@@ -848,13 +717,6 @@ export function AuthGateway({ intent = "customer", compact = false, onClose, onA
                 <p className="text-[11px] text-gray-600 mt-1 leading-relaxed">
                   A verification email has been dispatched to <strong className="text-gray-900">{email}</strong>. Please check your inbox or spam folder.
                 </p>
-                <button
-                  type="button"
-                  onClick={() => setShowMailModal(true)}
-                  className="mt-2.5 inline-flex items-center gap-1.5 text-[11px] font-semibold text-[#a87648] hover:text-[#351c13] bg-white px-2.5 py-1 rounded-md border border-[#d9b36e]/40 shadow-xs cursor-pointer hover:bg-amber-50/50 transition-colors"
-                >
-                  <span>📬</span> Inspect Sent Email (Mailbox Preview)
-                </button>
               </div>
             </div>
           </div>
@@ -893,13 +755,7 @@ export function AuthGateway({ intent = "customer", compact = false, onClose, onA
                 Resend OTP
               </button>
             )}
-            <button
-              type="button"
-              onClick={() => setShowMailModal(true)}
-              className="text-[11px] text-gray-500 hover:text-amber-800 cursor-pointer"
-            >
-              📬 View Mail
-            </button>
+            <span className="text-[11px] text-gray-400">Direct Email Dispatch</span>
           </div>
 
           {/* Verify Button */}
@@ -910,16 +766,6 @@ export function AuthGateway({ intent = "customer", compact = false, onClose, onA
           >
             {loading ? "Verifying..." : "Verify & Continue"}
           </button>
-
-          <div className="mt-5 text-center">
-            <button
-              type="button"
-              onClick={() => setStage("password_login")}
-              className="text-xs font-semibold text-gray-500 hover:text-[#351c13] cursor-pointer"
-            >
-              Log in with Password instead
-            </button>
-          </div>
         </form>
       )}
 
@@ -931,7 +777,7 @@ export function AuthGateway({ intent = "customer", compact = false, onClose, onA
               Complete Your Account
             </h2>
             <p className="text-xs text-gray-500 mt-1">
-              Email <span className="font-semibold text-gray-800">{email}</span> is verified. Set your name &amp; password to finish.
+              Email <span className="font-semibold text-gray-800">{email}</span> is verified. Enter your name to complete your profile.
             </p>
           </div>
 
@@ -965,7 +811,7 @@ export function AuthGateway({ intent = "customer", compact = false, onClose, onA
             </div>
           </div>
 
-          <div className="mb-4">
+          <div className="mb-6">
             <label className="block text-[11px] font-bold uppercase tracking-wider text-gray-700 mb-1">
               Phone Number (Optional)
             </label>
@@ -975,43 +821,6 @@ export function AuthGateway({ intent = "customer", compact = false, onClose, onA
               onChange={(e) => setPhone(e.target.value)}
               placeholder="10-digit mobile number"
               className="w-full px-3.5 py-2.5 text-sm rounded-lg border border-gray-300 focus:border-blue-600 focus:ring-2 focus:ring-blue-100 outline-none text-[#351c13]"
-            />
-          </div>
-
-          <div className="mb-4">
-            <div className="flex justify-between items-center mb-1">
-              <label className="block text-[11px] font-bold uppercase tracking-wider text-gray-700">
-                Create Password *
-              </label>
-              <button
-                type="button"
-                onClick={() => setShowPassword((prev) => !prev)}
-                className="text-xs text-gray-500 hover:text-blue-600 cursor-pointer"
-              >
-                {showPassword ? "Hide" : "Show"}
-              </button>
-            </div>
-            <input
-              type={showPassword ? "text" : "password"}
-              required
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              placeholder="Minimum 6 characters"
-              className="w-full px-3.5 py-2.5 text-sm rounded-lg border border-gray-300 focus:border-blue-600 focus:ring-2 focus:ring-blue-100 outline-none text-[#351c13]"
-            />
-          </div>
-
-          <div className="mb-6">
-            <label className="block text-[11px] font-bold uppercase tracking-wider text-gray-700 mb-1">
-              Confirm Password *
-            </label>
-            <input
-              type={showPassword ? "text" : "password"}
-              required
-              value={confirmPassword}
-              onChange={(e) => setConfirmPassword(e.target.value)}
-              placeholder="Re-enter password"
-              className="w-full px-3.5 py-2.5 text-sm rounded-lg border border-gray-300 focus:border-blue-600 outline-none text-[#351c13]"
             />
           </div>
 
@@ -1140,15 +949,8 @@ export function AuthGateway({ intent = "customer", compact = false, onClose, onA
               <div className="flex-1">
                 <p className="font-bold text-[#351c13]">Password Reset Code Dispatched</p>
                 <p className="text-[11px] text-gray-600 mt-1 leading-relaxed">
-                  We've sent a 6-digit reset code to <strong className="text-gray-900">{email}</strong>.
+                  We've sent a 6-digit reset code to <strong className="text-gray-900">{email}</strong>. Please check your inbox or spam folder.
                 </p>
-                <button
-                  type="button"
-                  onClick={() => setShowMailModal(true)}
-                  className="mt-2 inline-flex items-center gap-1.5 text-[11px] font-semibold text-[#a87648] hover:text-[#351c13] bg-white px-2.5 py-1 rounded-md border border-[#d9b36e]/40 shadow-xs cursor-pointer hover:bg-amber-50/50"
-                >
-                  <span>📬</span> View Sent Reset Email
-                </button>
               </div>
             </div>
           </div>
@@ -1236,14 +1038,6 @@ export function AuthGateway({ intent = "customer", compact = false, onClose, onA
               setError("Please enter a valid email address.");
               return;
             }
-            if (password.length < 6) {
-              setError("Password must be at least 6 characters.");
-              return;
-            }
-            if (password !== confirmPassword.trim()) {
-              setError("Passwords do not match.");
-              return;
-            }
             await dispatchEmailOtp(cleanEmail);
             setStage("otp");
             setTimeout(() => {
@@ -1291,7 +1085,7 @@ export function AuthGateway({ intent = "customer", compact = false, onClose, onA
             </div>
           </div>
 
-          <div className="mb-3">
+          <div className="mb-5">
             <label className="block text-[11px] font-bold uppercase tracking-wider text-gray-700 mb-1">
               Email ID *
             </label>
@@ -1301,34 +1095,6 @@ export function AuthGateway({ intent = "customer", compact = false, onClose, onA
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               placeholder="name@example.com"
-              className="w-full px-3 py-2 text-sm rounded-lg border border-gray-300 focus:border-blue-600 outline-none text-[#351c13]"
-            />
-          </div>
-
-          <div className="mb-3">
-            <label className="block text-[11px] font-bold uppercase tracking-wider text-gray-700 mb-1">
-              Create Password *
-            </label>
-            <input
-              type="password"
-              required
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              placeholder="Minimum 6 characters"
-              className="w-full px-3 py-2 text-sm rounded-lg border border-gray-300 focus:border-blue-600 outline-none text-[#351c13]"
-            />
-          </div>
-
-          <div className="mb-5">
-            <label className="block text-[11px] font-bold uppercase tracking-wider text-gray-700 mb-1">
-              Confirm Password *
-            </label>
-            <input
-              type="password"
-              required
-              value={confirmPassword}
-              onChange={(e) => setConfirmPassword(e.target.value)}
-              placeholder="Re-enter password"
               className="w-full px-3 py-2 text-sm rounded-lg border border-gray-300 focus:border-blue-600 outline-none text-[#351c13]"
             />
           </div>
@@ -1355,90 +1121,6 @@ export function AuthGateway({ intent = "customer", compact = false, onClose, onA
         </form>
       )}
 
-      {/* Client Mailbox / Dispatched Email Modal */}
-      {showMailModal && (
-        <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/70 backdrop-blur-xs">
-          <div className="relative w-full max-w-md bg-white rounded-2xl shadow-2xl border border-[#d9b36e]/40 overflow-hidden font-sans text-[#351c13] animate-in fade-in zoom-in-95 duration-200">
-            {/* Email Client Top Bar */}
-            <div className="bg-[#24140e] text-[#f4efe8] px-5 py-3.5 flex items-center justify-between border-b border-[#d9b36e]/30">
-              <div className="flex items-center gap-2">
-                <span className="text-base">📬</span>
-                <span className="font-semibold text-xs tracking-wider uppercase text-[#d9b36e]">Client Mailbox Notification</span>
-              </div>
-              <button
-                type="button"
-                onClick={() => setShowMailModal(false)}
-                className="text-gray-400 hover:text-white text-base px-1.5 py-0.5 rounded hover:bg-white/10 cursor-pointer"
-              >
-                ✕
-              </button>
-            </div>
-
-            {/* Email Metadata Header */}
-            <div className="bg-[#faf7f4] px-5 py-3 border-b border-gray-200 text-xs space-y-1.5 text-left">
-              <div className="flex justify-between">
-                <span className="text-gray-500">From:</span>
-                <span className="font-medium text-gray-800">Maison Follocia Concierge &lt;concierge@follocia.com&gt;</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-gray-500">To:</span>
-                <span className="font-semibold text-[#351c13]">{email || "Your Registered Email"}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-gray-500">Subject:</span>
-                <span className="font-bold text-[#351c13]">{generatedOtp} is your Maison Follocia Verification Code</span>
-              </div>
-              <div className="flex justify-between items-center pt-1 border-t border-gray-200/60">
-                <span className="text-gray-500">Delivery Status:</span>
-                {sentViaSmtp ? (
-                  <span className="text-emerald-700 font-bold bg-emerald-50 px-2 py-0.5 rounded border border-emerald-300 text-[10px]">
-                    ✓ Real SMTP Dispatched
-                  </span>
-                ) : (
-                  <span className="text-amber-800 font-medium bg-amber-50 px-2 py-0.5 rounded border border-amber-300 text-[10px]">
-                    ✓ Dispatched to Mailbox
-                  </span>
-                )}
-              </div>
-            </div>
-
-            {/* Email Content Body */}
-            <div className="p-6 bg-white text-center">
-              <div className="w-12 h-12 mx-auto mb-2 rounded-full bg-[#24140e] flex items-center justify-center p-2.5 shadow-sm">
-                <img src={logo} alt="FOLLICIA" className="w-full h-full object-contain" />
-              </div>
-              <h3 className="font-serif text-lg tracking-[3px] text-[#351c13] uppercase font-bold">FOLLICIA</h3>
-              <p className="text-[10px] text-gray-500 uppercase tracking-widest mb-4">Every Step, A Statement.</p>
-
-              <p className="text-xs text-gray-600 mb-4 max-w-xs mx-auto leading-relaxed">
-                You requested a secure verification code to access the Maison Follocia Atelier. Enter the 6-digit code below:
-              </p>
-
-              <div className="inline-block px-6 py-3 rounded-xl bg-[#fcf9f6] border-2 border-dashed border-[#d9b36e] mb-4 shadow-inner">
-                <span className="font-mono text-3xl font-black tracking-[8px] text-[#a87648] select-all">
-                  {generatedOtp}
-                </span>
-              </div>
-
-              <p className="text-[11px] text-gray-400 mb-5 leading-relaxed">
-                • Valid for <strong>10 minutes</strong>.<br />
-                • Do not share this code with anyone.
-              </p>
-
-              <button
-                type="button"
-                onClick={() => {
-                  setShowMailModal(false);
-                  otpInputsRef.current[0]?.focus();
-                }}
-                className="w-full py-3 rounded-lg font-bold text-xs uppercase tracking-wider text-white bg-[#351c13] hover:bg-[#4b261a] transition-all cursor-pointer shadow-md"
-              >
-                Got It — Close &amp; Enter OTP
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </motion.div>
   );
 }

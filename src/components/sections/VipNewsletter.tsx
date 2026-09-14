@@ -84,7 +84,7 @@ export function VipNewsletter() {
             Be among the <em className="italic shimmer-text">first</em> to know.
           </h2>
           <p className="mx-auto mt-8 max-w-xl text-base leading-relaxed text-[var(--bone)]/60">
-            Members of the Follocia Cercle receive private previews 72 hours before public release. Less than 1% of
+            Members of the Follicia Cercle receive private previews 72 hours before public release. Less than 1% of
             applicants are admitted each season.
           </p>
         </Reveal>

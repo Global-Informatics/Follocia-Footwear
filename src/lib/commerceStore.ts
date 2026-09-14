@@ -38,6 +38,8 @@ export type CommerceProduct = {
   collection?: string;
   subCollection?: string;
   notes?: string;
+  isNewArrival?: boolean;
+  dropDate?: string;
 };
 
 export type CommerceOrder = {
@@ -87,7 +89,7 @@ export type CustomerProfile = {
   subscriptions: string[];
 };
 
-const PRODUCTS_KEY = "follocia_products_v7";
+const PRODUCTS_KEY = "follocia_products_v9";
 const ORDERS_KEY = "follocia_orders";
 const CUSTOMERS_KEY = "follocia_customers";
 export const COMMERCE_EVENT = "follocia-commerce-change";
@@ -101,6 +103,8 @@ if (typeof window !== "undefined") {
     localStorage.removeItem("follocia_products_v4");
     localStorage.removeItem("follocia_products_v5");
     localStorage.removeItem("follocia_products_v6");
+    localStorage.removeItem("follocia_products_v7");
+    localStorage.removeItem("follocia_products_v8");
   } catch {
     // Ignore in SSR / restricted storage
   }
@@ -249,7 +253,7 @@ const catalogueCommerceProducts: CommerceProduct[] = FOLLICIA_PRODUCTS.map((p) =
     fullSkus: dynamicFullSkus,
     sizeRange: p.sizeRange || "38–41",
     heelHeight: p.heelHeight,
-    price: `₹ ${p.price.toLocaleString("en-IN")}`,
+    price: `Rs. ${p.price.toLocaleString("en-IN")}`,
     image: p.image,
     images: uniqueImages,
     variants: p.variants,
@@ -271,16 +275,16 @@ export const seedProducts: CommerceProduct[] = [
 ];
 
 const seedOrders: CommerceOrder[] = [
-  { id: "RSV-1048", customerId: "vip-002", customer: "Camille R.", email: "camille@example.com", product: "Aura - Sunrise Flat", size: "38", amount: "₹ 12,490", status: "Concierge Review", paymentStatus: "Payment Pending", deliveryStatus: "Order Placed", deliveryEta: "Awaiting confirmation", trackingCode: "", paymentMethod: "Concierge Pay", deliveryAddress: "Paris private salon", date: "Today" },
-  { id: "RSV-1047", customerId: "vip-001", customer: "Ananya Sharma", email: "client@follocia.com", product: "Bloom - Petal Mule", size: "39", amount: "₹ 14,990", status: "Fitting Booked", paymentStatus: "Authorized", deliveryStatus: "Fitting Scheduled", deliveryEta: "May 18", trackingCode: "", paymentMethod: "Card Authorization", deliveryAddress: "Mumbai concierge address", date: "Today" },
-  { id: "RSV-1031", customerId: "vip-001", customer: "Ananya Sharma", email: "client@follocia.com", product: "Muse - Ivory Stiletto", size: "38", amount: "₹ 16,800", status: "Certificate Ready", paymentStatus: "Paid", deliveryStatus: "Delivered", deliveryEta: "Delivered", trackingCode: "FL-1031-VIP", paymentMethod: "Card Authorization", deliveryAddress: "Mumbai concierge address", date: "Delivered" },
+  { id: "RSV-1048", customerId: "vip-002", customer: "Camille R.", email: "camille@example.com", product: "Aura Wave", size: "38", amount: "Rs. 3,449", status: "Concierge Review", paymentStatus: "Payment Pending", deliveryStatus: "Order Placed", deliveryEta: "Awaiting confirmation", trackingCode: "", paymentMethod: "Concierge Pay", deliveryAddress: "Paris private salon", date: "Today" },
+  { id: "RSV-1047", customerId: "vip-001", customer: "Ananya Sharma", email: "client@follicia.com", product: "Bloom Blush", size: "39", amount: "Rs. 9,900", status: "Fitting Booked", paymentStatus: "Authorized", deliveryStatus: "Fitting Scheduled", deliveryEta: "May 18", trackingCode: "", paymentMethod: "Card Authorization", deliveryAddress: "Mumbai concierge address", date: "Today" },
+  { id: "RSV-1031", customerId: "vip-001", customer: "Ananya Sharma", email: "client@follicia.com", product: "Muse Cobra", size: "38", amount: "Rs. 25,000", status: "Certificate Ready", paymentStatus: "Paid", deliveryStatus: "Delivered", deliveryEta: "Delivered", trackingCode: "FL-1031-VIP", paymentMethod: "Card Authorization", deliveryAddress: "Mumbai concierge address", date: "Delivered" },
 ];
 
 const seedCustomers: CustomerProfile[] = [
   {
     id: "vip-001",
     name: "Ananya Sharma",
-    email: "client@follocia.com",
+    email: "client@follicia.com",
     firstName: "Ananya",
     lastName: "Sharma",
     phone: "",
@@ -375,9 +379,13 @@ function normalizeProduct(product: CommerceProduct): CommerceProduct {
         }
       ]);
 
+  const priceNum = matched?.price ?? (Number(String(product.price).replace(/[^\d]/g, "")) || 0);
+  const formattedPrice = `Rs. ${priceNum.toLocaleString("en-IN")}`;
+
   return {
     ...product,
     designId: dId,
+    price: formattedPrice,
     image: images[0] || product.image || "",
     images,
     variants,

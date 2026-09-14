@@ -4,7 +4,7 @@ import { Reveal } from "../Reveal";
 
 const quotes = [
   {
-    q: "Follocia is the only house that still makes me wait — and I love them for it.",
+    q: "Follicia is the only house that still makes me wait — and I love them for it.",
     a: "Vogue Italia",
     role: "Fashion Editor",
   },

@@ -3,8 +3,8 @@
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>@ViewData["Title"] - Maison Follocia | Limited Edition Footwear</title>
-    <meta name="description" content="Maison Follocia releases six rare collections of women's footwear per year, hand-sculpted in Florence." />
+    <title>@ViewData["Title"] - Maison Follicia | Limited Edition Footwear</title>
+    <meta name="description" content="Maison Follicia releases six rare collections of women's footwear per year, hand-sculpted in Florence." />
     <link rel="icon" type="image/png" href="~/images/follocia-logo-new.png" asp-append-version="true" />
     
     <!-- Google Fonts -->
@@ -22,10 +22,10 @@
     <header class="follocia-navbar" id="main-header">
         <div class="nav-container">
             <div class="nav-brand">
-                <a asp-controller="Home" asp-action="Index" class="brand-link" aria-label="Maison Follocia Home">
-                    <img src="~/images/follocia-logo-new.png" alt="Follocia Logo" class="brand-logo" asp-append-version="true" />
+                <a asp-controller="Home" asp-action="Index" class="brand-link" aria-label="Maison Follicia Home">
+                    <img src="~/images/follocia-logo-new.png" alt="Follicia Logo" class="brand-logo" asp-append-version="true" />
                     <div class="brand-text">
-                        <span class="brand-name">FOLLOCIA</span>
+                        <span class="brand-name">FOLLICIA</span>
                         <span class="brand-tagline">FLORENCE · MMXXV</span>
                     </div>
                 </a>
@@ -33,8 +33,33 @@
 
             <nav class="nav-links" aria-label="Main Navigation">
                 <a asp-controller="Home" asp-action="Index" class="@(ViewContext.RouteData.Values["Action"]?.ToString() == "Index" ? "active" : "")">HOME</a>
-                <a asp-controller="Home" asp-action="Collections" class="@(ViewContext.RouteData.Values["Action"]?.ToString() == "Collections" ? "active" : "")">COLLECTIONS</a>
+                <div class="mvc-nav-dropdown">
+                    <a asp-controller="Home" asp-action="Collections" class="mvc-dropdown-trigger @(ViewContext.RouteData.Values["Action"]?.ToString() == "Collections" ? "active" : "")">
+                        COLLECTIONS
+                        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"></polyline></svg>
+                    </a>
+                    <div class="mvc-dropdown-menu">
+                        <a asp-controller="Home" asp-action="Shop" asp-route-edition="Aura" class="mvc-dropdown-item">
+                            <span class="mvc-col-name">AURA</span>
+                            <span class="mvc-col-desc">Sculptural calm, designed to flow · 12 Designs</span>
+                        </a>
+                        <a asp-controller="Home" asp-action="Shop" asp-route-edition="Bloom" class="mvc-dropdown-item">
+                            <span class="mvc-col-name">BLOOM</span>
+                            <span class="mvc-col-desc">Romance expressed through modern form · 10 Designs</span>
+                        </a>
+                        <a asp-controller="Home" asp-action="Shop" asp-route-edition="Muse" class="mvc-dropdown-item">
+                            <span class="mvc-col-name">MUSE</span>
+                            <span class="mvc-col-desc">Art-led silhouettes with a wild signature · 8 Designs</span>
+                        </a>
+                        <a asp-controller="Home" asp-action="Shop" asp-route-edition="Noire" class="mvc-dropdown-item">
+                            <span class="mvc-col-name">NOIRE</span>
+                            <span class="mvc-col-desc">Evening glamour in crystal & shine · 10 Designs</span>
+                        </a>
+                    </div>
+                </div>
                 <a asp-controller="Home" asp-action="Shop" class="@(ViewContext.RouteData.Values["Action"]?.ToString() == "Shop" ? "active" : "")">SHOP</a>
+                <a href="/#/new-arrivals">NEW ARRIVALS</a>
+                <a href="/#/our-story">OUR STORY</a>
                 <a asp-controller="Home" asp-action="Contact" class="@(ViewContext.RouteData.Values["Action"]?.ToString() == "Contact" ? "active" : "")">CONTACT</a>
             </nav>
 
@@ -69,8 +94,8 @@
         <div class="footer-container">
             <div class="footer-grid">
                 <div class="footer-col brand-col">
-                    <img src="~/images/follocia-logo-new.png" alt="Follocia" class="footer-logo" asp-append-version="true" />
-                    <p class="footer-tagline">MAISON FOLLOCIA · FLORENCE</p>
+                    <img src="~/images/follocia-logo-new.png" alt="Follicia" class="footer-logo" asp-append-version="true" />
+                    <p class="footer-tagline">MAISON FOLLICIA · FLORENCE</p>
                     <p class="footer-desc">Sculpted footwear released in rare editions six times per year. Handcrafted in Italian ateliers for the discerning few.</p>
                 </div>
 
@@ -80,6 +105,8 @@
                         <li><a asp-controller="Home" asp-action="Index">Home</a></li>
                         <li><a asp-controller="Home" asp-action="Collections">Collections</a></li>
                         <li><a asp-controller="Home" asp-action="Shop">Shop Catalog</a></li>
+                        <li><a href="/#/new-arrivals">New Arrivals</a></li>
+                        <li><a href="/#our-story">Our Story</a></li>
                         <li><a asp-controller="Home" asp-action="Contact">Private Concierge</a></li>
                     </ul>
                 </div>
@@ -96,13 +123,13 @@
                 <div class="footer-col">
                     <h4>ATELIER</h4>
                     <p>Via de' Tornabuoni, 14<br />50123 Firenze FI, Italy</p>
-                    <p>concierge@follocia.com</p>
+                    <p>concierge@follicia.com</p>
                     <p>+39 055 289 4021</p>
                 </div>
             </div>
 
             <div class="footer-bottom">
-                <p>&copy; MMXXV Maison Follocia. All Rights Reserved. Sculpted in Florence.</p>
+                <p>&copy; MMXXV Maison Follicia. All Rights Reserved. Sculpted in Florence.</p>
                 <div class="footer-legal">
                     <a href="#terms">Terms of Reserve</a> · 
                     <a href="#privacy">Privacy & Confidentiality</a> · 

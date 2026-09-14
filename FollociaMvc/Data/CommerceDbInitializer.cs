@@ -30,7 +30,7 @@ public static class CommerceDbInitializer
             {
                 Id = "vip-001",
                 Name = "Ananya Sharma",
-                Email = "client@follocia.com",
+                Email = "client@follicia.com",
                 FirstName = "Ananya",
                 LastName = "Sharma",
                 Tier = "Private Atelier",
@@ -47,14 +47,14 @@ public static class CommerceDbInitializer
         {
             db.Orders.AddRange(
                 new CommerceOrder { Id = "RSV-1048", CustomerId = "vip-002", Customer = "Camille R.", Email = "camille@example.com", Product = "Atelier 03 - Or Liquide", Size = "38", Amount = 1820, Status = "Concierge Review", Date = "Today" },
-                new CommerceOrder { Id = "RSV-1047", CustomerId = "vip-001", Customer = "Ananya Sharma", Email = "client@follocia.com", Product = "Atelier 02 - Noir Suspendu", Size = "39", Amount = 1640, Status = "Fitting Booked", Date = "Today" },
-                new CommerceOrder { Id = "RSV-1031", CustomerId = "vip-001", Customer = "Ananya Sharma", Email = "client@follocia.com", Product = "Atelier 01 - Lumiere", Size = "38", Amount = 1480, Status = "Certificate Ready", Date = "Delivered" });
+                new CommerceOrder { Id = "RSV-1047", CustomerId = "vip-001", Customer = "Ananya Sharma", Email = "client@follicia.com", Product = "Atelier 02 - Noir Suspendu", Size = "39", Amount = 1640, Status = "Fitting Booked", Date = "Today" },
+                new CommerceOrder { Id = "RSV-1031", CustomerId = "vip-001", Customer = "Ananya Sharma", Email = "client@follicia.com", Product = "Atelier 01 - Lumiere", Size = "38", Amount = 1480, Status = "Certificate Ready", Date = "Delivered" });
         }
 
         if (!await db.AdminRecords.AnyAsync())
         {
             db.AdminRecords.AddRange(
-                Record("coupon-1", "coupons", "FOLLOCIA10", "10% off - Live editions", "Active"),
+                Record("coupon-1", "coupons", "FOLLICIA10", "10% off - Live editions", "Active"),
                 Record("coupon-2", "coupons", "ATELIERCARE", "Free care kit - Delivered orders", "Active"),
                 Record("review-1", "reviews", "5.0 / 5", "Fit was perfect, packaging felt premium", "Published"),
                 Record("banner-1", "banners", "Hero drop banner", "Homepage first viewport", "Live"),
@@ -115,7 +115,7 @@ public static class CommerceDbInitializer
             Record("terms-orders-and-availability", "legal", "Orders and availability", "Products are limited edition and subject to availability. Placing an order or reservation confirms that the information supplied is accurate and that the selected size, address and payment method may be verified.", "Published"),
             Record("terms-pricing-and-payment", "legal", "Pricing and payment", "Prices, taxes, duties, shipping offers and payment methods may vary by region. Payment authorization, capture and cancellation are handled according to checkout status and concierge confirmation.", "Published"),
             Record("terms-shipping-returns", "legal", "Shipping, returns and exchanges", "Delivery timelines are estimates and may change for atelier finishing, address verification or courier conditions. Returns, exchanges and repairs are reviewed according to product condition, eligibility and local law.", "Published"),
-            Record("terms-site-use", "legal", "Site use", "All content, imagery, marks, product names and design assets belong to Maison Follocia or its licensors. The site may not be copied, scraped, misused or used for fraudulent activity.", "Published"),
+            Record("terms-site-use", "legal", "Site use", "All content, imagery, marks, product names and design assets belong to Maison Follicia or its licensors. The site may not be copied, scraped, misused or used for fraudulent activity.", "Published"),
             Record("cookies-essential-cookies", "legal", "Essential cookies", "Essential cookies keep the site secure and functional. They support login, cart state, checkout, fraud prevention, load balancing and core storefront behavior.", "Published"),
             Record("cookies-analytics-preferences", "legal", "Analytics and preferences", "Analytics and preference cookies help us understand store performance, remember choices and refine product discovery, while avoiding unnecessary collection wherever possible.", "Published"),
             Record("cookies-marketing", "legal", "Marketing cookies", "Where enabled, marketing cookies may help measure campaigns, control frequency and show relevant private drop communications across approved channels.", "Published"),

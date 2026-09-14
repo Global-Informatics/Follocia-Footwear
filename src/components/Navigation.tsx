@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect, useRef } from "react";
 import { useCart } from "./cart/CartContext";
-import { FOLLICIA_PRODUCTS, formatINR } from "@/data/folliciaCatalogue";
+import { FOLLICIA_PRODUCTS, FOLLICIA_COLLECTIONS, formatINR } from "@/data/folliciaCatalogue";
 import "./home/follicia.css";
 
 export function Navigation({
@@ -18,6 +18,8 @@ export function Navigation({
   const [profileOpen, setProfileOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+  const [collectionsOpen, setCollectionsOpen] = useState(false);
+  const collectionsRef = useRef<HTMLDivElement>(null);
   const { count, setOpen: setCartOpen, wishlist } = useCart();
   const profileRef = useRef<HTMLDivElement>(null);
 
@@ -27,6 +29,7 @@ export function Navigation({
         setSearchOpen(false);
         setNavOpen(false);
         setProfileOpen(false);
+        setCollectionsOpen(false);
       }
     };
     window.addEventListener("keydown", handleKeyDown);
@@ -34,13 +37,16 @@ export function Navigation({
   }, []);
 
   useEffect(() => {
-    const closeProfile = (event: PointerEvent) => {
+    const closeDropdowns = (event: PointerEvent) => {
       if (!profileRef.current?.contains(event.target as Node)) {
         setProfileOpen(false);
       }
+      if (!collectionsRef.current?.contains(event.target as Node)) {
+        setCollectionsOpen(false);
+      }
     };
-    document.addEventListener("pointerdown", closeProfile);
-    return () => document.removeEventListener("pointerdown", closeProfile);
+    document.addEventListener("pointerdown", closeDropdowns);
+    return () => document.removeEventListener("pointerdown", closeDropdowns);
   }, []);
 
   // Prevent background body scroll when search is open
@@ -55,7 +61,7 @@ export function Navigation({
     };
   }, [searchOpen]);
 
-  const [maxPrice, setMaxPrice] = useState<number>(5000);
+  const [maxPrice, setMaxPrice] = useState<number>(40000);
   const [colorFilter, setColorFilter] = useState<string>("All");
 
   const searchResults = useMemo(() => {
@@ -103,7 +109,7 @@ export function Navigation({
       }
 
       // 2. Price Range Filter
-      if (maxPrice < 5000 && p.price > maxPrice) return false;
+      if (maxPrice < 40000 && p.price > maxPrice) return false;
 
       // 3. Color Filter
       if (colorFilter !== "All") {
@@ -125,7 +131,7 @@ export function Navigation({
     <>
       {/* Top Announcement Bar */}
       <div className="announcement">
-        Complimentary shipping across India on orders above ₹2,999
+        Complimentary shipping across India on orders above Rs. 2,999
       </div>
 
       {/* Main Site Header */}
@@ -144,15 +150,78 @@ export function Navigation({
           >
             Home
           </a>
-          <a
-            href="#/collections"
-            onClick={() => {
-              setNavOpen(false);
-              window.scrollTo({ top: 0, behavior: "smooth" });
-            }}
-          >
-            Collections
-          </a>
+          <div className="nav-dropdown-wrap" ref={collectionsRef}>
+            <div className="flex items-center">
+              <a
+                href="#/collections"
+                onClick={() => {
+                  setCollectionsOpen(false);
+                  setNavOpen(false);
+                }}
+                className="nav-collections-link"
+              >
+                Collections
+              </a>
+              <button
+                type="button"
+                className={`nav-dropdown-chevron-btn ${collectionsOpen ? "active" : ""}`}
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  setCollectionsOpen((prev) => !prev);
+                }}
+                aria-expanded={collectionsOpen}
+                aria-haspopup="true"
+                aria-label="Toggle collections menu"
+              >
+                <svg
+                  className={`nav-dropdown-chevron ${collectionsOpen ? "open" : ""}`}
+                  width="10"
+                  height="10"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2.5"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <polyline points="6 9 12 15 18 9"></polyline>
+                </svg>
+              </button>
+            </div>
+
+            {collectionsOpen && (
+              <div className="nav-dropdown-menu" role="menu">
+                <div className="nav-dropdown-header">
+                  <span className="nav-dropdown-eyebrow">Signature Editions</span>
+                  <span className="nav-dropdown-count">4 Collections</span>
+                </div>
+                <div className="nav-dropdown-grid">
+                  {FOLLICIA_COLLECTIONS.map((col) => (
+                    <button
+                      key={col.name}
+                      type="button"
+                      className="nav-dropdown-item"
+                      onClick={() => {
+                        setCollectionsOpen(false);
+                        setNavOpen(false);
+                        window.location.hash = `#/collection/${col.name.toLowerCase()}`;
+                      }}
+                    >
+                      <div className="nav-dropdown-thumb">
+                        <img src={col.image} alt={`${col.name} preview`} />
+                      </div>
+                      <div className="nav-dropdown-info">
+                        <span className="nav-dropdown-name">{col.name}</span>
+                        <span className="nav-dropdown-line">{col.line}</span>
+                        <span className="nav-dropdown-badge">{col.count} Designs</span>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
           <a
             href="#/shop"
             onClick={() => {
@@ -163,16 +232,21 @@ export function Navigation({
             Shop
           </a>
           <a
-            href="#our-story"
-            onClick={(e) => {
+            href="#/new-arrivals"
+            onClick={() => {
               setNavOpen(false);
-              const el = document.getElementById("our-story");
-              if (el) {
-                e.preventDefault();
-                el.scrollIntoView({ behavior: "smooth" });
-              } else {
-                window.location.hash = "#our-story";
-              }
+              window.location.hash = "#/new-arrivals";
+              window.scrollTo({ top: 0, behavior: "smooth" });
+            }}
+          >
+            New Arrivals
+          </a>
+          <a
+            href="#/our-story"
+            onClick={() => {
+              setNavOpen(false);
+              window.location.hash = "#/our-story";
+              window.scrollTo({ top: 0, behavior: "smooth" });
             }}
           >
             Our Story
@@ -382,13 +456,13 @@ export function Navigation({
               <div className="flex items-center gap-3">
                 <span className="text-[10px] uppercase font-bold tracking-widest text-[#4b261a80]">PRICE:</span>
                 <span className="text-xs font-bold text-[#24130d]">
-                  {maxPrice >= 5000 ? "₹1,000 - ₹5,000+" : `Up to ₹${maxPrice.toLocaleString("en-IN")}`}
+                  {maxPrice >= 40000 ? "All Prices (Up to Rs. 40k)" : `Up to Rs. ${maxPrice.toLocaleString("en-IN")}`}
                 </span>
                 <input
                   type="range"
-                  min="1400"
-                  max="5000"
-                  step="100"
+                  min="3000"
+                  max="40000"
+                  step="500"
                   value={maxPrice}
                   onChange={(e) => setMaxPrice(Number(e.target.value))}
                   className="w-28 sm:w-36 accent-[#4b261a] cursor-pointer h-1.5 bg-[#4b261a15] rounded-lg"

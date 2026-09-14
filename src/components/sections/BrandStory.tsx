@@ -93,7 +93,7 @@ export function BrandStory() {
           <Reveal delay={0.15} mode="fade-up">
             <div className="mt-10 grid grid-cols-1 gap-10 text-base leading-[1.9] text-[var(--ink)]/70 md:grid-cols-2">
               <p>
-                Follocia exists for the woman who has stopped translating fashion and started writing it. Every silhouette
+                Follicia exists for the woman who has stopped translating fashion and started writing it. Every silhouette
                 is sculpted by hand in our Florentine atelier — drawn slowly, finished slower, signed only when perfect.
               </p>
               <p>

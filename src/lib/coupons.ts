@@ -11,16 +11,19 @@ type AdminCoupon = { title: string; meta: string; status: string };
 function readCoupons() {
   try {
     const stored = JSON.parse(localStorage.getItem("follocia_admin_coupons") || "[]") as AdminCoupon[];
-    return stored.length ? stored : [{ title: "FOLLOCIA10", meta: "10% off - Live editions", status: "Active" }];
+    return stored.length ? stored : [{ title: "FOLLICIA10", meta: "10% off - Live editions", status: "Active" }];
   } catch {
-    return [{ title: "FOLLOCIA10", meta: "10% off - Live editions", status: "Active" }];
+    return [{ title: "FOLLICIA10", meta: "10% off - Live editions", status: "Active" }];
   }
 }
 
 export function quoteCoupon(code: string, subtotal: number): CouponQuote | null {
   const clean = code.trim().toUpperCase();
   if (!clean) return null;
-  const coupon = readCoupons().find((item) => item.title.trim().toUpperCase() === clean && !["Paused", "Draft"].includes(item.status));
+  const coupon = readCoupons().find((item) => {
+    const t = item.title.trim().toUpperCase();
+    return (t === clean || (clean === "FOLLOCIA10" && t === "FOLLICIA10") || (clean === "FOLLICIA10" && t === "FOLLOCIA10")) && !["Paused", "Draft"].includes(item.status);
+  });
   if (!coupon) return null;
   const percent = Number(coupon.meta.match(/(\d+)\s*%/)?.[1] || 0);
   const money = Number(coupon.meta.match(/(?:EUR|INR|RS\.?|₹|€)\s*(\d+)/i)?.[1] || 0);

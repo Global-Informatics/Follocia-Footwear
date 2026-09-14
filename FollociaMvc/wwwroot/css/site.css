@@ -51,6 +51,20 @@ button { font: inherit; cursor: pointer; border: none; background: none; color: 
 .nav-links a:hover, .nav-links a.active { color: var(--gold); }
 .nav-links a.active::after { content: ""; position: absolute; bottom: 0; left: 0; right: 0; height: 1px; background: var(--gold); }
 
+/* MVC Collections Dropdown */
+.mvc-nav-dropdown { position: relative; display: inline-flex; align-items: center; }
+.mvc-dropdown-trigger { display: inline-flex; align-items: center; gap: 5px; cursor: pointer; }
+.mvc-nav-dropdown:hover .mvc-dropdown-menu,
+.mvc-nav-dropdown:focus-within .mvc-dropdown-menu { display: flex; }
+.mvc-dropdown-menu { display: none; position: absolute; top: calc(100% + 8px); left: -20px; width: 330px; background: rgba(20, 16, 14, 0.98); border: 1px solid rgba(212, 175, 55, 0.3); border-top: 2px solid var(--gold); box-shadow: 0 20px 40px rgba(0,0,0,0.6); padding: 12px; flex-direction: column; gap: 6px; z-index: 100; border-radius: 4px; -webkit-backdrop-filter: blur(16px); backdrop-filter: blur(16px); }
+.mvc-dropdown-item { padding: 8px 10px; border-radius: 3px; display: flex; flex-direction: column; gap: 2px; transition: background 0.2s; text-decoration: none !important; }
+.mvc-dropdown-item:hover { background: rgba(212, 175, 55, 0.12); }
+.mvc-col-name { font-family: var(--font-display); font-size: 0.85rem; color: var(--gold-light); letter-spacing: 0.1em; font-weight: 600; }
+.mvc-col-desc { font-size: 0.62rem; color: rgba(250, 248, 245, 0.65); letter-spacing: 0.04em; }
+.mvc-dropdown-footer { border-top: 1px solid rgba(212, 175, 55, 0.2); padding-top: 8px; margin-top: 4px; text-align: center; }
+.mvc-dropdown-footer a { font-size: 0.62rem; color: var(--gold); letter-spacing: 0.15em; font-weight: 700; text-decoration: none; }
+.mvc-dropdown-footer a:hover { color: var(--gold-light); }
+
 .nav-actions { display: flex; align-items: center; gap: 1.2rem; }
 .btn-vip-nav { font-size: 0.65rem; font-weight: 700; letter-spacing: 0.2em; color: var(--gold); border: 1px solid var(--gold-dark); padding: 0.5rem 1rem; border-radius: 20px; display: inline-flex; align-items: center; gap: 0.4rem; transition: all 0.3s ease; }
 .btn-vip-nav:hover { background: var(--gold-glow); border-color: var(--gold); }

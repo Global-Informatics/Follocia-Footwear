@@ -185,7 +185,7 @@ public class HomeController : Controller
         {
             new() { Quote = "The architectural heel stability and Italian leather finish are unmatched. Truly a piece of wearable art.", Author = "Eleonora B.", Title = "Haute Couture Collector", Location = "Milan" },
             new() { Quote = "Receiving edition number 12 of 180 felt like opening a museum piece. White-glove concierge delivered to my hotel in Venice.", Author = "Clara Dupont", Title = "VIP Patron", Location = "Paris" },
-            new() { Quote = "Follocia represents the rare craft of traditional Tuscan shoemaking merged with modern silhouette mastery.", Author = "Sofia V.", Title = "Fashion Editor", Location = "Rome" }
+            new() { Quote = "Follicia represents the rare craft of traditional Tuscan shoemaking merged with modern silhouette mastery.", Author = "Sofia V.", Title = "Fashion Editor", Location = "Rome" }
         };
     }
 }

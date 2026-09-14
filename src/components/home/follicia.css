@@ -179,6 +179,249 @@
   right: 0;
 }
 
+/* ==================== NAV COLLECTIONS LUXURY DROPDOWN ==================== */
+.nav-dropdown-wrap {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+}
+
+.nav-dropdown-trigger,
+.nav-collections-link {
+  letter-spacing: .13em;
+  text-transform: uppercase;
+  font-size: .68rem;
+  position: relative;
+  cursor: pointer;
+  background: transparent;
+  border: none;
+  padding: 0;
+  color: inherit;
+  font-family: inherit;
+  display: inline-flex;
+  align-items: center;
+  transition: color .2s ease;
+}
+
+.nav-dropdown-trigger:after,
+.nav-collections-link:after {
+  content: "";
+  background: var(--gold);
+  height: 1px;
+  transition: right .25s;
+  position: absolute;
+  bottom: -8px;
+  left: 0;
+  right: 100%;
+}
+
+.nav-dropdown-trigger:hover:after,
+.nav-dropdown-trigger.active:after,
+.nav-collections-link:hover:after {
+  right: 0;
+}
+
+.nav-dropdown-chevron-btn {
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  padding: 0 0 0 5px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.nav-dropdown-chevron {
+  transition: transform .25s cubic-bezier(0.16, 1, 0.3, 1);
+  color: var(--gold);
+  flex-shrink: 0;
+}
+
+.nav-dropdown-chevron.open,
+.nav-dropdown-chevron-btn.active .nav-dropdown-chevron,
+.nav-dropdown-trigger.active .nav-dropdown-chevron {
+  transform: rotate(180deg);
+}
+
+@keyframes folliciaDropdownIn {
+  from {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.nav-dropdown-menu {
+  position: absolute;
+  top: calc(100% + 14px);
+  left: -20px;
+  width: 460px;
+  background: rgba(255, 252, 246, 0.98);
+  -webkit-backdrop-filter: blur(20px);
+  backdrop-filter: blur(20px);
+  border: 1px solid rgba(75, 38, 26, 0.16);
+  border-top: 2px solid var(--gold);
+  box-shadow: 0 24px 60px -12px rgba(53, 28, 19, 0.22), 0 4px 16px rgba(53, 28, 19, 0.08);
+  border-radius: 4px;
+  padding: 16px 18px 14px;
+  z-index: 100;
+  animation: folliciaDropdownIn 0.22s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.nav-dropdown-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-bottom: 10px;
+  margin-bottom: 12px;
+  border-bottom: 1px solid rgba(75, 38, 26, 0.08);
+}
+
+.nav-dropdown-eyebrow {
+  font-size: 0.62rem;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--gold);
+  font-weight: 600;
+}
+
+.nav-dropdown-count {
+  font-size: 0.6rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.nav-dropdown-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.nav-dropdown-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px;
+  background: rgba(241, 228, 210, 0.38);
+  border: 1px solid rgba(75, 38, 26, 0.08);
+  border-radius: 3px;
+  text-align: left;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  cursor: pointer;
+  width: 100%;
+}
+
+.nav-dropdown-item:hover {
+  background: rgba(241, 228, 210, 0.85);
+  border-color: var(--gold);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(53, 28, 19, 0.1);
+}
+
+.nav-dropdown-thumb {
+  width: 52px;
+  height: 52px;
+  flex-shrink: 0;
+  border-radius: 2px;
+  overflow: hidden;
+  background: #171310;
+  position: relative;
+}
+
+.nav-dropdown-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 0.4s ease;
+}
+
+.nav-dropdown-item:hover .nav-dropdown-thumb img {
+  transform: scale(1.08);
+}
+
+.nav-dropdown-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  flex: 1;
+}
+
+.nav-dropdown-name {
+  font-family: Georgia, serif;
+  font-size: 0.88rem;
+  letter-spacing: 0.08em;
+  font-weight: 600;
+  color: var(--ink);
+  line-height: 1.2;
+}
+
+.nav-dropdown-item:hover .nav-dropdown-name {
+  color: var(--chocolate);
+}
+
+.nav-dropdown-line {
+  font-size: 0.64rem;
+  color: var(--muted);
+  line-height: 1.25;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+
+.nav-dropdown-badge {
+  font-size: 0.55rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--gold);
+  font-weight: 600;
+  margin-top: 1px;
+}
+
+.nav-dropdown-footer {
+  margin-top: 12px;
+  padding-top: 10px;
+  border-top: 1px solid rgba(75, 38, 26, 0.08);
+  text-align: center;
+}
+
+.nav-dropdown-footer-btn {
+  font-size: 0.65rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--chocolate);
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  transition: color 0.2s, gap 0.2s;
+  padding: 4px 8px;
+}
+
+.nav-dropdown-footer-btn:hover {
+  color: var(--gold);
+  gap: 9px;
+}
+
+.nav-dropdown-footer-btn .arrow {
+  font-size: 0.82rem;
+  color: var(--gold);
+  transition: transform 0.2s;
+}
+
+.nav-dropdown-footer-btn:hover .arrow {
+  transform: translateX(3px);
+}
+
 .follicia-home .actions,
 .site-header .actions {
   grid-area: 1/3;
@@ -555,17 +798,57 @@
   font-style: italic;
 }
 
-.follicia-home .collection-content button {
+.follicia-home .collection-content button,
+.follicia-home .collection-content a {
   color: #fff;
   letter-spacing: .17em;
   text-transform: uppercase;
   border-bottom: 1px solid #ffffffa6;
   padding: 0 0 8px;
   font-size: .6rem;
+  display: inline-block;
 }
 
-.follicia-home .collection-content button span {
+.follicia-home .collection-content button span,
+.follicia-home .collection-content a span {
   margin-left: 12px;
+}
+
+.follicia-home .home-links {
+  text-align: center;
+  background: var(--ivory);
+  padding: 120px 5vw;
+}
+
+.follicia-home .home-links h2 {
+  max-width: 800px;
+  margin: 0 auto;
+  font-family: Georgia, serif;
+  font-size: clamp(2.8rem, 5vw, 5rem);
+  font-weight: 400;
+  line-height: 1.02;
+}
+
+.follicia-home .home-links > div {
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 28px;
+  margin-top: 45px;
+  display: flex;
+}
+
+.follicia-home .home-links a {
+  border-bottom: 1px solid var(--line);
+  letter-spacing: .14em;
+  text-transform: uppercase;
+  padding-bottom: 8px;
+  font-size: .66rem;
+  transition: border-color .2s ease, color .2s ease;
+}
+
+.follicia-home .home-links a:hover {
+  border-color: var(--gold);
+  color: var(--gold);
 }
 
 .follicia-home .shop {
@@ -1509,6 +1792,215 @@
   font-weight: 600;
 }
 
+/* ==================== NEW ARRIVALS PAGE STYLES ==================== */
+.arrival-hero {
+  background: linear-gradient(130deg, #f2e4cf 0%, #fffaf0 58%);
+  grid-template-columns: 44% 56%;
+  align-items: center;
+  min-height: calc(100vh - 123px);
+  padding: 5vw;
+  display: grid;
+}
+
+.arrival-copy {
+  z-index: 2;
+  padding: 4vw 2vw;
+  position: relative;
+}
+
+.arrival-copy h1 {
+  margin: 0;
+  font-family: Georgia, serif;
+  font-size: clamp(4rem, 8vw, 8rem);
+  font-weight: 400;
+  line-height: .9;
+  color: var(--chocolate);
+}
+
+.arrival-copy .arrival-lead {
+  color: var(--gold);
+  margin: 24px 0 12px;
+  font-family: Georgia, serif;
+  font-size: 1.35rem;
+  font-style: italic;
+}
+
+.arrival-copy > p:not(.eyebrow):not(.arrival-lead) {
+  max-width: 510px;
+  color: var(--muted);
+  margin-bottom: 30px;
+  font-size: .9rem;
+  line-height: 1.8;
+}
+
+.arrival-image {
+  border-radius: 50% 50% 34px 34px;
+  overflow: hidden;
+  box-shadow: 0 30px 80px #4b261a1f;
+  background: #fdf8f2;
+}
+
+.arrival-image img {
+  aspect-ratio: 1;
+  object-fit: cover;
+  width: 100%;
+  display: block;
+}
+
+.arrival-details {
+  border-top: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
+  grid-template-columns: repeat(3, 1fr);
+  display: grid;
+  background: var(--ivory);
+}
+
+.arrival-details > div {
+  border-right: 1px solid var(--line);
+  padding: 65px 5vw;
+}
+
+.arrival-details > div:last-child {
+  border-right: 0;
+}
+
+.arrival-details span {
+  color: var(--gold);
+  font-family: Georgia, serif;
+  font-size: 1.1rem;
+}
+
+.arrival-details h3 {
+  margin: 16px 0 10px;
+  font-family: Georgia, serif;
+  font-size: 1.45rem;
+  font-weight: 400;
+  color: var(--ink);
+}
+
+.arrival-details p {
+  color: var(--muted);
+  margin: 0;
+  font-size: .78rem;
+  line-height: 1.7;
+}
+
+/* ==================== OUR STORY PAGE STYLES ==================== */
+.story-page {
+  min-height: calc(100vh - 123px);
+}
+.story-page .story-copy > p:not(.eyebrow) {
+  margin: 18px 0;
+}
+.story-page .story-copy .button {
+  margin-top: 16px;
+}
+.story-manifesto {
+  background: var(--ivory);
+  grid-template-columns: 1fr 1fr;
+  gap: 8vw;
+  padding: 120px 8vw;
+  display: grid;
+}
+.story-manifesto h2,
+.comfort-story h2,
+.story-worlds h2,
+.story-closing h2 {
+  margin: 0;
+  font-family: Georgia, Times New Roman, serif;
+  font-size: clamp(2.8rem, 5vw, 5rem);
+  font-weight: 400;
+  line-height: 1.02;
+  color: var(--ink);
+}
+.manifesto-copy {
+  align-self: center;
+}
+.manifesto-copy p,
+.comfort-story > p:not(.eyebrow) {
+  color: var(--muted);
+  margin: 0 0 22px;
+  font-size: 1rem;
+  line-height: 1.85;
+}
+.comfort-story {
+  text-align: center;
+  background: var(--paper);
+  padding: 120px 18vw;
+}
+.comfort-story > p:not(.eyebrow) {
+  max-width: 760px;
+  margin: 30px auto 0;
+}
+.story-worlds {
+  background: #ead6bd;
+  padding: 120px 5vw;
+}
+.worlds-heading {
+  max-width: 750px;
+  margin-bottom: 55px;
+}
+.worlds-grid {
+  border-top: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
+  grid-template-columns: repeat(4, 1fr);
+  display: grid;
+}
+.worlds-grid a {
+  border-right: 1px solid var(--line);
+  min-height: 300px;
+  padding: 34px 28px;
+  transition: background .25s, transform .25s;
+  display: flex;
+  flex-direction: column;
+}
+.worlds-grid a:last-child {
+  border-right: 0;
+}
+.worlds-grid a:hover {
+  background: #fffaf08c;
+  transform: translateY(-5px);
+}
+.worlds-grid span {
+  color: var(--gold);
+  font-family: Georgia, serif;
+  font-size: 1.1rem;
+}
+.worlds-grid h3 {
+  text-transform: uppercase;
+  margin: 55px 0 15px;
+  font-family: Georgia, serif;
+  font-size: 2.1rem;
+  font-weight: 400;
+  color: var(--ink);
+}
+.worlds-grid p {
+  color: var(--muted);
+  margin: 0;
+  font-size: .88rem;
+  line-height: 1.7;
+}
+.story-closing {
+  background: var(--chocolate);
+  color: var(--ivory);
+  text-align: center;
+  padding: 130px 12vw;
+}
+.story-closing > p {
+  color: #decabd;
+  max-width: 740px;
+  margin: 0 auto 38px;
+  font-family: Georgia, serif;
+  font-size: 1.2rem;
+  font-style: italic;
+  line-height: 1.7;
+}
+.story-closing h2 {
+  max-width: 900px;
+  margin: 0 auto 45px;
+  color: var(--ivory);
+}
+
 /* Responsive Media Queries */
 @media (max-width: 1050px) {
   .follicia-home .nav { gap: 16px; }
@@ -1534,6 +2026,21 @@
     right: 0;
   }
   .follicia-home .nav.open { display: flex; }
+  .follicia-home .nav-dropdown-wrap { width: 100%; display: flex; flex-direction: column; }
+  .follicia-home .nav-dropdown-trigger { width: 100%; justify-content: space-between; font-size: .72rem; padding: 2px 0; }
+  .follicia-home .nav-dropdown-menu {
+    position: static;
+    width: 100%;
+    margin-top: 10px;
+    box-shadow: none;
+    background: rgba(241, 228, 210, 0.35);
+    border: 1px solid rgba(75, 38, 26, 0.12);
+    padding: 12px;
+  }
+  .follicia-home .nav-dropdown-grid {
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
   .follicia-home .hero-background { object-position: 62% center; }
   .follicia-home .hero-shade { background: linear-gradient(90deg, #fffdf8eb, #fffdf88a 58%, #fffdf814); }
   .follicia-home .hero-copy { width: 72%; padding: 80px 8vw 58px; }
@@ -1554,6 +2061,16 @@
   .follicia-home .story-copy { padding: 80px 8vw; }
   .follicia-home .promise { grid-template-columns: 1fr; }
   .follicia-home .promise > div { border-right: 0; border-bottom: 1px solid var(--line); }
+  .arrival-hero { grid-template-columns: 1fr; padding: 70px 7vw; }
+  .arrival-copy { order: 2; padding: 55px 0 0; }
+  .arrival-details { grid-template-columns: 1fr; }
+  .arrival-details > div { border-right: 0; border-bottom: 1px solid var(--line); }
+  .story-manifesto { grid-template-columns: 1fr; padding: 85px 8vw; }
+  .comfort-story { padding: 85px 8vw; }
+  .story-worlds { padding: 85px 6vw; }
+  .worlds-grid { grid-template-columns: repeat(2, 1fr); }
+  .worlds-grid a:nth-child(2) { border-right: 0; }
+  .worlds-grid a:nth-child(-n+2) { border-bottom: 1px solid var(--line); }
   .follicia-home footer,
   .site-footer { grid-template-columns: repeat(2, 1fr); }
   .follicia-home .footer-brand,
@@ -1594,11 +2111,15 @@
   .follicia-home .product-meta { display: block; }
   .follicia-home .product-meta h3 { font-size: 1rem; }
   .follicia-home .product-meta strong { margin-top: 7px; display: block; }
-  .follicia-home .quick { padding: 11px; bottom: 8px; }
-  .follicia-home .product-actions span { display: none; }
+  .follicia-home .product-actions > span { display: none; }
   .follicia-home .product-actions { justify-content: flex-end; }
   .follicia-home .story-image { min-height: 470px; }
   .follicia-home .story-copy { padding: 70px 24px; }
+  .worlds-grid { grid-template-columns: 1fr; }
+  .worlds-grid a { border-right: 0; border-bottom: 1px solid var(--line); min-height: 230px; }
+  .worlds-grid a:last-child { border-bottom: 0; }
+  .worlds-grid a:nth-child(2) { border-bottom: 1px solid var(--line); }
+  .story-closing { padding: 95px 7vw; }
   .follicia-home footer { gap: 38px 24px; padding: 60px 25px 25px; }
   .quick-view-backdrop { place-items: end center; padding: 0; }
   .quick-view { max-height: 94vh; }

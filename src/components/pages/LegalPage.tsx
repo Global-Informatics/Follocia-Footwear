@@ -55,7 +55,7 @@ export function LegalPage({ slug, session, onLogout, onLogin }: { slug: LegalSlu
             <p className="max-w-3xl text-lg leading-relaxed text-[var(--bone)]/68">{config.intro}</p>
             <div className="border border-[var(--gold)]/25 bg-white/[0.04] p-5 text-sm text-[var(--bone)]/58">
               <span className="eyebrow block text-[var(--gold)]">{config.updated}</span>
-              <span className="mt-3 block">Managed live through the Follocia admin panel.</span>
+              <span className="mt-3 block">Managed live through the Follicia admin panel.</span>
             </div>
           </motion.div>
         </div>

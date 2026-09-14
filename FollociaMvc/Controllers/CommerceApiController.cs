@@ -31,11 +31,15 @@ public class CommerceApiController(FollociaDbContext db, IConfiguration config, 
 
         var sentViaSmtp = await TrySendSmtpEmailAsync(cleanEmail, code);
 
+        var message = sentViaSmtp
+            ? $"A 6-digit verification code has been dispatched to {cleanEmail}. Please check your inbox or spam folder."
+            : $"Verification code generated for {cleanEmail}. (Configure Smtp in appsettings.json to receive real emails).";
+
         return Ok(new OtpResponseDto(
             true,
-            sentViaSmtp ? $"Verification code sent to {cleanEmail}." : $"Verification code generated for {cleanEmail}.",
+            message,
             sentViaSmtp,
-            sentViaSmtp ? null : code));
+            null)); // Never leak OTP code in the API response
     }
 
     [HttpPost("auth/verify-otp")]
@@ -89,8 +93,8 @@ public class CommerceApiController(FollociaDbContext db, IConfiguration config, 
             var enableSsl = bool.TryParse(smtpSection["EnableSsl"], out var ssl) && ssl;
             var userName = smtpSection["UserName"];
             var password = smtpSection["Password"];
-            var senderEmail = smtpSection["SenderEmail"] ?? "concierge@follocia.com";
-            var senderName = smtpSection["SenderName"] ?? "Maison Follocia";
+            var senderEmail = smtpSection["SenderEmail"] ?? "concierge@follicia.com";
+            var senderName = smtpSection["SenderName"] ?? "Maison Follicia";
 
             using var client = new SmtpClient(host, port)
             {
@@ -107,7 +111,7 @@ public class CommerceApiController(FollociaDbContext db, IConfiguration config, 
             using var message = new MailMessage
             {
                 From = new MailAddress(senderEmail, senderName),
-                Subject = $"{code} is your Maison Follocia Verification Code",
+                Subject = $"{code} is your Maison Follicia Verification Code",
                 IsBodyHtml = true,
                 Body = $@"
 <div style=""font-family: 'Segoe UI', Arial, sans-serif; max-width: 520px; margin: 0 auto; background: #ffffff; border: 1px solid #e6ded7; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 20px rgba(0,0,0,0.08);"">
@@ -118,7 +122,7 @@ public class CommerceApiController(FollociaDbContext db, IConfiguration config, 
     <div style=""padding: 30px 24px; color: #351c13;"">
         <h2 style=""font-size: 18px; font-weight: 600; margin: 0 0 10px;"">Client Authentication Code</h2>
         <p style=""font-size: 13px; line-height: 1.6; color: #555; margin: 0 0 20px;"">
-            You requested a one-time verification code to securely access your Maison Follocia account. Please enter the code below to proceed:
+            You requested a one-time verification code to securely access your Maison Follicia account. Please enter the code below to proceed:
         </p>
         <div style=""background: #fcf9f6; border: 1.5px dashed #d9b36e; border-radius: 8px; padding: 16px; text-align: center; margin-bottom: 22px;"">
             <span style=""font-size: 34px; font-family: monospace; font-weight: 700; letter-spacing: 8px; color: #a87648; display: inline-block;"">{code}</span>
@@ -129,7 +133,7 @@ public class CommerceApiController(FollociaDbContext db, IConfiguration config, 
         </p>
     </div>
     <div style=""background: #f9f9f9; padding: 14px 20px; text-align: center; border-top: 1px solid #eee; font-size: 11px; color: #999;"">
-        © 2026 Maison Follocia Ltd. All rights reserved. Sculpted in Florence.
+        © 2026 Maison Follicia Ltd. All rights reserved. Sculpted in Florence.
     </div>
 </div>"
             };
@@ -458,11 +462,11 @@ public class CommerceApiController(FollociaDbContext db, IConfiguration config, 
             ],
             [
                 new OrderDto("RSV-1048", "vip-002", "Camille R.", "camille@example.com", "Atelier 03 - Or Liquide", "38", "EUR 1,820", "Concierge Review", "Payment Pending", "Order Placed", "Concierge will confirm within 24h", "", "Concierge Pay", "", "Today"),
-                new OrderDto("RSV-1047", "vip-001", "Ananya Sharma", "client@follocia.com", "Atelier 02 - Noir Suspendu", "39", "EUR 1,640", "Fitting Booked", "Payment Pending", "Order Placed", "Concierge will confirm within 24h", "", "Concierge Pay", "", "Today"),
-                new OrderDto("RSV-1031", "vip-001", "Ananya Sharma", "client@follocia.com", "Atelier 01 - Lumiere", "38", "EUR 1,480", "Certificate Ready", "Payment Captured", "Delivered", "Delivered", "", "Concierge Pay", "", "Delivered")
+                new OrderDto("RSV-1047", "vip-001", "Ananya Sharma", "client@follicia.com", "Atelier 02 - Noir Suspendu", "39", "EUR 1,640", "Fitting Booked", "Payment Pending", "Order Placed", "Concierge will confirm within 24h", "", "Concierge Pay", "", "Today"),
+                new OrderDto("RSV-1031", "vip-001", "Ananya Sharma", "client@follicia.com", "Atelier 01 - Lumiere", "38", "EUR 1,480", "Certificate Ready", "Payment Captured", "Delivered", "Delivered", "", "Concierge Pay", "", "Delivered")
             ],
             [
-                new CustomerDto("vip-001", "Ananya Sharma", "client@follocia.com", "Ananya", "Sharma", "", "Private Atelier", "MMXXIV", [], ["atelier-03", "atelier-01"], [])
+                new CustomerDto("vip-001", "Ananya Sharma", "client@follicia.com", "Ananya", "Sharma", "", "Private Atelier", "MMXXIV", [], ["atelier-03", "atelier-01"], [])
             ]);
 
     private static decimal ParseMoney(string value) => decimal.TryParse(new string(value.Where(character => char.IsDigit(character) || character == '.').ToArray()), out var amount) ? amount : 0;

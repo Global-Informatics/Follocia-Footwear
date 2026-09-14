@@ -17,10 +17,10 @@ import { Footer } from "@/components/sections/Footer";
 import { AccountPanel, AdminPanel } from "@/components/panels/CommercePanels";
 import { AuthGateway, clearAuthSession, readAuthSession } from "@/components/auth/AuthGateway";
 import type { AuthSession } from "@/components/auth/AuthGateway";
-import { syncCommerceFromBackend } from "@/lib/commerceStore";
-import { CollectionsPage, ContactPage, ProductDetailPage, SecureCheckoutPage, ShopPage } from "@/components/pages/ShopPages";
+import { CollectionsPage, ContactPage, NewArrivalsPage, OurStoryPage, ProductDetailPage, SecureCheckoutPage, ShopPage } from "@/components/pages/ShopPages";
 import { LegalPage } from "@/components/pages/LegalPage";
 import { legalSlugFromPath } from "@/lib/legalPages";
+import { syncCommerceFromBackend } from "@/lib/commerceStore";
 
 function sectionFromPath(path: string) {
   if (path.includes("my-addresses")) return "My Addresses" as const;
@@ -74,6 +74,10 @@ export function App() {
   }, [base]);
 
   useEffect(() => {
+    const hash = window.location.hash.toLowerCase();
+    if (hash === "#shop" || hash === "#motion" || hash === "#top") {
+      return;
+    }
     window.scrollTo({ top: 0, behavior: "instant" });
   }, [path]);
 
@@ -83,8 +87,14 @@ export function App() {
   const wantsAdmin = path.startsWith("/admin") || (session?.user?.role === "admin" && adminSections.some((s) => path === s || path.startsWith(s + "/")));
   const wantsAccount = path.startsWith("/account");
   const wantsLogin = path === "/login" || path.startsWith("/login");
-  const wantsShop = path === "/shop" || path.startsWith("/shop/");
-  const wantsCollections = path.startsWith("/collections");
+  const cleanPath = path.split("?")[0].split("#")[0];
+  const wantsSpecificCollection =
+    cleanPath.startsWith("/collection/") ||
+    (cleanPath.startsWith("/collections/") && cleanPath !== "/collections");
+  const wantsCollections = cleanPath === "/collections" || wantsSpecificCollection;
+  const wantsShop = (cleanPath === "/shop" || cleanPath.startsWith("/shop/")) && !wantsSpecificCollection;
+  const wantsNewArrivals = cleanPath === "/new-arrivals" || cleanPath.startsWith("/new-arrivals");
+  const wantsStory = cleanPath === "/our-story" || cleanPath.startsWith("/our-story");
   const wantsContact = path.startsWith("/contact");
   const wantsCheckout = path.startsWith("/checkout");
   const legalSlug = legalSlugFromPath(path);
@@ -211,6 +221,24 @@ export function App() {
     return (
       <CartProvider>
         <CollectionsPage session={session} onLogout={logout} onLogin={() => setLoginOpen(true)} />
+        {loginOpen && <LoginOverlay onClose={() => setLoginOpen(false)} onAuthenticated={handleAuthenticated} />}
+      </CartProvider>
+    );
+  }
+
+  if (wantsNewArrivals) {
+    return (
+      <CartProvider>
+        <NewArrivalsPage session={session} onLogout={logout} onLogin={() => setLoginOpen(true)} />
+        {loginOpen && <LoginOverlay onClose={() => setLoginOpen(false)} onAuthenticated={handleAuthenticated} />}
+      </CartProvider>
+    );
+  }
+
+  if (wantsStory) {
+    return (
+      <CartProvider>
+        <OurStoryPage session={session} onLogout={logout} onLogin={() => setLoginOpen(true)} />
         {loginOpen && <LoginOverlay onClose={() => setLoginOpen(false)} onAuthenticated={handleAuthenticated} />}
       </CartProvider>
     );
