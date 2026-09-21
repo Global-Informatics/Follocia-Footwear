@@ -9,7 +9,6 @@ import { Hero } from "@/components/sections/Hero";
 import { BrandStory, Marquee } from "@/components/sections/BrandStory";
 import { FeaturedCollections } from "@/components/sections/FeaturedCollections";
 import { Lookbook } from "@/components/sections/Lookbook";
-import { Atelier } from "@/components/sections/Atelier";
 import { Benefits } from "@/components/sections/Benefits";
 import { Testimonials } from "@/components/sections/Testimonials";
 import { VipNewsletter } from "@/components/sections/VipNewsletter";
@@ -21,6 +20,9 @@ import { CollectionsPage, ContactPage, NewArrivalsPage, OurStoryPage, ProductDet
 import { LegalPage } from "@/components/pages/LegalPage";
 import { legalSlugFromPath } from "@/lib/legalPages";
 import { syncCommerceFromBackend } from "@/lib/commerceStore";
+import { FolliciaConciergeChat } from "@/components/chat/FolliciaConciergeChat";
+import { MobileBottomNav } from "@/components/navigation/MobileBottomNav";
+import { FolliciaHomePage } from "@/components/home/FolliciaHomePage";
 
 function sectionFromPath(path: string) {
   if (path.includes("my-addresses")) return "My Addresses" as const;
@@ -35,13 +37,12 @@ function sectionFromPath(path: string) {
   return "My Orders" as const;
 }
 
-import { FolliciaHomePage } from "@/components/home/FolliciaHomePage";
-
 function Storefront({ session, onLogout, onLogin }: { session: AuthSession | null; onLogout: () => void; onLogin: () => void }) {
   return (
-    <CartProvider>
+    <>
       <FolliciaHomePage session={session} onLogout={onLogout} onLogin={onLogin} />
-    </CartProvider>
+      <CartDrawer session={session} onLogin={onLogin} />
+    </>
   );
 }
 
@@ -75,14 +76,20 @@ export function App() {
 
   useEffect(() => {
     const hash = window.location.hash.toLowerCase();
-    if (hash === "#shop" || hash === "#motion" || hash === "#top") {
+    if (
+      hash === "#shop" ||
+      hash === "#motion" ||
+      hash === "#top" ||
+      hash.startsWith("#/account") ||
+      hash.startsWith("#account")
+    ) {
       return;
     }
     window.scrollTo({ top: 0, behavior: "instant" });
   }, [path]);
 
   const adminSections = [
-    "/admin", "/dashboard", "/orders", "/inventory", "/customers", "/drops", "/vip", "/stories", "/seo", "/coupons", "/reviews", "/banners", "/cms", "/legal", "/analytics", "/newsletter", "/contact", "/audit"
+    "/admin", "/dashboard", "/orders", "/inventory", "/customers", "/drops", "/vip", "/stories", "/seo", "/coupons", "/reviews", "/banners", "/cms", "/legal", "/analytics", "/newsletter", "/audit"
   ];
   const wantsAdmin = path.startsWith("/admin") || (session?.user?.role === "admin" && adminSections.some((s) => path === s || path.startsWith(s + "/")));
   const wantsAccount = path.startsWith("/account");
@@ -116,8 +123,18 @@ export function App() {
 
   if (!hydrated) return null;
 
+  const renderWithConcierge = (content: React.ReactNode) => (
+    <CartProvider>
+      <div className="pb-16 md:pb-0 min-h-screen flex flex-col">
+        {content}
+      </div>
+      <FolliciaConciergeChat session={session} />
+      <MobileBottomNav session={session} onLogin={() => setLoginOpen(true)} />
+    </CartProvider>
+  );
+
   if (wantsLogin) {
-    return (
+    return renderWithConcierge(
       <>
         <Storefront session={session} onLogout={logout} onLogin={() => setLoginOpen(true)} />
         <LoginOverlay
@@ -133,7 +150,7 @@ export function App() {
 
   if (wantsAdmin) {
     if (!session || session.user.role !== "admin") {
-      return (
+      return renderWithConcierge(
         <>
           <Storefront session={session} onLogout={logout} onLogin={() => setLoginOpen(true)} />
           <LoginOverlay
@@ -150,7 +167,7 @@ export function App() {
 
   if (wantsAccount) {
     if (!session) {
-      return (
+      return renderWithConcierge(
         <>
           <Storefront session={session} onLogout={logout} onLogin={() => setLoginOpen(true)} />
           <LoginOverlay
@@ -163,88 +180,88 @@ export function App() {
         </>
       );
     }
-    return (
-      <CartProvider>
+    return renderWithConcierge(
+      <>
         <Navigation userName={session.user.name} onLogout={logout} onLogin={() => setLoginOpen(true)} solid />
         <AccountPanel session={session} initialSection={sectionFromPath(path)} />
         <CartDrawer session={session} onLogin={() => setLoginOpen(true)} />
-      </CartProvider>
+      </>
     );
   }
 
   if (wantsCheckout) {
-    return (
-      <CartProvider>
+    return renderWithConcierge(
+      <>
         <SecureCheckoutPage session={session} onLogout={logout} onLogin={() => setLoginOpen(true)} />
         {loginOpen && <LoginOverlay onClose={() => setLoginOpen(false)} onAuthenticated={handleAuthenticated} />}
-      </CartProvider>
+      </>
     );
   }
 
   if (wantsShop) {
-    const productId = path.startsWith("/shop/") ? decodeURIComponent(path.replace("/shop/", "")) : "";
-    return (
-      <CartProvider>
+    const rawParam = path.startsWith("/shop/") ? decodeURIComponent(path.replace("/shop/", "")).split("?")[0] : "";
+    const categorySubpaths = ["flats", "flat", "heels", "heel", "mules", "mule", "boots", "boot"];
+    const isCategoryFilter = categorySubpaths.includes(rawParam.toLowerCase());
+    const productId = isCategoryFilter ? "" : rawParam;
+    return renderWithConcierge(
+      <>
         {productId ? (
           <ProductDetailPage productId={productId} session={session} onLogout={logout} onLogin={() => setLoginOpen(true)} />
         ) : (
           <ShopPage session={session} onLogout={logout} onLogin={() => setLoginOpen(true)} />
         )}
         {loginOpen && <LoginOverlay onClose={() => setLoginOpen(false)} onAuthenticated={handleAuthenticated} />}
-      </CartProvider>
+      </>
     );
   }
 
   if (legalSlug) {
-    return (
-      <CartProvider>
+    return renderWithConcierge(
+      <>
         <LegalPage slug={legalSlug} session={session} onLogout={logout} onLogin={() => setLoginOpen(true)} />
         <CartDrawer session={session} onLogin={() => setLoginOpen(true)} />
         {loginOpen && <LoginOverlay onClose={() => setLoginOpen(false)} onAuthenticated={handleAuthenticated} />}
-      </CartProvider>
+      </>
     );
   }
 
   if (wantsContact) {
-    if (typeof window !== "undefined" && !window.location.hash.includes("our-story")) {
-      window.location.hash = "#our-story";
-    }
-    return (
+    return renderWithConcierge(
       <>
-        <Storefront session={session} onLogout={logout} onLogin={() => setLoginOpen(true)} />
+        <ContactPage session={session} onLogout={logout} onLogin={() => setLoginOpen(true)} />
         {loginOpen && <LoginOverlay onClose={() => setLoginOpen(false)} onAuthenticated={handleAuthenticated} />}
       </>
     );
   }
 
   if (wantsCollections) {
-    return (
-      <CartProvider>
+    return renderWithConcierge(
+      <>
         <CollectionsPage session={session} onLogout={logout} onLogin={() => setLoginOpen(true)} />
         {loginOpen && <LoginOverlay onClose={() => setLoginOpen(false)} onAuthenticated={handleAuthenticated} />}
-      </CartProvider>
+      </>
     );
   }
 
   if (wantsNewArrivals) {
-    return (
-      <CartProvider>
+    return renderWithConcierge(
+      <>
         <NewArrivalsPage session={session} onLogout={logout} onLogin={() => setLoginOpen(true)} />
         {loginOpen && <LoginOverlay onClose={() => setLoginOpen(false)} onAuthenticated={handleAuthenticated} />}
-      </CartProvider>
+      </>
     );
   }
 
   if (wantsStory) {
-    return (
-      <CartProvider>
+    return renderWithConcierge(
+      <>
         <OurStoryPage session={session} onLogout={logout} onLogin={() => setLoginOpen(true)} />
         {loginOpen && <LoginOverlay onClose={() => setLoginOpen(false)} onAuthenticated={handleAuthenticated} />}
-      </CartProvider>
+      </>
     );
   }
 
-  return (
+  return renderWithConcierge(
     <>
       <Storefront session={session} onLogout={logout} onLogin={() => setLoginOpen(true)} />
       {loginOpen && <LoginOverlay onClose={() => setLoginOpen(false)} onAuthenticated={handleAuthenticated} />}
@@ -255,12 +272,19 @@ export function App() {
 function LoginOverlay({ onClose, onAuthenticated }: { onClose: () => void; onAuthenticated: (session: AuthSession) => void }) {
   return (
     <div
-      className="fixed inset-0 z-[120] flex items-center justify-center bg-black/75 px-4 py-8 backdrop-blur-md overflow-y-auto min-h-screen"
+      className="fixed inset-0 z-[120] overflow-y-auto bg-black/80 backdrop-blur-md"
       onClick={(e) => {
         if (e.target === e.currentTarget) onClose();
       }}
     >
-      <AuthGateway intent="customer" compact onClose={onClose} onAuthenticated={onAuthenticated} />
+      <div className="flex min-h-full items-center justify-center p-3 sm:p-6 text-center">
+        <div
+          className="w-full max-w-[460px] text-left"
+          onClick={(e) => e.stopPropagation()}
+        >
+          <AuthGateway intent="customer" compact onClose={onClose} onAuthenticated={onAuthenticated} />
+        </div>
+      </div>
     </div>
   );
 }

@@ -66,8 +66,8 @@ GO
 INSERT INTO dbo.Products (Id, Title, Edition, PriceAmount, Tone, ImagePath, Description)
 VALUES
 (
-    'atelier-01',
-    N'Atelier 01 — Lumière',
+    'Footwear-01',
+    N'Footwear 01 — Lumière',
     N'Edition of 220',
     1480.00,
     N'Ivory Calfskin',
@@ -75,8 +75,8 @@ VALUES
     N'Hand-lasted in Florence over thirty-two hours. Lined in nude nappa, finished with a 24-carat gold-plated heel signature. Numbered. Never reissued.'
 ),
 (
-    'atelier-02',
-    N'Atelier 02 — Noir Suspendu',
+    'Footwear-02',
+    N'Footwear 02 — Noir Suspendu',
     N'Edition of 180',
     1640.00,
     N'Patent Obsidian',
@@ -84,8 +84,8 @@ VALUES
     N'Hand-lasted in Florence over thirty-two hours. Lined in nude nappa, finished with a 24-carat gold-plated heel signature. Numbered. Never reissued.'
 ),
 (
-    'atelier-03',
-    N'Atelier 03 — Or Liquide',
+    'Footwear-03',
+    N'Footwear 03 — Or Liquide',
     N'Edition of 140',
     1820.00,
     N'Brushed Champagne',

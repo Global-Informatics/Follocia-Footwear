@@ -1,17 +1,23 @@
-import logo from "@/assets/follocia-logo-new.png";
+import logo from "@/assets/follicia-logo-trimmed.png";
 import "../home/follicia.css";
 
 export function Footer() {
   return (
     <footer className="site-footer">
       <div className="footer-brand">
-        <a className="footer-logo-link inline-flex flex-col items-start transition-opacity hover:opacity-90" href="#/" aria-label="Follicia Home">
+        <a className="footer-logo-link" href="#/" aria-label="Follicia Home">
           <img
             src={logo}
             alt="FOLLICIA - Every Step, A Statement."
-            className="h-32 sm:h-36 w-auto max-w-[280px] object-contain -ml-2"
+            className="footer-logo-img select-none"
           />
         </a>
+        <div className="footer-company-info">
+          <p className="footer-company-address">
+            First Floor, 513/8 Chhunipura, Kirpal Nagar,<br />
+            Rohtak, Haryana 124001
+          </p>
+        </div>
       </div>
 
       <div>
@@ -26,21 +32,26 @@ export function Footer() {
         <h4>Shop</h4>
         <a href="#/new-arrivals">New arrivals</a>
         <a href="#/shop">All designs</a>
-        <a href="#/shop">Flats</a>
-        <a href="#/shop">Heels</a>
-        <a href="#/shop">Mules</a>
-        <a href="#/shop">Boots</a>
+        <a href="#/shop?category=flat">Flats</a>
+        <a href="#/shop?category=heel">Heels</a>
+        <a href="#/shop?category=mule">Mules</a>
+        <a href="#/shop?category=boot">Boots</a>
       </div>
 
       <div>
         <h4>Help</h4>
-        <a href="#/our-story">Contact</a>
-        <a href="#/our-story">Shipping &amp; Returns</a>
-        <a href="#/shop">Size guide</a>
-        <a href="#/our-story">FAQs</a>
+        <a href="#/contact">Contact</a>
+        <a href="#/shipping">Shipping &amp; Returns</a>
+        <a href="#/size-guide">Size guide</a>
+        <a href="#/faq">FAQs</a>
       </div>
 
-      <small>© 2026 Follicia. All rights reserved.</small>
+      <div className="site-footer-bottom">
+        <small>© 2026 Follicia. All rights reserved.</small>
+        <span className="footer-powered-by">
+          Powered by Groupe Ras Mondial
+        </span>
+      </div>
     </footer>
   );
 }

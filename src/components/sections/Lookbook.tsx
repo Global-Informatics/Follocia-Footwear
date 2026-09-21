@@ -5,7 +5,7 @@ import { GoldenParticles } from "../GoldenParticles";
 import c1 from "@/assets/collection-1.jpg";
 import c2 from "@/assets/collection-2.jpg";
 import c3 from "@/assets/collection-3.jpg";
-import atelier from "@/assets/atelier.jpg";
+import Footwear from "@/assets/Footwear.jpg";
 import d1 from "/images/shoe-detail-1.jpg";
 import d2 from "/images/shoe-detail-3.jpg";
 import d3 from "/images/shoe-detail-5.jpg";
@@ -14,7 +14,7 @@ const slides = [
   { src: c1, label: "01 — Lumière", caption: "Florence, dawn" },
   { src: d1, label: "02 — Texture", caption: "Calfskin study" },
   { src: c2, label: "03 — Noir", caption: "Velvet hours" },
-  { src: atelier, label: "04 — Atelier", caption: "The hand" },
+  { src: Footwear, label: "04 — Craft", caption: "The hand" },
   { src: c3, label: "05 — Or", caption: "Liquid gold" },
   { src: d2, label: "06 — Detail", caption: "Stitched silk" },
   { src: d3, label: "07 — Heel", caption: "Signature" },

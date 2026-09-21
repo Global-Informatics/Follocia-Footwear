@@ -19,9 +19,27 @@ export function OurStoryPage({
 
   const handleNewsletterSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newsletterEmail) return;
+    const emailVal = newsletterEmail.trim();
+    if (!emailVal) return;
     try {
-      localStorage.setItem("follicia-newsletter-email", newsletterEmail);
+      localStorage.setItem("follicia-newsletter-email", emailVal);
+      const key = "follocia_admin_newsletter";
+      const raw = localStorage.getItem(key);
+      const existing = raw ? JSON.parse(raw) : [];
+      const newEntry = {
+        id: `sub-${Date.now()}`,
+        title: emailVal,
+        meta: `Subscribed on ${new Date().toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })} via Our Story Page`,
+        status: "Subscribed",
+      };
+      const updated = [newEntry, ...existing.filter((item: any) => item.title?.toLowerCase() !== emailVal.toLowerCase())];
+      localStorage.setItem(key, JSON.stringify(updated));
+
+      void fetch("/api/commerce/admin-records/newsletter", {
+        method: "PUT",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify(updated.map((item) => ({ ...item, module: "newsletter" }))),
+      }).catch(() => {});
     } catch {}
     setNewsletterEmail("");
     setToastMessage("You’re on the Follicia VIP list");
@@ -148,7 +166,7 @@ export function OurStoryPage({
         <section className="newsletter">
           <p className="eyebrow">The Follicia Edit</p>
           <h2>Step into our world.</h2>
-          <p>New arrivals, private previews and stories from our atelier.</p>
+          <p>New arrivals, private previews and stories from Follicia.</p>
           <form onSubmit={handleNewsletterSubmit}>
             <input
               aria-label="Email address"

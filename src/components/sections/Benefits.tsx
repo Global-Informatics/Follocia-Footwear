@@ -4,7 +4,7 @@ import { Reveal } from "../Reveal";
 
 const benefits = [
   { n: "01", t: "Rare", d: "Released six times a year, never reissued. Each edition becomes a sealed chapter.", icon: "M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" },
-  { n: "02", t: "Sculpted", d: "Hand-lasted over 32 hours in our Florentine atelier by a single artisan.", icon: "M12 19l7-7 3 3-7 7-3-3zm0 0l-7-7-3 3 7 7 3-3zM12 19V5M5 12h14" },
+  { n: "02", t: "Sculpted", d: "Hand-lasted over 32 hours with Florentine craftsmanship by a single artisan.", icon: "M12 19l7-7 3 3-7 7-3-3zm0 0l-7-7-3 3 7 7 3-3zM12 19V5M5 12h14" },
   { n: "03", t: "Numbered", d: "Each pair signed, registered, and traceable to its owner for eternity.", icon: "M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" },
   { n: "04", t: "Eternal", d: "Lifetime restoration by the original artisan. Your pair, forever perfect.", icon: "M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" },
 ];

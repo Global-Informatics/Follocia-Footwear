@@ -1,6 +1,6 @@
 @model FollociaMvc.Models.ProductDetailViewModel
 @{
-    ViewData["Title"] = $"{Model.Product.Title} | Maison Follicia";
+    ViewData["Title"] = $"{Model.Product.Title} | Follicia";
 }
 
 <div class="product-detail-section">
@@ -33,17 +33,15 @@
                 <div class="size-selection-box">
                     <label>Select Size:</label>
                     <div class="size-chips">
-                        <button type="button" class="size-chip active">36</button>
-                        <button type="button" class="size-chip">37</button>
-                        <button type="button" class="size-chip">38</button>
-                        <button type="button" class="size-chip">39</button>
-                        <button type="button" class="size-chip">40</button>
-                        <button type="button" class="size-chip">41</button>
+                        <button type="button" class="size-chip active">EU 38</button>
+                        <button type="button" class="size-chip">EU 39</button>
+                        <button type="button" class="size-chip">EU 40</button>
+                        <button type="button" class="size-chip">EU 41</button>
                     </div>
                 </div>
 
                 <div class="detail-actions">
-                    <button type="button" class="btn-gold-solid btn-full" onclick="addToCart('@Model.Product.Id', '@Model.Product.Title', '@Model.Product.Price', '@Model.Product.Image', '@Model.Product.Edition')">+ ADD TO BAG</button>
+                    <button type="button" class="btn-gold-solid btn-full" style="background: #15803d; color: #ffffff; box-shadow: 0 4px 20px rgba(21, 128, 61, 0.35);" onclick="addToCart('@Model.Product.Id', '@Model.Product.Title', '@Model.Product.Price', '@Model.Product.Image', '@Model.Product.Edition')">+ ADD TO BAG</button>
                     <button type="button" class="btn-gold-outline btn-full" onclick="openVipModal()">RESERVE VIA CONCIERGE</button>
                 </div>
 

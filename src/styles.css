@@ -124,16 +124,38 @@
   html {
     font-family: var(--font-sans);
     -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    -webkit-tap-highlight-color: transparent;
     background-color: var(--color-background);
     color: var(--color-foreground);
     scroll-behavior: auto; /* we handle smooth scroll via JS */
+    overflow-x: clip !important;
+    overflow-x: hidden !important;
+    max-width: 100% !important;
+    width: 100% !important;
   }
 
   body {
     position: relative;
     background-color: var(--color-background);
     color: var(--color-foreground);
-    overflow-x: hidden;
+    overflow-x: clip !important;
+    overflow-x: hidden !important;
+    max-width: 100% !important;
+    width: 100% !important;
+    min-height: 100dvh;
+    touch-action: pan-y;
+  }
+
+  #root {
+    overflow-x: clip !important;
+    overflow-x: hidden !important;
+    max-width: 100% !important;
+    width: 100% !important;
+  }
+
+  button, a {
+    touch-action: manipulation;
   }
 
   ::selection {
@@ -421,24 +443,31 @@
 
 @import "./components/home/follicia.css";
 
-/* ──────────────────────── GREEN ACTION BUTTONS ──────────────────────── */
+/* ──────────────────────── LUXURY DARK BROWN ACTION BUTTONS ──────────────────────── */
+.btn-brown-action,
+.btn-brown-solid,
 .btn-green-action,
 .btn-green-solid {
-  background-color: #15803d !important;
-  background-image: linear-gradient(135deg, #16a34a, #15803d) !important;
+  background-color: #24130d !important;
+  background-image: linear-gradient(135deg, #351c13, #24130d) !important;
   color: #ffffff !important;
   border: none !important;
-  box-shadow: 0 4px 14px rgba(22, 163, 74, 0.35) !important;
+  border-radius: 9999px !important;
+  box-shadow: 0 6px 20px rgba(36, 19, 13, 0.35) !important;
   transition: all 0.3s ease !important;
 }
+.btn-brown-action:hover,
+.btn-brown-solid:hover,
 .btn-green-action:hover,
 .btn-green-solid:hover {
-  background-color: #166534 !important;
-  background-image: linear-gradient(135deg, #15803d, #166534) !important;
+  background-color: #3d2016 !important;
+  background-image: linear-gradient(135deg, #4b261a, #351c13) !important;
   color: #ffffff !important;
-  box-shadow: 0 6px 20px rgba(22, 163, 74, 0.5) !important;
+  box-shadow: 0 8px 24px rgba(36, 19, 13, 0.5) !important;
   transform: translateY(-1px);
 }
+.btn-brown-action:disabled,
+.btn-brown-solid:disabled,
 .btn-green-action:disabled,
 .btn-green-solid:disabled {
   background: #9ca3af !important;
@@ -449,17 +478,102 @@
   cursor: not-allowed !important;
 }
 
+.btn-brown-outline,
 .btn-green-outline {
   background-color: #ffffff !important;
-  color: #15803d !important;
-  border: 1.5px solid #16a34a !important;
-  box-shadow: 0 2px 8px rgba(22, 163, 74, 0.15) !important;
+  color: #24130d !important;
+  border: 1.5px solid #24130d !important;
+  border-radius: 9999px !important;
+  box-shadow: 0 2px 8px rgba(36, 19, 13, 0.15) !important;
   transition: all 0.3s ease !important;
 }
+.btn-brown-outline:hover,
 .btn-green-outline:hover {
-  background-color: #15803d !important;
+  background-color: #24130d !important;
   color: #ffffff !important;
-  border-color: #15803d !important;
-  box-shadow: 0 4px 14px rgba(22, 163, 74, 0.3) !important;
+  border-color: #24130d !important;
+  box-shadow: 0 6px 20px rgba(36, 19, 13, 0.3) !important;
+}
+
+/* Hide scrollbars utility */
+.no-scrollbar::-webkit-scrollbar {
+  display: none !important;
+  width: 0 !important;
+  height: 0 !important;
+}
+.no-scrollbar {
+  -ms-overflow-style: none !important;
+  scrollbar-width: none !important;
+}
+
+/* Account / Profile Dropdown inside header actions */
+.account-dropdown-menu {
+  display: flex !important;
+  flex-direction: column !important;
+  min-width: 220px !important;
+  gap: 2px !important;
+}
+
+.account-dropdown-menu a.account-dropdown-item,
+.follicia-home .actions .account-dropdown-menu a,
+.site-header .actions .account-dropdown-menu a,
+.actions .account-dropdown-menu a {
+  display: block !important;
+  width: 100% !important;
+  text-align: left !important;
+  justify-content: flex-start !important;
+  padding: 8px 10px !important;
+  font-size: 0.72rem !important;
+  font-weight: 500 !important;
+  letter-spacing: 0.08em !important;
+  line-height: 1.4 !important;
+  text-transform: uppercase !important;
+  color: #351c13 !important;
+  border-radius: 6px !important;
+  text-decoration: none !important;
+  white-space: nowrap !important;
+  box-sizing: border-box !important;
+  transition: all 0.2s ease !important;
+}
+
+.account-dropdown-menu a.account-dropdown-item:hover,
+.follicia-home .actions .account-dropdown-menu a:hover,
+.site-header .actions .account-dropdown-menu a:hover,
+.actions .account-dropdown-menu a:hover {
+  color: #a87648 !important;
+  background-color: rgba(168, 118, 72, 0.08) !important;
+  padding-left: 14px !important;
+}
+
+.account-dropdown-menu button.account-dropdown-logout,
+.follicia-home .actions .account-dropdown-menu button.account-dropdown-logout,
+.site-header .actions .account-dropdown-menu button.account-dropdown-logout,
+.actions .account-dropdown-menu button.account-dropdown-logout {
+  display: block !important;
+  width: 100% !important;
+  text-align: center !important;
+  justify-content: center !important;
+  padding: 8px 4px !important;
+  margin-top: 4px !important;
+  font-size: 0.72rem !important;
+  font-weight: 600 !important;
+  letter-spacing: 0.1em !important;
+  line-height: 1.4 !important;
+  text-transform: uppercase !important;
+  color: #dc2626 !important;
+  border-radius: 6px !important;
+  cursor: pointer !important;
+  background: transparent !important;
+  border: none !important;
+  box-sizing: border-box !important;
+  transition: all 0.2s ease !important;
+}
+
+.account-dropdown-menu button.account-dropdown-logout:hover,
+.follicia-home .actions .account-dropdown-menu button.account-dropdown-logout:hover,
+.site-header .actions .account-dropdown-menu button.account-dropdown-logout:hover,
+.actions .account-dropdown-menu button.account-dropdown-logout:hover {
+  color: #991b1b !important;
+  background-color: rgba(220, 38, 38, 0.08) !important;
 }
 

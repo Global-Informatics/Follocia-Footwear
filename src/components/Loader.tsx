@@ -89,7 +89,7 @@ export function Loader() {
               transition={{ delay: 0.5, duration: 1.2, ease: [0.2, 0.8, 0.2, 1] }}
               className="mt-5 eyebrow text-[var(--bone)]/50 tracking-[0.4em]"
             >
-              Maison Follicia
+              Follicia
             </motion.div>
 
             {/* Decorative line */}
@@ -143,7 +143,7 @@ export function Loader() {
               />
             </div>
             <div className="mt-4 flex justify-between eyebrow text-[var(--bone)]/30 text-[0.55rem] tracking-[0.3em]">
-              <span>Curating the Atelier</span>
+              <span>Curating Follicia</span>
               <span className="tabular-nums">{progress}%</span>
             </div>
           </div>

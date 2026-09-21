@@ -1,4 +1,4 @@
-// Maison Follicia Interactive Cart & Modal Controller
+// Follicia Interactive Cart & Modal Controller
 
 let cart = JSON.parse(localStorage.getItem('follocia_cart') || '[]');
 

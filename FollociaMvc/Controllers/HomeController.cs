@@ -152,10 +152,10 @@ public class HomeController : Controller
     {
         return new List<ProductDto>
         {
-            new("atelier-01", "Atelier 01 - Lumière", "Edition of 220", "EUR 1,480", "Ivory Calfskin", "/react/assets/collection-1.jpg", new[] { "/react/assets/collection-1.jpg" }, "Live", 220, 184, 36),
-            new("atelier-02", "Atelier 02 - Noir Suspendu", "Edition of 180", "EUR 1,640", "Patent Obsidian", "/react/assets/collection-2.jpg", new[] { "/react/assets/collection-2.jpg" }, "Live", 180, 168, 12),
-            new("atelier-03", "Atelier 03 - Or Liquide", "Edition of 140", "EUR 1,820", "Brushed Champagne", "/react/assets/collection-3.jpg", new[] { "/react/assets/collection-3.jpg" }, "Private Preview", 140, 121, 19),
-            new("atelier-04", "Atelier 04 - Rosso Vow", "Edition of 80", "EUR 2,120", "Rosso Patent", "/react/assets/atelier.jpg", new[] { "/react/assets/atelier.jpg" }, "Draft", 80, 0, 80)
+            new("fl-aura-01", "Follicia Aura Mule", "Edition of 220", "Rs. 24,800", "Ivory Calfskin", "/react/assets/collection-1.jpg", new[] { "/react/assets/collection-1.jpg" }, "Live", 220, 184, 36),
+            new("fl-bloom-01", "Follicia Bloom Pump", "Edition of 180", "Rs. 28,500", "Patent Obsidian", "/react/assets/collection-2.jpg", new[] { "/react/assets/collection-2.jpg" }, "Live", 180, 168, 12),
+            new("fl-starlight-01", "Follicia Starlight Heel", "Edition of 140", "Rs. 32,000", "Brushed Champagne", "/react/assets/collection-3.jpg", new[] { "/react/assets/collection-3.jpg" }, "Private Preview", 140, 121, 19),
+            new("fl-celestial-01", "Follicia Celestial Boot", "Edition of 80", "Rs. 36,000", "Rosso Patent", "/react/assets/Footwear.jpg", new[] { "/react/assets/Footwear.jpg" }, "Draft", 80, 0, 80)
         };
     }
 
@@ -163,7 +163,7 @@ public class HomeController : Controller
     {
         return new List<CollectionCardModel>
         {
-            new() { Id = "col-1", Name = "Florence Atelier Gold", Subtitle = "Hand-sculpted golden heel silhouettes in brushed brass & ivory calfskin.", Season = "MMXXV Edition I", ImageUrl = "/react/assets/collection-1.jpg", PairsCount = 220, Status = "Available" },
+            new() { Id = "col-1", Name = "Florence Heritage Gold", Subtitle = "Hand-sculpted golden heel silhouettes in brushed brass & ivory calfskin.", Season = "MMXXV Edition I", ImageUrl = "/react/assets/collection-1.jpg", PairsCount = 220, Status = "Available" },
             new() { Id = "col-2", Name = "Obsidian Nocturne", Subtitle = "Deep midnight patent leather with architectural sculpted heels.", Season = "MMXXV Edition II", ImageUrl = "/react/assets/collection-2.jpg", PairsCount = 180, Status = "Low Stock" },
             new() { Id = "col-3", Name = "Champagne Reserve", Subtitle = "Liquid satin & champagne metallic finish, reserved for private clients.", Season = "MMXXV Edition III", ImageUrl = "/react/assets/collection-3.jpg", PairsCount = 140, Status = "Private Access" }
         };
@@ -173,9 +173,9 @@ public class HomeController : Controller
     {
         return new List<LookbookItemModel>
         {
-            new() { Id = "lb-1", Title = "Palazzo Corsini Gala", Location = "Florence, Italy", ImageUrl = "/react/assets/collection-1.jpg", FootwearFeatured = "Atelier 01 - Lumière" },
-            new() { Id = "lb-2", Title = "Opera Night at Teatro La Fenice", Location = "Venice, Italy", ImageUrl = "/react/assets/collection-2.jpg", FootwearFeatured = "Atelier 02 - Noir Suspendu" },
-            new() { Id = "lb-3", Title = "Private Villa Soirée", Location = "Lake Como, Italy", ImageUrl = "/react/assets/collection-3.jpg", FootwearFeatured = "Atelier 03 - Or Liquide" }
+            new() { Id = "lb-1", Title = "Palazzo Corsini Gala", Location = "Florence, Italy", ImageUrl = "/react/assets/collection-1.jpg", FootwearFeatured = "Follicia Aura Mule" },
+            new() { Id = "lb-2", Title = "Opera Night at Teatro La Fenice", Location = "Venice, Italy", ImageUrl = "/react/assets/collection-2.jpg", FootwearFeatured = "Follicia Bloom Pump" },
+            new() { Id = "lb-3", Title = "Private Villa Soirée", Location = "Lake Como, Italy", ImageUrl = "/react/assets/collection-3.jpg", FootwearFeatured = "Follicia Starlight Heel" }
         };
     }
 

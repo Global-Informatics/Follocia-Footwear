@@ -68,7 +68,7 @@ public class CommerceCustomer
     public string Phone { get; set; } = "";
 
     [MaxLength(80)]
-    public string Tier { get; set; } = "Private Atelier";
+    public string Tier { get; set; } = "Follicia Private";
 
     [MaxLength(20)]
     public string MemberSince { get; set; } = "MMXXVI";

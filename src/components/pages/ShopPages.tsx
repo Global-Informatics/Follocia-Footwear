@@ -1,11 +1,12 @@
 import { useEffect, useMemo, useState, useRef, type ReactNode } from "react";
+import { createPortal } from "react-dom";
 import { motion, useMotionValue, useSpring, useTransform, AnimatePresence } from "framer-motion";
 import { Navigation } from "@/components/Navigation";
 import { Footer } from "@/components/sections/Footer";
 import { CartDrawer } from "@/components/cart/CartDrawer";
-import { QuickView } from "@/components/cart/QuickView";
-import { useCart } from "@/components/cart/CartContext";
+import { useCart, parsePriceNumber } from "@/components/cart/CartContext";
 import { GoldenParticles } from "@/components/GoldenParticles";
+import { Search, X, SlidersHorizontal, RotateCcw, Check, ChevronDown, ChevronUp, Filter, Sparkles } from "lucide-react";
 import {
   COMMERCE_EVENT,
   createOrdersFromCartRemote,
@@ -27,10 +28,28 @@ import {
   type ProductVariant,
 } from "@/lib/commerceStore";
 import type { AuthSession } from "@/components/auth/AuthGateway";
-import { readCheckoutCoupon } from "@/lib/coupons";
-import "@/components/home/follicia.css";
-
+import { readCheckoutCoupon, saveCheckoutCoupon, validateCoupon } from "@/lib/coupons";
+import { recordLaunchOrder, getUserDiscountEligibility } from "@/lib/launchDiscounts";
+import { fetchFreeCurrentLocation, lookupPincodeDetails } from "@/lib/geoAddress";
+import { getGatewaySettings, getActiveRazorpayKey, isTestGateway } from "@/lib/paymentGateway";
+import { ProductImageZoom } from "@/components/ui/ProductImageZoom";
 const ease = [0.2, 0.8, 0.2, 1] as const;
+
+const RAZORPAY_LIVE_KEY_ID = "";
+
+function loadRazorpayScript(): Promise<boolean> {
+  return new Promise((resolve) => {
+    if (typeof window !== "undefined" && (window as any).Razorpay) {
+      resolve(true);
+      return;
+    }
+    const script = document.createElement("script");
+    script.src = "https://checkout.razorpay.com/v1/checkout.js";
+    script.onload = () => resolve(true);
+    script.onerror = () => resolve(false);
+    document.body.appendChild(script);
+  });
+}
 
 type PageShellProps = {
   session: AuthSession | null;
@@ -40,7 +59,8 @@ type PageShellProps = {
   darkNav?: boolean;
 };
 
-const sizes = ["EU38", "EU39", "EU40", "EU41"];
+export const DEFAULT_PRODUCT_SIZES = ["EU 38", "EU 39", "EU 40", "EU 41"];
+const sizes = DEFAULT_PRODUCT_SIZES;
 
 function getColorHex(colorName: string): string {
   const c = colorName.toLowerCase();
@@ -54,9 +74,115 @@ function getColorHex(colorName: string): string {
   return "#f2e9d9"; // default ivory/nude/champagne
 }
 
-function priceNumber(price: string | number) {
-  if (typeof price === "number") return price;
-  return Number(String(price).replace(/[^\d]/g, "")) || 0;
+function priceNumber(price: string | number | undefined | null): number {
+  return parsePriceNumber(price);
+}
+
+function matchesColorFilter(product: CommerceProduct, colorFilter: string): boolean {
+  if (!colorFilter || colorFilter === "All") return true;
+
+  const target = colorFilter.toLowerCase();
+  const pAny = product as any;
+
+  const colorTexts: string[] = [
+    pAny.color || "",
+    pAny.colors || "",
+    pAny.tone || "",
+    pAny.heroColour || "",
+    pAny.colourName || "",
+    pAny.colourFamily || "",
+    ...(Array.isArray(pAny.availableColors) ? pAny.availableColors : []),
+  ];
+
+  if (Array.isArray(product.variants)) {
+    for (const v of product.variants) {
+      if (v.heroColour) colorTexts.push(v.heroColour);
+      if (v.colourName) colorTexts.push(v.colourName);
+      if (v.colourFamily) colorTexts.push(v.colourFamily);
+    }
+  }
+
+  const combined = colorTexts.join(" ").toLowerCase();
+
+  if (target === "black" || target.includes("black")) {
+    return (
+      combined.includes("black") ||
+      combined.includes("noir") ||
+      combined.includes("ebony") ||
+      combined.includes("onyx") ||
+      combined.includes("charcoal") ||
+      combined.includes("jet black")
+    );
+  }
+  if (target.includes("ivory") || target.includes("nude") || target.includes("white")) {
+    return (
+      combined.includes("ivory") ||
+      combined.includes("nude") ||
+      combined.includes("cream") ||
+      combined.includes("beige") ||
+      combined.includes("white") ||
+      combined.includes("champagne") ||
+      combined.includes("pearl") ||
+      combined.includes("sand") ||
+      combined.includes("butter")
+    );
+  }
+  if (target.includes("brown") || target.includes("tan")) {
+    return (
+      combined.includes("brown") ||
+      combined.includes("tan") ||
+      combined.includes("chocolate") ||
+      combined.includes("fawn") ||
+      combined.includes("leopard") ||
+      combined.includes("caramel") ||
+      combined.includes("mocha") ||
+      combined.includes("chestnut")
+    );
+  }
+  if (target.includes("blush") || target.includes("rose") || target.includes("pink")) {
+    return (
+      combined.includes("blush") ||
+      combined.includes("rose") ||
+      combined.includes("pink") ||
+      combined.includes("coral")
+    );
+  }
+  if (target.includes("silver") || target.includes("chrome") || target.includes("gunmetal")) {
+    return (
+      combined.includes("silver") ||
+      combined.includes("chrome") ||
+      combined.includes("gunmetal") ||
+      combined.includes("metallic") ||
+      combined.includes("mirror")
+    );
+  }
+  if (target.includes("gold") || target.includes("monarch") || target.includes("amber")) {
+    return (
+      combined.includes("gold") ||
+      combined.includes("monarch") ||
+      combined.includes("amber") ||
+      combined.includes("bronze") ||
+      combined.includes("brass") ||
+      combined.includes("copper")
+    );
+  }
+  if (target.includes("burgundy") || target.includes("maroon") || target.includes("red")) {
+    return (
+      combined.includes("burgundy") ||
+      combined.includes("maroon") ||
+      combined.includes("wine") ||
+      combined.includes("red")
+    );
+  }
+  if (target.includes("olive") || target.includes("green")) {
+    return (
+      combined.includes("olive") ||
+      combined.includes("green") ||
+      combined.includes("khaki")
+    );
+  }
+
+  return combined.includes(target);
 }
 
 function slugify(value: string) {
@@ -74,19 +200,33 @@ export async function shareProduct(product: { id: string; title: string; price?:
     try {
       await navigator.share({
         title: `Follicia | ${product.title}`,
-        text: `Discover ${product.title} on Follicia Footwear`,
+        text: `Discover ${product.title} on Follicia Footwear: ${shareUrl}`,
         url: shareUrl,
       });
       return;
-    } catch {}
+    } catch (err: any) {
+      if (err?.name === "AbortError") return;
+    }
   }
-  if (typeof navigator !== "undefined" && navigator.clipboard) {
+  if (typeof navigator !== "undefined" && navigator.clipboard?.writeText) {
     try {
       await navigator.clipboard.writeText(shareUrl);
       onCopied?.();
       return;
     } catch {}
   }
+  try {
+    const textarea = document.createElement("textarea");
+    textarea.value = shareUrl;
+    textarea.style.position = "fixed";
+    textarea.style.opacity = "0";
+    document.body.appendChild(textarea);
+    textarea.focus();
+    textarea.select();
+    document.execCommand("copy");
+    document.body.removeChild(textarea);
+    onCopied?.();
+  } catch {}
 }
 
 function liveProducts() {
@@ -118,7 +258,7 @@ function stockMood(product: CommerceProduct) {
 }
 
 function sizeConfidence(product: CommerceProduct, selectedSize: string) {
-  if (!selectedSize) return "Select a size for atelier guidance.";
+  if (!selectedSize) return "Select a size for fit guidance.";
   const sizeNumber = Number(selectedSize.replace(/\D/g, ""));
   if (product.tone.toLowerCase().includes("patent") && sizeNumber <= 37) return "Patent finish can feel structured. Concierge suggests reviewing half-size comfort.";
   if (product.tone.toLowerCase().includes("satin")) return "Satin edition fits true to size with a softer instep feel.";
@@ -132,11 +272,27 @@ function addressLine(address: CommerceAddress) {
 async function saveContactQuery(name: string, email: string, requestType: string, message: string) {
   const key = "follocia_admin_contact";
   const existing = JSON.parse(localStorage.getItem(key) || "[]") as Array<{ id: string; title: string; meta: string; status: string }>;
+  const ticketData = {
+    name,
+    email,
+    phone: "",
+    subject: requestType,
+    message,
+    createdAt: new Date().toLocaleString("en-IN", {
+      day: "numeric",
+      month: "short",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+    }),
+    status: "Open",
+    replies: [],
+  };
   const next = [
     {
       id: `contact-${Date.now()}`,
       title: `${requestType} from ${name}`,
-      meta: `${email} - ${message}`,
+      meta: JSON.stringify(ticketData),
       status: "Open",
     },
     ...existing,
@@ -169,53 +325,112 @@ function FilterDropdown({
   value,
   options,
   onChange,
+  alignRight,
 }: {
   label: string;
   value: string;
   options: string[];
   onChange: (val: string) => void;
+  alignRight?: boolean;
 }) {
   const [open, setOpen] = useState(false);
-  const ref = useRef<HTMLDivElement>(null);
+  const buttonRef = useRef<HTMLButtonElement>(null);
+  const [pos, setPos] = useState<{ top: number; left: number } | null>(null);
+
+  const updatePos = () => {
+    if (buttonRef.current) {
+      const rect = buttonRef.current.getBoundingClientRect();
+      const width = 160;
+      let left = rect.left;
+      if (alignRight) {
+        left = rect.right - width;
+      } else if (typeof window !== "undefined" && window.innerWidth < 640) {
+        left = rect.left + rect.width / 2 - width / 2;
+      }
+      if (typeof window !== "undefined") {
+        left = Math.max(12, Math.min(window.innerWidth - width - 12, left));
+      }
+      setPos({
+        top: rect.bottom + 6,
+        left,
+      });
+    }
+  };
+
+  const handleToggle = () => {
+    if (!open) {
+      updatePos();
+    }
+    setOpen(!open);
+  };
 
   useEffect(() => {
+    if (!open) return;
+    const handleScrollOrResize = () => updatePos();
     const handleClickOutside = (e: MouseEvent) => {
-      if (ref.current && !ref.current.contains(e.target as Node)) {
+      const target = e.target as Node;
+      if (
+        buttonRef.current &&
+        !buttonRef.current.contains(target) &&
+        !(target as HTMLElement).closest?.(".follocia-filter-popover")
+      ) {
         setOpen(false);
       }
     };
+    window.addEventListener("scroll", handleScrollOrResize, true);
+    window.addEventListener("resize", handleScrollOrResize);
     document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, []);
+    return () => {
+      window.removeEventListener("scroll", handleScrollOrResize, true);
+      window.removeEventListener("resize", handleScrollOrResize);
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, [open]);
+
+  const isFiltered = value !== "All" && value !== "Featured";
 
   return (
-    <div ref={ref} className="relative">
+    <>
       <button
+        ref={buttonRef}
         type="button"
-        onClick={() => setOpen(!open)}
-        className="flex items-center gap-1.5 cursor-pointer text-[10px] uppercase tracking-widest text-[var(--ink)]/70 hover:text-[var(--ink)] transition-colors select-none py-1"
+        onClick={handleToggle}
+        className={`flex items-center gap-0.5 cursor-pointer text-[9px] uppercase tracking-wider transition-all select-none px-1.5 py-0.5 sm:px-2 sm:py-0.5 rounded-full shrink-0 ${
+          open || isFiltered
+            ? "bg-[#351c13] text-white shadow-xs font-semibold"
+            : "text-[var(--ink)]/75 hover:text-[var(--ink)] hover:bg-[var(--ink)]/5 font-medium"
+        }`}
       >
-        <span className="text-[var(--ink)]/40 font-medium">{label}</span>
-        <span className="font-semibold text-[var(--ink)]">{value}</span>
+        <span className={open || isFiltered ? "text-amber-200/80 font-normal" : "text-[var(--ink)]/45 font-medium"}>{label}</span>
+        <span className="font-bold">{value}</span>
         <svg
-          width="8"
-          height="8"
+          width="7"
+          height="7"
           viewBox="0 0 24 24"
           fill="none"
           stroke="currentColor"
           strokeWidth="2.5"
-          className={`transition-transform duration-200 text-[var(--ink)]/50 ${open ? "rotate-180" : ""}`}
+          className={`transition-transform duration-200 ${open ? "rotate-180" : ""}`}
         >
           <path d="M6 9l6 6 6-6" />
         </svg>
       </button>
 
-      {open && (
-        <div className="absolute top-full left-0 mt-2 min-w-[150px] overflow-hidden rounded-md border border-[#4b261a22] bg-white shadow-[0_12px_32px_rgba(0,0,0,0.18)] z-50 animate-in fade-in zoom-in-95 duration-150">
-          <div className="bg-[#5c5c5c] px-3.5 py-2 text-left text-xs font-semibold text-white">
-            {value}
+      {open && pos && createPortal(
+        <div
+          style={{
+            position: "fixed",
+            top: `${pos.top}px`,
+            left: `${pos.left}px`,
+            zIndex: 99999,
+          }}
+          className="follocia-filter-popover w-[160px] max-w-[calc(100vw-24px)] overflow-hidden rounded-xl border border-[#4b261a22] bg-white p-1 shadow-[0_16px_40px_rgba(0,0,0,0.25)] animate-in fade-in zoom-in-95 duration-150"
+        >
+          <div className="bg-[#351c13] px-2.5 py-1 rounded-t-lg text-left text-[9.5px] font-bold uppercase tracking-wider text-amber-200 flex items-center justify-between">
+            <span>{label}</span>
+            <span className="text-white text-[8.5px] font-normal">{value}</span>
           </div>
-          <div className="py-1">
+          <div className="py-0.5">
             {options.map((opt) => (
               <button
                 key={opt}
@@ -224,20 +439,21 @@ function FilterDropdown({
                   onChange(opt);
                   setOpen(false);
                 }}
-                className={`flex w-full items-center justify-between px-3.5 py-2 text-left text-xs transition-colors ${
+                className={`flex w-full items-center justify-between px-2.5 py-1 text-left text-[10.5px] rounded-lg transition-colors cursor-pointer ${
                   value === opt
-                    ? "bg-[#f5efe6] font-semibold text-[#24130d]"
-                    : "text-[#24130d]/80 hover:bg-[#fffaf0] hover:text-[#24130d]"
+                    ? "bg-[#351c13] font-semibold text-white"
+                    : "text-[#24130d] hover:bg-[#fffaf0] hover:text-[#24130d]"
                 }`}
               >
                 <span>{opt}</span>
-                {value === opt && <span className="text-[var(--gold)] ml-2">✓</span>}
+                {value === opt && <span className="text-amber-300 ml-2 font-bold">✓</span>}
               </button>
             ))}
           </div>
-        </div>
+        </div>,
+        document.body
       )}
-    </div>
+    </>
   );
 }
 
@@ -254,150 +470,292 @@ const COLOR_SWATCHES = [
 function PriceRangeDropdown({
   maxPrice,
   onChange,
+  alignRight,
 }: {
   maxPrice: number;
   onChange: (val: number) => void;
+  alignRight?: boolean;
 }) {
   const [open, setOpen] = useState(false);
-  const ref = useRef<HTMLDivElement>(null);
+  const [tempPrice, setTempPrice] = useState<string>(maxPrice >= 40000 ? "" : String(maxPrice));
+  const buttonRef = useRef<HTMLButtonElement>(null);
+  const [pos, setPos] = useState<{ top: number; left: number } | null>(null);
 
   useEffect(() => {
+    setTempPrice(maxPrice >= 40000 ? "" : String(maxPrice));
+  }, [maxPrice]);
+
+  const updatePos = () => {
+    if (buttonRef.current) {
+      const rect = buttonRef.current.getBoundingClientRect();
+      const width = 270;
+      let left = rect.left;
+      if (alignRight) {
+        left = rect.right - width;
+      } else if (typeof window !== "undefined" && window.innerWidth < 640) {
+        left = rect.left + rect.width / 2 - width / 2;
+      }
+      if (typeof window !== "undefined") {
+        left = Math.max(12, Math.min(window.innerWidth - width - 12, left));
+      }
+      setPos({
+        top: rect.bottom + 6,
+        left,
+      });
+    }
+  };
+
+  const handleToggle = () => {
+    if (!open) {
+      updatePos();
+    }
+    setOpen(!open);
+  };
+
+  useEffect(() => {
+    if (!open) return;
+    const handleScrollOrResize = () => updatePos();
     const handleClickOutside = (e: MouseEvent) => {
-      if (ref.current && !ref.current.contains(e.target as Node)) {
+      const target = e.target as Node;
+      if (
+        buttonRef.current &&
+        !buttonRef.current.contains(target) &&
+        !(target as HTMLElement).closest?.(".follocia-filter-popover")
+      ) {
         setOpen(false);
       }
     };
+    window.addEventListener("scroll", handleScrollOrResize, true);
+    window.addEventListener("resize", handleScrollOrResize);
     document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, []);
+    return () => {
+      window.removeEventListener("scroll", handleScrollOrResize, true);
+      window.removeEventListener("resize", handleScrollOrResize);
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, [open]);
 
-  const displayVal = maxPrice >= 40000 ? "ALL" : `≤ Rs. ${maxPrice.toLocaleString("en-IN")}`;
+  const isFiltered = maxPrice < 40000;
+  const displayVal = maxPrice >= 40000 ? "ALL" : `≤ ₹${maxPrice.toLocaleString("en-IN")}`;
+
+  const handleApplyInput = (valStr: string) => {
+    setTempPrice(valStr);
+    const cleanStr = valStr.replace(/[^0-9]/g, "");
+    if (!cleanStr) {
+      onChange(40000);
+      return;
+    }
+    const num = Number(cleanStr);
+    if (!isNaN(num) && num > 0) {
+      onChange(num);
+    }
+  };
 
   return (
-    <div ref={ref} className="relative">
+    <>
       <button
+        ref={buttonRef}
         type="button"
-        onClick={() => setOpen(!open)}
-        className="flex items-center gap-1.5 cursor-pointer text-[10px] uppercase tracking-widest text-[var(--ink)]/70 hover:text-[var(--ink)] transition-colors select-none py-1"
+        onClick={handleToggle}
+        className={`flex items-center gap-0.5 cursor-pointer text-[9px] uppercase tracking-wider transition-all select-none px-1.5 py-0.5 sm:px-2 sm:py-0.5 rounded-full shrink-0 ${
+          open || isFiltered
+            ? "bg-[#351c13] text-white shadow-xs font-semibold"
+            : "text-[var(--ink)]/75 hover:text-[var(--ink)] hover:bg-[var(--ink)]/5 font-medium"
+        }`}
       >
-        <span className="text-[var(--ink)]/40 font-medium">PRICE</span>
-        <span className="font-semibold text-[var(--ink)]">{displayVal}</span>
+        <span className={open || isFiltered ? "text-amber-200/80 font-normal" : "text-[var(--ink)]/45 font-medium"}>PRICE</span>
+        <span className="font-bold">{displayVal}</span>
         <svg
-          width="8"
-          height="8"
+          width="7"
+          height="7"
           viewBox="0 0 24 24"
           fill="none"
           stroke="currentColor"
           strokeWidth="2.5"
-          className={`transition-transform duration-200 text-[var(--ink)]/50 ${open ? "rotate-180" : ""}`}
+          className={`transition-transform duration-200 ${open ? "rotate-180" : ""}`}
         >
           <path d="M6 9l6 6 6-6" />
         </svg>
       </button>
 
-      {open && (
-        <div className="absolute top-full left-0 mt-2 min-w-[240px] p-4 rounded-xl border border-[#4b261a22] bg-white shadow-[0_12px_32px_rgba(0,0,0,0.18)] z-50 animate-in fade-in zoom-in-95 duration-150">
-          <div className="flex items-center justify-between text-xs font-bold text-[#24130d] mb-2">
-            <span>PRICE RANGE</span>
+      {open && pos && createPortal(
+        <div
+          style={{
+            position: "fixed",
+            top: `${pos.top}px`,
+            left: `${pos.left}px`,
+            zIndex: 99999,
+          }}
+          className="follocia-filter-popover w-[270px] max-w-[calc(100vw-24px)] p-3 rounded-xl border border-[#4b261a22] bg-white shadow-[0_16px_40px_rgba(0,0,0,0.25)] animate-in fade-in zoom-in-95 duration-150"
+        >
+          <div className="flex items-center justify-between text-[10px] font-bold text-[#24130d] mb-2">
+            <span>SET PRICE LIMIT</span>
             <span className="text-[var(--gold)] font-bold">
-              {maxPrice >= 40000 ? "All Prices (Up to Rs. 40k)" : `Up to Rs. ${maxPrice.toLocaleString("en-IN")}`}
+              {maxPrice >= 40000 ? "All Prices" : `Up to ₹${maxPrice.toLocaleString("en-IN")}`}
             </span>
           </div>
 
+          {/* Manual Custom Price Input */}
+          <div className="mb-2.5">
+            <label className="block text-[8.5px] font-medium text-[#4b261a99] uppercase tracking-wider mb-1">
+              Custom Max Price (₹)
+            </label>
+            <div className="flex items-center gap-1.5">
+              <div className="relative flex-1">
+                <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-[10px] font-bold text-[#4b261a70]">₹</span>
+                <input
+                  type="number"
+                  min="1000"
+                  max="100000"
+                  step="500"
+                  placeholder="e.g. 4000"
+                  value={tempPrice}
+                  onChange={(e) => handleApplyInput(e.target.value)}
+                  className="w-full h-7 pl-6 pr-2 rounded-lg border border-[#4b261a25] bg-[#fffaf0]/60 text-[10.5px] font-semibold text-[#24130d] outline-none focus:border-[#351c13] focus:ring-1 focus:ring-[#351c13]"
+                />
+              </div>
+              {maxPrice < 40000 && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setTempPrice("");
+                    onChange(40000);
+                  }}
+                  className="px-2 py-1 text-[8.5px] font-semibold text-[#4b261a99] hover:text-[#24130d] underline cursor-pointer"
+                >
+                  Reset
+                </button>
+              )}
+            </div>
+          </div>
+
+          {/* Range Slider */}
           <input
             type="range"
             min="3000"
             max="40000"
             step="500"
-            value={maxPrice}
-            onChange={(e) => onChange(Number(e.target.value))}
-            className="w-full accent-[var(--gold)] cursor-pointer h-2 bg-[#4b261a15] rounded-lg mb-3"
+            value={maxPrice >= 40000 ? 40000 : maxPrice}
+            onChange={(e) => {
+              const val = Number(e.target.value);
+              setTempPrice(val >= 40000 ? "" : String(val));
+              onChange(val);
+            }}
+            className="w-full accent-[#351c13] cursor-pointer h-1.5 bg-[#4b261a15] rounded-lg mb-2"
           />
-
-          <div className="flex items-center justify-between gap-1 text-[10px] uppercase text-[#4b261a80]">
-            <button
-              type="button"
-              onClick={() => onChange(40000)}
-              className={`px-2 py-1 rounded border transition-colors cursor-pointer ${maxPrice >= 40000 ? "border-[var(--gold)] bg-[#fffaf0] font-bold text-[#24130d]" : "border-[#4b261a15] hover:border-[#4b261a40]"}`}
-            >
-              All
-            </button>
-            <button
-              type="button"
-              onClick={() => onChange(10000)}
-              className={`px-2 py-1 rounded border transition-colors cursor-pointer ${maxPrice === 10000 ? "border-[var(--gold)] bg-[#fffaf0] font-bold text-[#24130d]" : "border-[#4b261a15] hover:border-[#4b261a40]"}`}
-            >
-              &lt; Rs. 10K
-            </button>
-            <button
-              type="button"
-              onClick={() => onChange(20000)}
-              className={`px-2 py-1 rounded border transition-colors cursor-pointer ${maxPrice === 20000 ? "border-[var(--gold)] bg-[#fffaf0] font-bold text-[#24130d]" : "border-[#4b261a15] hover:border-[#4b261a40]"}`}
-            >
-              &lt; Rs. 20K
-            </button>
-            <button
-              type="button"
-              onClick={() => onChange(30000)}
-              className={`px-2 py-1 rounded border transition-colors cursor-pointer ${maxPrice === 30000 ? "border-[var(--gold)] bg-[#fffaf0] font-bold text-[#24130d]" : "border-[#4b261a15] hover:border-[#4b261a40]"}`}
-            >
-              &lt; Rs. 30K
-            </button>
-          </div>
-        </div>
+        </div>,
+        document.body
       )}
-    </div>
+    </>
   );
 }
 
 function ColorFilterDropdown({
   value,
   onChange,
+  alignRight,
 }: {
   value: string;
   onChange: (val: string) => void;
+  alignRight?: boolean;
 }) {
   const [open, setOpen] = useState(false);
-  const ref = useRef<HTMLDivElement>(null);
+  const buttonRef = useRef<HTMLButtonElement>(null);
+  const [pos, setPos] = useState<{ top: number; left: number } | null>(null);
+
+  const updatePos = () => {
+    if (buttonRef.current) {
+      const rect = buttonRef.current.getBoundingClientRect();
+      const width = 200;
+      let left = rect.left;
+      if (alignRight) {
+        left = rect.right - width;
+      } else if (typeof window !== "undefined" && window.innerWidth < 640) {
+        left = rect.left + rect.width / 2 - width / 2;
+      }
+      if (typeof window !== "undefined") {
+        left = Math.max(12, Math.min(window.innerWidth - width - 12, left));
+      }
+      setPos({
+        top: rect.bottom + 6,
+        left,
+      });
+    }
+  };
+
+  const handleToggle = () => {
+    if (!open) {
+      updatePos();
+    }
+    setOpen(!open);
+  };
 
   useEffect(() => {
+    if (!open) return;
+    const handleScrollOrResize = () => updatePos();
     const handleClickOutside = (e: MouseEvent) => {
-      if (ref.current && !ref.current.contains(e.target as Node)) {
+      const target = e.target as Node;
+      if (
+        buttonRef.current &&
+        !buttonRef.current.contains(target) &&
+        !(target as HTMLElement).closest?.(".follocia-filter-popover")
+      ) {
         setOpen(false);
       }
     };
+    window.addEventListener("scroll", handleScrollOrResize, true);
+    window.addEventListener("resize", handleScrollOrResize);
     document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, []);
+    return () => {
+      window.removeEventListener("scroll", handleScrollOrResize, true);
+      window.removeEventListener("resize", handleScrollOrResize);
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, [open]);
+
+  const isFiltered = value !== "All";
 
   return (
-    <div ref={ref} className="relative">
+    <>
       <button
+        ref={buttonRef}
         type="button"
-        onClick={() => setOpen(!open)}
-        className="flex items-center gap-1.5 cursor-pointer text-[10px] uppercase tracking-widest text-[var(--ink)]/70 hover:text-[var(--ink)] transition-colors select-none py-1"
+        onClick={handleToggle}
+        className={`flex items-center gap-0.5 cursor-pointer text-[9px] uppercase tracking-wider transition-all select-none px-1.5 py-0.5 sm:px-2 sm:py-0.5 rounded-full shrink-0 ${
+          open || isFiltered
+            ? "bg-[#351c13] text-white shadow-xs font-semibold"
+            : "text-[var(--ink)]/75 hover:text-[var(--ink)] hover:bg-[var(--ink)]/5 font-medium"
+        }`}
       >
-        <span className="text-[var(--ink)]/40 font-medium">COLOR</span>
-        <span className="font-semibold text-[var(--ink)]">{value}</span>
+        <span className={open || isFiltered ? "text-amber-200/80 font-normal" : "text-[var(--ink)]/45 font-medium"}>COLOR</span>
+        <span className="font-bold">{value}</span>
         <svg
-          width="8"
-          height="8"
+          width="7"
+          height="7"
           viewBox="0 0 24 24"
           fill="none"
           stroke="currentColor"
           strokeWidth="2.5"
-          className={`transition-transform duration-200 text-[var(--ink)]/50 ${open ? "rotate-180" : ""}`}
+          className={`transition-transform duration-200 ${open ? "rotate-180" : ""}`}
         >
           <path d="M6 9l6 6 6-6" />
         </svg>
       </button>
 
-      {open && (
-        <div className="absolute top-full left-0 mt-2 min-w-[200px] overflow-hidden rounded-xl border border-[#4b261a22] bg-white p-2 shadow-[0_12px_32px_rgba(0,0,0,0.18)] z-50 animate-in fade-in zoom-in-95 duration-150">
-          <div className="px-3 py-1.5 text-[10px] font-bold uppercase tracking-widest text-[#4b261a80] border-b border-[#4b261a12] mb-1">
+      {open && pos && createPortal(
+        <div
+          style={{
+            position: "fixed",
+            top: `${pos.top}px`,
+            left: `${pos.left}px`,
+            zIndex: 99999,
+          }}
+          className="follocia-filter-popover w-[200px] max-w-[calc(100vw-24px)] overflow-hidden rounded-xl border border-[#4b261a22] bg-white p-1.5 shadow-[0_16px_40px_rgba(0,0,0,0.25)] animate-in fade-in zoom-in-95 duration-150"
+        >
+          <div className="px-2.5 py-1 text-[8.5px] font-bold uppercase tracking-widest text-[#4b261a80] border-b border-[#4b261a12] mb-1">
             Filter by Color
           </div>
-          <div className="py-1 grid gap-1">
+          <div className="py-0.5 grid gap-0.5">
             {COLOR_SWATCHES.map((swatch) => (
               <button
                 key={swatch.name}
@@ -406,40 +764,56 @@ function ColorFilterDropdown({
                   onChange(swatch.name);
                   setOpen(false);
                 }}
-                className={`flex w-full items-center gap-2.5 px-3 py-1.5 text-left text-xs rounded-lg transition-colors cursor-pointer ${
+                className={`flex w-full items-center justify-between px-2.5 py-1 text-left text-[10.5px] rounded-lg transition-colors cursor-pointer ${
                   value === swatch.name
-                    ? "bg-[#24130d] text-[#fffdf8] font-semibold"
+                    ? "bg-[#351c13] text-[#fffdf8] font-semibold"
                     : "text-[#24130d] hover:bg-[#fffaf0]"
                 }`}
               >
-                <span
-                  className="h-4 w-4 rounded-full border border-[#4b261a30] shrink-0 shadow-sm"
-                  style={{ background: swatch.hex }}
-                />
-                <span>{swatch.name}</span>
+                <div className="flex items-center gap-2">
+                  <span
+                    className="h-3 w-3 rounded-full border border-[#4b261a30] shrink-0 shadow-xs"
+                    style={{ background: swatch.hex }}
+                  />
+                  <span>{swatch.name}</span>
+                </div>
+                {value === swatch.name && <span className="text-amber-300 font-bold text-[10px]">✓</span>}
               </button>
             ))}
           </div>
-        </div>
+        </div>,
+        document.body
       )}
-    </div>
+    </>
   );
 }
 
 export function ProductCard({
   product,
+  colorFilter,
   index,
   isSelected,
   onSelect,
 }: {
   product: CommerceProduct;
+  colorFilter?: string;
   index: number;
   isSelected?: boolean;
   onSelect?: () => void;
 }) {
   const { wishlist, toggleWish } = useCart();
-  const wished = wishlist.includes(product.id);
-  const primaryImage = productPrimaryImage(product);
+  const wished = wishlist.some((x) => x.toLowerCase() === product.id.toLowerCase());
+  const [copied, setCopied] = useState(false);
+
+  const displayImage = useMemo(() => {
+    if (colorFilter && colorFilter !== "All") {
+      const variants = getProductVariants(product);
+      const matched = variants.find((v) => matchesColorFilter({ heroColour: v.heroColour, colourName: v.colourName } as any, colorFilter));
+      if (matched?.image) return matched.image;
+    }
+    return productPrimaryImage(product) || product.image || `/products/${(product.designId || product.id).toLowerCase()}.webp`;
+  }, [product, colorFilter]);
+
   const colors = useMemo(() => {
     const raw = product.tone.split(/[\/,·+]/).map((c) => c.trim()).filter(Boolean);
     return raw.length ? raw : [product.tone];
@@ -447,7 +821,9 @@ export function ProductCard({
 
   return (
     <article
-      onClick={() => onSelect?.()}
+      onClick={() => {
+        window.location.hash = productPath(product);
+      }}
       className={`group cursor-pointer rounded-[22px] border bg-[#fffdf8] p-2 pb-3.5 shadow-[0_16px_45px_rgba(75,38,26,0.06)] transition-all duration-500 hover:-translate-y-1 hover:shadow-[0_24px_50px_rgba(75,38,26,0.12)] flex flex-col justify-between ${
         isSelected
           ? "border-[var(--gold)] ring-2 ring-[var(--gold)]/40 shadow-[0_20px_50px_rgba(196,141,63,0.15)]"
@@ -463,21 +839,60 @@ export function ProductCard({
         <div className="flex h-full w-full items-center justify-center p-3">
           <img
             loading="lazy"
-            src={primaryImage}
+            src={displayImage}
             alt={product.title}
+            onError={(e) => {
+              const fallback = `/products/${(product.designId || product.id).toLowerCase()}.webp`;
+              if (e.currentTarget.getAttribute("data-fallback") !== "true") {
+                e.currentTarget.setAttribute("data-fallback", "true");
+                e.currentTarget.src = fallback;
+              } else {
+                e.currentTarget.src = "/products/fa-01.webp";
+              }
+            }}
             className="h-[86%] w-[86%] object-contain mix-blend-multiply transition-transform duration-700 ease-out group-hover:scale-105"
           />
         </div>
 
+        {/* Luxury brown pill button */}
         <button
           type="button"
           onClick={(e) => {
             e.stopPropagation();
-            onSelect?.();
+            window.location.hash = productPath(product);
           }}
-          className="absolute bottom-3 left-1/2 -translate-x-1/2 rounded-full bg-white/95 px-4 py-2 text-[11px] font-semibold uppercase tracking-wider text-[#24130d] shadow-md opacity-0 transition-all duration-300 group-hover:opacity-100 hover:bg-[#c48d3f] hover:text-white"
+          style={{ backgroundColor: "#24130d", color: "#ffffff" }}
+          className="absolute bottom-2.5 sm:bottom-3.5 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-full bg-[#24130d] px-4 py-1.5 sm:px-6 sm:py-2 text-[10px] sm:text-[11px] font-semibold uppercase tracking-widest text-white shadow-md opacity-90 sm:opacity-0 sm:group-hover:opacity-100 transition-all duration-300 hover:bg-[#351c13] hover:scale-105 cursor-pointer z-10"
         >
-          {isSelected ? "Currently Viewing" : "View & Order Pair"}
+          VIEW
+        </button>
+
+        {/* Share Button on Card Image */}
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation();
+            e.preventDefault();
+            void shareProduct(product, () => {
+              setCopied(true);
+              setTimeout(() => setCopied(false), 2200);
+            });
+          }}
+          aria-label={`Share ${product.title}`}
+          title="Share piece"
+          className="absolute right-11 top-2.5 z-10 grid h-8 w-8 place-items-center rounded-full bg-white/95 shadow-sm text-xs transition-transform hover:scale-110 text-[#4b261a] hover:text-[var(--gold)] cursor-pointer border border-black/5"
+        >
+          {copied ? (
+            <span className="text-[10px] font-bold text-emerald-600">✓</span>
+          ) : (
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <circle cx="18" cy="5" r="3" />
+              <circle cx="6" cy="12" r="3" />
+              <circle cx="18" cy="19" r="3" />
+              <line x1="8.59" y1="13.51" x2="15.42" y2="17.49" />
+              <line x1="15.41" y1="6.51" x2="8.59" y2="10.49" />
+            </svg>
+          )}
         </button>
 
         <button
@@ -508,13 +923,18 @@ export function ProductCard({
         <div className="flex items-start justify-between gap-2">
           <div>
             <p className="text-[11px] uppercase tracking-wider text-[#4b261a80]">{product.edition || product.tone}</p>
-            <div
-              className="mt-0.5 block font-display text-base font-semibold leading-tight text-[#24130d] transition-colors group-hover:text-[var(--gold)] line-clamp-1"
+            <a
+              href={productPath(product)}
+              onClick={(e) => {
+                e.stopPropagation();
+                window.location.hash = productPath(product);
+              }}
+              className="mt-0.5 block font-display text-base font-semibold leading-tight text-[#24130d] transition-colors group-hover:text-[var(--gold)] line-clamp-1 cursor-pointer"
             >
               {product.title}
-            </div>
+            </a>
           </div>
-          <strong className="whitespace-nowrap font-display text-sm font-semibold text-[#24130d]">{product.price}</strong>
+          <strong className="whitespace-nowrap shrink-0 font-display text-sm font-semibold text-[#24130d]">{typeof product.price === "string" ? product.price.replace(/^Rs\.\s*/, "Rs.\u00A0") : product.price}</strong>
         </div>
 
         <div className="mt-2 flex items-center gap-1.5">
@@ -530,41 +950,19 @@ export function ProductCard({
         </div>
 
         <div className="mt-2.5 flex items-center justify-between border-t border-[#4b261a0d] pt-2 text-[11px] text-[#4b261a99]">
-          <span>EU 38–41</span>
+          <span>
+            {product.availableSizes && product.availableSizes.length > 0
+              ? `${product.availableSizes[0]}–${product.availableSizes[product.availableSizes.length - 1].replace("EU ", "")}`
+              : "EU 38–41"}
+          </span>
           <div className="flex items-center gap-3">
-            <button
-              type="button"
-              onClick={(e) => {
-                e.stopPropagation();
-                void shareProduct(product);
-              }}
-              className="hover:text-[#24130d] flex items-center gap-1 transition-colors cursor-pointer"
-              title="Share piece"
-              aria-label={`Share ${product.title}`}
-            >
-              <svg
-                width="11"
-                height="11"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              >
-                <path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8" />
-                <polyline points="16 6 12 2 8 6" />
-                <line x1="12" y1="2" x2="12" y2="15" />
-              </svg>
-              <span>Share</span>
-            </button>
             <button
               type="button"
               onClick={(e) => {
                 e.stopPropagation();
                 toggleWish(product.id);
               }}
-              className={`transition-colors ${wished ? "font-semibold text-[var(--gold)]" : "hover:text-[#24130d]"}`}
+              className={`transition-colors cursor-pointer ${wished ? "font-semibold text-[var(--gold)]" : "hover:text-[#24130d]"}`}
             >
               {wished ? "Saved" : "♡ Save"}
             </button>
@@ -575,51 +973,545 @@ export function ProductCard({
   );
 }
 
+const SIDEBAR_COLOR_LIST = [
+  { name: "Black", filterKey: "Black", hex: "#171310" },
+  { name: "Ivory / Nude / White", filterKey: "Ivory", hex: "#f8f6f0" },
+  { name: "Brown / Tan", filterKey: "Brown", hex: "#6c3d2c" },
+  { name: "Pink / Blush", filterKey: "Blush", hex: "#e899a8" },
+  { name: "Gold / Monarch", filterKey: "Gold", hex: "#d9a15c" },
+  { name: "Silver / Chrome", filterKey: "Silver", hex: "#b8b8b5" },
+  { name: "Red / Burgundy", filterKey: "Burgundy", hex: "#9b1b30" },
+  { name: "Olive Green", filterKey: "Olive", hex: "#556b2f" },
+];
+
+const SIDEBAR_COLLECTIONS = ["All", "Aura", "Bloom", "Muse", "Noire"] as const;
+const SIDEBAR_STYLES = ["All", "Heel", "Flat", "Mule", "Boot"] as const;
+const SIDEBAR_MATERIALS = [
+  "All",
+  "Vegan Leather",
+  "Satin",
+  "Embroidered & Textile",
+  "Metallic & Glossy",
+  "Crystal & Embellished",
+] as const;
+
+interface LeftFilterSidebarProps {
+  query: string;
+  setQuery: (val: string) => void;
+  selectedCollection: string;
+  setSelectedCollection: (val: string) => void;
+  selectedCategory: string;
+  setSelectedCategory: (val: string) => void;
+  maxPrice: number;
+  setMaxPrice: (val: number) => void;
+  colorFilter: string;
+  setColorFilter: (val: string) => void;
+  materialFilter: string;
+  setMaterialFilter: (val: string) => void;
+  stock: string;
+  setStock: (val: string) => void;
+  products: CommerceProduct[];
+  activeFilterCount: number;
+  onResetAll: () => void;
+  isMobileOpen?: boolean;
+  onCloseMobile?: () => void;
+}
+
+function LeftFilterSidebarContent({
+  query,
+  setQuery,
+  selectedCollection,
+  setSelectedCollection,
+  selectedCategory,
+  setSelectedCategory,
+  maxPrice,
+  setMaxPrice,
+  colorFilter,
+  setColorFilter,
+  materialFilter,
+  setMaterialFilter,
+  stock,
+  setStock,
+  products,
+  activeFilterCount,
+  onResetAll,
+  onApplyMobile,
+}: LeftFilterSidebarProps & { onApplyMobile?: () => void }) {
+  const [colorSearch, setColorSearch] = useState("");
+
+  const collectionCounts = useMemo(() => {
+    const map: Record<string, number> = { All: products.length };
+    SIDEBAR_COLLECTIONS.forEach((col) => {
+      if (col === "All") return;
+      map[col] = products.filter((p) =>
+        (p.collection || p.edition || "").toLowerCase().includes(col.toLowerCase())
+      ).length;
+    });
+    return map;
+  }, [products]);
+
+  const styleCounts = useMemo(() => {
+    const map: Record<string, number> = { All: products.length };
+    SIDEBAR_STYLES.forEach((st) => {
+      if (st === "All") return;
+      map[st] = products.filter((p) => {
+        const cat = (p.category || "").toLowerCase();
+        const sil = (p.silhouette || "").toLowerCase();
+        return cat === st.toLowerCase() || sil.includes(st.toLowerCase());
+      }).length;
+    });
+    return map;
+  }, [products]);
+
+  const colorCounts = useMemo(() => {
+    const map: Record<string, number> = {};
+    SIDEBAR_COLOR_LIST.forEach((c) => {
+      map[c.filterKey] = products.filter((p) => matchesColorFilter(p, c.filterKey)).length;
+    });
+    return map;
+  }, [products]);
+
+  const filteredColors = useMemo(() => {
+    if (!colorSearch.trim()) return SIDEBAR_COLOR_LIST;
+    return SIDEBAR_COLOR_LIST.filter((c) =>
+      c.name.toLowerCase().includes(colorSearch.toLowerCase())
+    );
+  }, [colorSearch]);
+
+  return (
+    <div className="flex flex-col gap-5 text-[#24130d]">
+      {/* Header with Title & Reset Button */}
+      <div className="flex items-center justify-between pb-3 border-b border-[#4b261a12]">
+        <div className="flex items-center gap-2">
+          <SlidersHorizontal size={15} className="text-[#4b261a80]" />
+          <h2 className="font-display text-sm font-bold tracking-wider uppercase text-[#24130d]">
+            Filters
+          </h2>
+          {activeFilterCount > 0 && (
+            <span className="h-5 min-w-5 px-1.5 rounded-full bg-[#24130d] text-[#fffdf8] text-[10px] font-bold inline-flex items-center justify-center">
+              {activeFilterCount}
+            </span>
+          )}
+        </div>
+
+        {activeFilterCount > 0 && (
+          <button
+            type="button"
+            onClick={onResetAll}
+            className="flex items-center gap-1 text-[10.5px] font-semibold uppercase tracking-wider text-[var(--gold)] hover:underline cursor-pointer transition-colors"
+          >
+            <RotateCcw size={11} />
+            <span>Reset</span>
+          </button>
+        )}
+      </div>
+
+      {/* 1. KEYWORD SEARCH */}
+      <div>
+        <label className="block text-[10px] font-bold uppercase tracking-widest text-[#4b261a70] mb-1.5">
+          Keyword Search
+        </label>
+        <div className="relative flex items-center">
+          <Search size={14} className="absolute left-3 text-[#4b261a60]" />
+          <input
+            type="text"
+            placeholder="Search piece, color..."
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            className="w-full h-9.5 pl-8.5 pr-7.5 rounded-xl border border-[#4b261a20] bg-[#FAF8F5] text-xs text-[#24130d] placeholder:text-[#4b261a50] outline-none focus:border-[#351c13] focus:bg-white transition-all"
+          />
+          {query && (
+            <button
+              type="button"
+              onClick={() => setQuery("")}
+              className="absolute right-2.5 text-xs text-[#4b261a60] hover:text-[#24130d] cursor-pointer"
+            >
+              ✕
+            </button>
+          )}
+        </div>
+      </div>
+
+      {/* 2. COLLECTION */}
+      <div className="pt-2 border-t border-[#4b261a0f]">
+        <div className="flex items-center justify-between mb-2">
+          <label className="text-[10.5px] font-bold uppercase tracking-widest text-[#4b261a80]">
+            Collection
+          </label>
+          {selectedCollection !== "All" && (
+            <button
+              type="button"
+              onClick={() => setSelectedCollection("All")}
+              className="text-[10px] text-[var(--gold)] hover:underline cursor-pointer"
+            >
+              Clear
+            </button>
+          )}
+        </div>
+        <div className="flex flex-wrap gap-1.5">
+          {SIDEBAR_COLLECTIONS.map((col) => {
+            const isSelected = selectedCollection === col;
+            const count = collectionCounts[col] ?? 0;
+            return (
+              <button
+                key={col}
+                type="button"
+                onClick={() => setSelectedCollection(isSelected && col !== "All" ? "All" : col)}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold tracking-wide transition-all cursor-pointer border ${
+                  isSelected
+                    ? "bg-[#24130d] text-[#fffdf8] border-[#24130d] shadow-2xs"
+                    : "bg-white text-[#4b261a99] border-[#4b261a18] hover:border-[#4b261a35] hover:text-[#24130d]"
+                }`}
+              >
+                <span>{col === "All" ? "All Collections" : col}</span>
+                <span className={`text-[10px] font-normal ${isSelected ? "text-amber-200" : "text-[#4b261a50]"}`}>
+                  ({count})
+                </span>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* 3. STYLE / CATEGORY */}
+      <div className="pt-2 border-t border-[#4b261a0f]">
+        <div className="flex items-center justify-between mb-2">
+          <label className="text-[10.5px] font-bold uppercase tracking-widest text-[#4b261a80]">
+            Style / Category
+          </label>
+          {selectedCategory !== "All" && (
+            <button
+              type="button"
+              onClick={() => setSelectedCategory("All")}
+              className="text-[10px] text-[var(--gold)] hover:underline cursor-pointer"
+            >
+              Clear
+            </button>
+          )}
+        </div>
+        <div className="flex flex-wrap gap-1.5">
+          {SIDEBAR_STYLES.map((st) => {
+            const isSelected = selectedCategory === st;
+            const count = styleCounts[st] ?? 0;
+            return (
+              <button
+                key={st}
+                type="button"
+                onClick={() => setSelectedCategory(isSelected && st !== "All" ? "All" : st)}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold tracking-wide transition-all cursor-pointer border ${
+                  isSelected
+                    ? "bg-[#24130d] text-[#fffdf8] border-[#24130d] shadow-2xs"
+                    : "bg-white text-[#4b261a99] border-[#4b261a18] hover:border-[#4b261a35] hover:text-[#24130d]"
+                }`}
+              >
+                <span>{st === "All" ? "All Styles" : `${st}s`}</span>
+                <span className={`text-[10px] font-normal ${isSelected ? "text-amber-200" : "text-[#4b261a50]"}`}>
+                  ({count})
+                </span>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* 4. PRICE RANGE SLIDER */}
+      <div className="pt-2 border-t border-[#4b261a0f]">
+        <div className="flex items-center justify-between mb-1.5">
+          <label className="text-[10.5px] font-bold uppercase tracking-widest text-[#4b261a80]">
+            Price Range
+          </label>
+          {maxPrice < 40000 && (
+            <button
+              type="button"
+              onClick={() => setMaxPrice(40000)}
+              className="text-[10px] text-[var(--gold)] hover:underline cursor-pointer font-semibold"
+            >
+              Reset
+            </button>
+          )}
+        </div>
+
+        <div className="text-xs font-bold text-[#24130d] mb-2 tracking-wide">
+          {maxPrice >= 40000 ? "All Prices (Up to ₹40,000+)" : `Up to ₹${maxPrice.toLocaleString("en-IN")}`}
+        </div>
+
+        <input
+          type="range"
+          min={1000}
+          max={40000}
+          step={500}
+          value={maxPrice >= 40000 ? 40000 : maxPrice}
+          onChange={(e) => setMaxPrice(Number(e.target.value))}
+          className="w-full accent-[#351c13] cursor-pointer h-2 bg-[#4b261a15] rounded-lg mb-2"
+        />
+
+        <div className="flex items-center justify-between text-[10px] text-[#4b261a60] font-medium">
+          <span>₹1,000</span>
+          <span>₹20,000</span>
+          <span>₹40,000+</span>
+        </div>
+
+        {/* Quick price chips */}
+        <div className="flex items-center gap-1.5 mt-2.5 flex-wrap">
+          {[
+            { label: "All", val: 40000 },
+            { label: "< ₹5k", val: 5000 },
+            { label: "< ₹10k", val: 10000 },
+            { label: "< ₹20k", val: 20000 },
+          ].map((chip) => (
+            <button
+              key={chip.val}
+              type="button"
+              onClick={() => setMaxPrice(chip.val)}
+              className={`px-2 py-0.5 rounded-md text-[10px] font-semibold transition-all cursor-pointer border ${
+                maxPrice === chip.val
+                  ? "bg-[#24130d] text-white border-[#24130d]"
+                  : "bg-[#FAF8F5] text-[#4b261a80] border-[#4b261a15] hover:text-[#24130d]"
+              }`}
+            >
+              {chip.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* 5. COLOR WITH SWATCHES */}
+      <div className="pt-2 border-t border-[#4b261a0f]">
+        <div className="flex items-center justify-between mb-2">
+          <div className="flex items-center gap-1.5">
+            <label className="text-[10.5px] font-bold uppercase tracking-widest text-[#4b261a80]">
+              Color
+            </label>
+            {colorFilter !== "All" && (
+              <span className="text-[10px] font-bold text-[var(--gold)]">
+                · {colorFilter}
+              </span>
+            )}
+          </div>
+          {colorFilter !== "All" && (
+            <button
+              type="button"
+              onClick={() => setColorFilter("All")}
+              className="text-[10px] text-[var(--gold)] hover:underline cursor-pointer font-semibold"
+            >
+              Reset
+            </button>
+          )}
+        </div>
+
+        {/* Color Search */}
+        <input
+          type="text"
+          placeholder="Find color..."
+          value={colorSearch}
+          onChange={(e) => setColorSearch(e.target.value)}
+          className="w-full h-8 px-3 rounded-lg border border-[#4b261a15] bg-[#FAF8F5] text-xs text-[#24130d] placeholder:text-[#4b261a50] outline-none focus:border-[#351c13] focus:bg-white transition-all mb-2.5"
+        />
+
+        {/* Color Swatches Grid */}
+        <div className="space-y-1.5 max-h-56 overflow-y-auto pr-1 no-scrollbar">
+          {/* All Colors Option */}
+          <button
+            type="button"
+            onClick={() => setColorFilter("All")}
+            className={`w-full flex items-center justify-between px-2 py-1.5 rounded-lg text-xs transition-colors cursor-pointer text-left ${
+              colorFilter === "All"
+                ? "bg-[#24130d] text-[#fffdf8] font-bold"
+                : "text-[#4b261a99] hover:bg-[#FAF8F5] hover:text-[#24130d]"
+            }`}
+          >
+            <div className="flex items-center gap-2">
+              <span className="h-3.5 w-3.5 rounded-full border border-[#4b261a25] shrink-0 bg-gradient-to-tr from-amber-200 via-rose-300 to-amber-600 shadow-2xs" />
+              <span>All Colors</span>
+            </div>
+            <span className="text-[10.5px] opacity-70">({products.length})</span>
+          </button>
+
+          {filteredColors.map((c) => {
+            const isSelected = colorFilter === c.filterKey;
+            const count = colorCounts[c.filterKey] ?? 0;
+            return (
+              <button
+                key={c.name}
+                type="button"
+                onClick={() => setColorFilter(isSelected ? "All" : c.filterKey)}
+                className={`w-full flex items-center justify-between px-2 py-1.5 rounded-lg text-xs transition-colors cursor-pointer text-left ${
+                  isSelected
+                    ? "bg-[#24130d] text-[#fffdf8] font-bold"
+                    : "text-[#4b261a99] hover:bg-[#FAF8F5] hover:text-[#24130d]"
+                }`}
+              >
+                <div className="flex items-center gap-2">
+                  <span
+                    className="h-3.5 w-3.5 rounded-full border border-[#4b261a25] shrink-0 shadow-2xs"
+                    style={{ backgroundColor: c.hex }}
+                  />
+                  <span>{c.name}</span>
+                </div>
+                <span className="text-[10.5px] opacity-70">({count})</span>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* 6. MATERIAL */}
+      <div className="pt-2 border-t border-[#4b261a0f]">
+        <div className="flex items-center justify-between mb-2">
+          <label className="text-[10.5px] font-bold uppercase tracking-widest text-[#4b261a80]">
+            Material
+          </label>
+          {materialFilter !== "All" && (
+            <button
+              type="button"
+              onClick={() => setMaterialFilter("All")}
+              className="text-[10px] text-[var(--gold)] hover:underline cursor-pointer"
+            >
+              Clear
+            </button>
+          )}
+        </div>
+        <div className="flex flex-col gap-1">
+          {SIDEBAR_MATERIALS.map((mat) => {
+            const isSelected = materialFilter === mat;
+            return (
+              <button
+                key={mat}
+                type="button"
+                onClick={() => setMaterialFilter(isSelected && mat !== "All" ? "All" : mat)}
+                className={`flex items-center justify-between px-2.5 py-1.5 rounded-lg text-xs transition-colors cursor-pointer text-left ${
+                  isSelected
+                    ? "bg-[#24130d] text-[#fffdf8] font-bold"
+                    : "text-[#4b261a99] hover:bg-[#FAF8F5] hover:text-[#24130d]"
+                }`}
+              >
+                <span>{mat}</span>
+                {isSelected && <Check size={13} className="text-amber-300" />}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* 7. AVAILABILITY */}
+      <div className="pt-2 border-t border-[#4b261a0f]">
+        <label className="block text-[10.5px] font-bold uppercase tracking-widest text-[#4b261a80] mb-2">
+          Availability
+        </label>
+        <div className="flex flex-col gap-1">
+          {[
+            { label: "All Pieces", val: "All" },
+            { label: "Available now", val: "Available now" },
+            { label: "Last pairs (≤ 12 left)", val: "Last pairs" },
+          ].map((item) => {
+            const isSelected = stock === item.val;
+            return (
+              <button
+                key={item.val}
+                type="button"
+                onClick={() => setStock(item.val)}
+                className={`flex items-center justify-between px-2.5 py-1.5 rounded-lg text-xs transition-colors cursor-pointer text-left ${
+                  isSelected
+                    ? "bg-[#24130d] text-[#fffdf8] font-bold"
+                    : "text-[#4b261a99] hover:bg-[#FAF8F5] hover:text-[#24130d]"
+                }`}
+              >
+                <span>{item.label}</span>
+                {isSelected && <Check size={13} className="text-amber-300" />}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Mobile drawer apply button */}
+      {onApplyMobile && (
+        <div className="pt-4 border-t border-[#4b261a15]">
+          <button
+            type="button"
+            onClick={onApplyMobile}
+            className="w-full py-3 bg-[#24130d] text-white rounded-xl text-xs uppercase font-bold tracking-widest hover:bg-[#351c13] transition-colors cursor-pointer"
+          >
+            Apply Filters
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function LeftFilterSidebar(props: LeftFilterSidebarProps) {
+  return (
+    <>
+      {/* Desktop Sticky Sidebar */}
+      <aside className="hidden lg:block w-72 shrink-0 bg-white border border-[#4b261a18] rounded-2xl p-5 shadow-xs sticky top-24 self-start max-h-[calc(100vh-120px)] overflow-y-auto no-scrollbar">
+        <LeftFilterSidebarContent {...props} />
+      </aside>
+
+      {/* Mobile Off-Canvas Drawer */}
+      <AnimatePresence>
+        {props.isMobileOpen && (
+          <div className="fixed inset-0 z-[9999] lg:hidden flex">
+            {/* Backdrop */}
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={props.onCloseMobile}
+              className="fixed inset-0 bg-black/60 backdrop-blur-xs"
+            />
+
+            {/* Drawer */}
+            <motion.div
+              initial={{ x: "-100%" }}
+              animate={{ x: 0 }}
+              exit={{ x: "-100%" }}
+              transition={{ type: "spring", damping: 26, stiffness: 280 }}
+              className="relative w-[85vw] max-w-xs bg-white h-full shadow-2xl p-5 overflow-y-auto z-10 flex flex-col justify-between"
+            >
+              <div>
+                <div className="flex items-center justify-between pb-3 border-b border-[#4b261a15] mb-4">
+                  <span className="font-display font-bold text-base text-[#24130d]">Filter Footwear</span>
+                  <button
+                    type="button"
+                    onClick={props.onCloseMobile}
+                    className="p-1 rounded-full text-[#4b261a70] hover:text-[#24130d] cursor-pointer"
+                  >
+                    <X size={18} />
+                  </button>
+                </div>
+                <LeftFilterSidebarContent {...props} onApplyMobile={props.onCloseMobile} />
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+    </>
+  );
+}
+
 export function ShopPage({
   session,
   onLogout,
   onLogin,
-  initialProductId,
 }: {
   session: AuthSession | null;
   onLogout: () => void;
   onLogin: () => void;
-  initialProductId?: string;
 }) {
   const { add, wishlist, toggleWish, setOpen: setCartOpen } = useCart();
-  const [selectedCollection, setSelectedCollection] = useState("All");
   const [products, setProducts] = useState<CommerceProduct[]>(() => liveProducts());
+
+  // Filter States
   const [query, setQuery] = useState("");
-  const [status, setStatus] = useState("All");
+  const [selectedCollection, setSelectedCollection] = useState("All");
+  const [selectedCategory, setSelectedCategory] = useState("All");
   const [materialFilter, setMaterialFilter] = useState("All");
   const [stock, setStock] = useState("All");
   const [sort, setSort] = useState("Featured");
   const [maxPrice, setMaxPrice] = useState<number>(40000);
   const [colorFilter, setColorFilter] = useState<string>("All");
-
-  const MATERIAL_OPTIONS = [
-    "All",
-    "Vegan Leather",
-    "Satin",
-    "Embroidered & Textile",
-    "Crystal & Embellished",
-    "Metallic & Glossy",
-  ];
-
-  // Selected product state for the Order View
-  const [selectedProduct, setSelectedProduct] = useState<CommerceProduct | null>(() => {
-    const list = liveProducts();
-    if (initialProductId) {
-      const match = list.find((p) => p.id.toLowerCase() === initialProductId.toLowerCase() || slugify(p.title) === initialProductId.toLowerCase());
-      return match || list[0] || null;
-    }
-    return null;
-  });
-
-  const [selectedSize, setSelectedSize] = useState("38");
-  const [activeImage, setActiveImage] = useState("");
-  const [addedToBag, setAddedToBag] = useState(false);
-  const [openAccordion, setOpenAccordion] = useState("Product Details");
+  const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
 
   useEffect(() => {
     const sync = () => setProducts(liveProducts());
@@ -628,48 +1520,56 @@ export function ShopPage({
     return () => window.removeEventListener(COMMERCE_EVENT, sync);
   }, []);
 
+  // Sync hash/search parameters
   useEffect(() => {
     const updateFromUrl = () => {
       try {
         const hash = window.location.hash || "";
         const search = window.location.search || "";
         const queryStr = hash.includes("?") ? hash.split("?")[1] : search.replace(/^\?/, "");
-        const valid = ["Aura", "Bloom", "Muse", "Noire"];
-
-        // 1. Check path format: #/collection/aura or #/collections/aura
+        const validCols = ["Aura", "Bloom", "Muse", "Noire"];
         const cleanHash = hash.replace(/^#\/?/, "").toLowerCase().split("?")[0];
-        if (cleanHash.startsWith("collection/")) {
-          const colParam = cleanHash.replace("collection/", "");
-          const matched = valid.find((c) => c.toLowerCase() === colParam.toLowerCase());
+
+        if (cleanHash === "shop/flats" || cleanHash === "shop/flat") {
+          setSelectedCategory("Flat");
+          setSelectedCollection("All");
+          return;
+        }
+        if (cleanHash === "shop/heels" || cleanHash === "shop/heel") {
+          setSelectedCategory("Heel");
+          setSelectedCollection("All");
+          return;
+        }
+        if (cleanHash === "shop/mules" || cleanHash === "shop/mule") {
+          setSelectedCategory("Mule");
+          setSelectedCollection("All");
+          return;
+        }
+        if (cleanHash === "shop/boots" || cleanHash === "shop/boot") {
+          setSelectedCategory("Boot");
+          setSelectedCollection("All");
+          return;
+        }
+
+        if (cleanHash.startsWith("collection/") || cleanHash.startsWith("collections/")) {
+          const colParam = cleanHash.replace(/^collections?\//, "");
+          const matched = validCols.find((c) => c.toLowerCase() === colParam.toLowerCase());
           if (matched) {
             setSelectedCollection(matched);
-            return;
-          }
-        } else if (cleanHash.startsWith("collections/") && cleanHash !== "collections") {
-          const colParam = cleanHash.replace("collections/", "");
-          const matched = valid.find((c) => c.toLowerCase() === colParam.toLowerCase());
-          if (matched) {
-            setSelectedCollection(matched);
+            setSelectedCategory("All");
             return;
           }
         }
 
-        // 2. Check query string: ?collection=aura
         if (queryStr) {
           const params = new URLSearchParams(queryStr);
+          const cat = params.get("category") || params.get("cat") || params.get("style");
+          if (cat) setSelectedCategory(cat.charAt(0).toUpperCase() + cat.slice(1).toLowerCase());
           const col = params.get("collection") || params.get("col");
           if (col) {
-            const matched = valid.find((c) => c.toLowerCase() === col.toLowerCase());
-            if (matched) {
-              setSelectedCollection(matched);
-              return;
-            }
+            const matched = validCols.find((c) => c.toLowerCase() === col.toLowerCase());
+            if (matched) setSelectedCollection(matched);
           }
-        }
-
-        // If navigated to plain #/shop without collection specified, show All
-        if (cleanHash === "shop" || cleanHash === "/shop") {
-          setSelectedCollection("All");
         }
       } catch {}
     };
@@ -678,96 +1578,63 @@ export function ShopPage({
     return () => window.removeEventListener("hashchange", updateFromUrl);
   }, []);
 
-  useEffect(() => {
-    if (initialProductId && products.length > 0) {
-      const match = products.find(
-        (p) => p.id.toLowerCase() === initialProductId.toLowerCase() || slugify(p.title) === initialProductId.toLowerCase()
-      );
-      if (match) {
-        setSelectedProduct(match);
-        setActiveImage(productPrimaryImage(match));
-        setSelectedSize("38");
-      }
-    }
-  }, [initialProductId, products]);
-
-  useEffect(() => {
-    if (selectedProduct) {
-      setActiveImage(productPrimaryImage(selectedProduct));
-      setSelectedSize("38");
-    }
-  }, [selectedProduct?.id]);
-
-  const queryWords = useMemo(
-    () => query.trim().toLowerCase().split(/\s+/).filter(Boolean),
-    [query]
-  );
-
-  const categoryIntent = useMemo<"flat" | "heel" | "mule" | "boot" | null>(() => {
-    for (const w of queryWords) {
-      if (w === "flat" || w === "flats") return "flat";
-      if (w === "heel" || w === "heels" || w === "heeled") return "heel";
-      if (w === "mule" || w === "mules") return "mule";
-      if (w === "boot" || w === "boots" || w === "bootie" || w === "booties") return "boot";
-    }
-    return null;
-  }, [queryWords]);
-
-  const nonCategoryWords = useMemo(() => {
-    return queryWords.filter(
-      (w) => !["flat", "flats", "heel", "heels", "heeled", "mule", "mules", "boot", "boots", "bootie", "booties"].includes(w)
-    );
-  }, [queryWords]);
-
+  // Compute filtered & sorted products with high performance
   const visible = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    const tokens = q.split(/\s+/).filter(Boolean);
+
     return products
       .filter((product) => {
-        // 1. Search Query filter (strictly separates Flat, Heel, and Mule when specified)
-        if (queryWords.length > 0) {
-          const pCat = (product.category || "").toLowerCase();
+        // 1. Query search
+        if (tokens.length > 0) {
+          const searchable = [
+            product.title,
+            product.collection,
+            product.edition,
+            product.category,
+            product.tone,
+            product.heroColour,
+            product.colourName,
+            product.material,
+            product.silhouette,
+            product.id,
+            product.designId,
+            String(priceNumber(product.price)),
+          ].join(" ").toLowerCase();
 
-          // Strict category intent: typing flat returns ONLY flats, heel returns ONLY heels, mule returns ONLY mules
-          if (categoryIntent) {
-            if (pCat !== categoryIntent) {
-              return false;
-            }
-          }
-
-          // If there are other words in query (e.g. "aura", "black", "pearl", "rose", "1449")
-          if (nonCategoryWords.length > 0) {
-            const searchable = [
-              product.title,
-              product.collection,
-              product.edition,
-              product.tone,
-              product.material,
-              product.silhouette,
-              product.id,
-              String(priceNumber(product.price)),
-            ].join(" ").toLowerCase();
-
-            const matchesAllOtherWords = nonCategoryWords.every((word) => {
-              const root = word.replace(/s$/, "");
-              return searchable.includes(word) || searchable.includes(root);
-            });
-            if (!matchesAllOtherWords) return false;
-          }
+          const matchesAll = tokens.every((token) => {
+            const root = token.replace(/s$/, "");
+            return searchable.includes(token) || searchable.includes(root);
+          });
+          if (!matchesAll) return false;
         }
 
-        // 2. Collection filter: if user typed a search query (like "aura heel" or "flat"), do not restrict to previously selected collection tab!
-        if (queryWords.length === 0 && selectedCollection !== "All") {
-          const pColl = (product.collection || product.edition || "").toLowerCase();
-          if (!pColl.includes(selectedCollection.toLowerCase())) {
-            return false;
-          }
+        // 2. Collection
+        if (selectedCollection !== "All") {
+          const col = (product.collection || product.edition || "").toLowerCase();
+          if (!col.includes(selectedCollection.toLowerCase())) return false;
         }
 
-        // 3. Status filter
-        if (status !== "All" && product.status !== status) {
+        // 3. Category / Style
+        if (selectedCategory !== "All") {
+          const cat = (product.category || "").toLowerCase();
+          const sil = (product.silhouette || "").toLowerCase();
+          const target = selectedCategory.toLowerCase();
+          if (cat !== target && !sil.includes(target)) return false;
+        }
+
+        // 4. Price Limit
+        if (maxPrice < 40000) {
+          const pPrice = priceNumber(product.price);
+          if (pPrice > maxPrice) return false;
+        }
+
+        // 5. Color
+        if (colorFilter !== "All" && !matchesColorFilter(product, colorFilter)) {
           return false;
         }
 
-        // 4. Material filter
+        // 6. Material
         if (materialFilter !== "All") {
           const mat = (product.material || "").toLowerCase();
           const tone = (product.tone || "").toLowerCase();
@@ -783,8 +1650,6 @@ export function ShopPage({
               combined.includes("textile") ||
               combined.includes("embroider") ||
               combined.includes("woven") ||
-              combined.includes("appliqué") ||
-              combined.includes("print") ||
               combined.includes("mesh");
             if (!isTextile) return false;
           } else if (materialFilter === "Crystal & Embellished") {
@@ -792,8 +1657,7 @@ export function ShopPage({
               combined.includes("crystal") ||
               combined.includes("embellish") ||
               combined.includes("pearl") ||
-              combined.includes("bead") ||
-              combined.includes("sheer");
+              combined.includes("bead");
             if (!isEmbellished) return false;
           } else if (materialFilter === "Metallic & Glossy") {
             const isMetallic =
@@ -801,7 +1665,6 @@ export function ShopPage({
               combined.includes("glossy") ||
               combined.includes("chrome") ||
               combined.includes("shine") ||
-              combined.includes("high-shine") ||
               combined.includes("patent");
             if (!isMetallic) return false;
           } else {
@@ -809,26 +1672,9 @@ export function ShopPage({
           }
         }
 
-        // 5. Price Range filter
-        const pPrice = priceNumber(product.price);
-        if (maxPrice < 40000 && pPrice > maxPrice) return false;
-
-        // 6. Color filter
-        if (colorFilter !== "All") {
-          const pAny = product as any;
-          const col = `${pAny.color || ""} ${pAny.colors || ""} ${pAny.tone || ""}`.toLowerCase();
-          const target = colorFilter.toLowerCase();
-          if (target.includes("black") && !col.includes("black") && !col.includes("noir")) return false;
-          if (target.includes("ivory") && !col.includes("ivory") && !col.includes("nude") && !col.includes("cream") && !col.includes("beige") && !col.includes("white")) return false;
-          if (target.includes("brown") && !col.includes("brown") && !col.includes("tan") && !col.includes("chocolate") && !col.includes("fawn") && !col.includes("leopard") && !col.includes("caramel")) return false;
-          if (target.includes("blush") && !col.includes("blush") && !col.includes("rose")) return false;
-          if (target.includes("silver") && !col.includes("silver") && !col.includes("chrome") && !col.includes("gunmetal")) return false;
-          if (target.includes("gold") && !col.includes("gold") && !col.includes("monarch") && !col.includes("orange")) return false;
-        }
-
-        // 7. Stock filter
+        // 7. Stock
         if (stock === "Available now" && product.available <= 0) return false;
-        if (stock === "Last pairs" && product.available > 12) return false;
+        if (stock === "Last pairs" && (product.available <= 0 || product.available > 12)) return false;
 
         return true;
       })
@@ -837,769 +1683,234 @@ export function ShopPage({
         const pB = priceNumber(b.price);
         if (sort === "Price low to high") return pA - pB;
         if (sort === "Price high to low") return pB - pA;
-        if (sort === "Most limited") return a.produced - b.produced;
         if (sort === "Availability") return b.available - a.available;
+        if (sort === "Most limited") return a.produced - b.produced;
         return a.title.localeCompare(b.title);
       });
-  }, [products, queryWords, categoryIntent, nonCategoryWords, selectedCollection, status, materialFilter, stock, sort, maxPrice, colorFilter]);
+  }, [products, query, selectedCollection, selectedCategory, maxPrice, colorFilter, materialFilter, stock, sort]);
 
-  // Keep selected product FIRST in the catalogue ONLY when sort === "Featured"!
-  // If user selected "Price low to high" or "Price high to low", strictly respect the price order!
-  const sortedProducts = useMemo(() => {
-    if (sort !== "Featured") {
-      return visible;
-    }
-    if (!selectedProduct) return visible;
-    const current = visible.find((p) => p.id === selectedProduct.id);
-    const rest = visible.filter((p) => p.id !== selectedProduct.id);
-    return current ? [current, ...rest] : visible;
-  }, [visible, selectedProduct, sort]);
+  const activeFilterCount = useMemo(() => {
+    let count = 0;
+    if (query.trim()) count++;
+    if (selectedCollection !== "All") count++;
+    if (selectedCategory !== "All") count++;
+    if (maxPrice < 40000) count++;
+    if (colorFilter !== "All") count++;
+    if (materialFilter !== "All") count++;
+    if (stock !== "All") count++;
+    return count;
+  }, [query, selectedCollection, selectedCategory, maxPrice, colorFilter, materialFilter, stock]);
 
-  // Automatically sync selected product with search query and active filters:
-  // When user searches (e.g. "flat", "heel", "mule") or changes filters,
-  // ensure the first matching product is selected so the hero order piece always matches the search query!
-  const prevQueryRef = useRef(query);
-  useEffect(() => {
-    if (visible.length === 0) {
-      setSelectedProduct(null);
-      return;
-    }
-
-    const queryChanged = prevQueryRef.current !== query;
-    prevQueryRef.current = query;
-
-    const isCurrentInVisible = selectedProduct && visible.some((p) => p.id === selectedProduct.id);
-
-    if (!isCurrentInVisible) {
-      setSelectedProduct(visible[0]);
-    } else if (queryChanged && query.trim().length > 0) {
-      setSelectedProduct(visible[0]);
-    }
-  }, [query, visible, selectedProduct]);
-
-  const handleSelectProduct = (product: CommerceProduct) => {
-    setSelectedProduct(product);
-    setActiveImage(productPrimaryImage(product));
-    setSelectedSize("38");
-    window.location.hash = `#/shop/${product.id.toLowerCase()}`;
-    const el = document.getElementById("selected-product-order");
-    if (el) {
-      el.scrollIntoView({ behavior: "smooth", block: "start" });
-    }
+  const handleResetAll = () => {
+    setQuery("");
+    setSelectedCollection("All");
+    setSelectedCategory("All");
+    setMaxPrice(40000);
+    setColorFilter("All");
+    setMaterialFilter("All");
+    setStock("All");
+    setSort("Featured");
   };
 
-  const selectedProductGallery = useMemo(() => {
-    if (!selectedProduct) return [];
-    return productImages(selectedProduct);
-  }, [selectedProduct]);
-
-  const selectedProductVariants = useMemo(() => {
-    if (!selectedProduct) return [];
-    return getProductVariants(selectedProduct);
-  }, [selectedProduct]);
-
-  const activeVariant = useMemo(() => {
-    if (!selectedProduct) return null;
-    return getActiveVariant(selectedProduct, activeImage);
-  }, [selectedProduct, activeImage]);
-
-  const activeHeroColour = activeVariant?.heroColour || selectedProduct?.heroColour || selectedProduct?.tone || "Warm Ivory";
-  const activeColourCode = activeVariant?.colourCode || selectedProduct?.colourCode || getHeroColorCode(activeHeroColour);
-  const activeVariantSku = activeVariant?.colourVariantSku || selectedProduct?.colourVariantSku || `${(selectedProduct?.designId || selectedProduct?.id || "").toUpperCase()}-${activeColourCode}`;
-
-  const handleAddToBag = () => {
-    if (!selectedProduct) return;
-    const effectiveSize = selectedSize || "38";
-    if (!selectedSize) setSelectedSize("38");
-    const cleanSz = effectiveSize.replace(/\D/g, "");
-    const itemSku = activeVariant?.fullSkus?.[cleanSz] || selectedProduct.fullSkus?.[cleanSz] || computeFullSku(selectedProduct.designId || selectedProduct.id, activeHeroColour, cleanSz);
-    add(
-      {
-        id: itemSku,
-        title: selectedProduct.title,
-        price: selectedProduct.price,
-        image: activeImage || productPrimaryImage(selectedProduct),
-        tone: activeHeroColour,
-        size: effectiveSize,
-      },
-      1
-    );
-    setAddedToBag(true);
-    setCartOpen(true);
-    setTimeout(() => setAddedToBag(false), 2500);
-  };
-
-  const handleBuyNow = () => {
-    if (!selectedProduct) return;
-    const effectiveSize = selectedSize || "38";
-    if (!selectedSize) setSelectedSize("38");
-    const cleanSz = effectiveSize.replace(/\D/g, "");
-    const itemSku = activeVariant?.fullSkus?.[cleanSz] || selectedProduct.fullSkus?.[cleanSz] || computeFullSku(selectedProduct.designId || selectedProduct.id, activeHeroColour, cleanSz);
-    add(
-      {
-        id: itemSku,
-        title: selectedProduct.title,
-        price: selectedProduct.price,
-        image: activeImage || productPrimaryImage(selectedProduct),
-        tone: activeHeroColour,
-        size: effectiveSize,
-      },
-      1
-    );
-    setCartOpen(true);
-  };
-
-  const isWished = selectedProduct ? wishlist.includes(selectedProduct.id) : false;
+  const pageTitle = useMemo(() => {
+    if (selectedCollection !== "All") return `${selectedCollection} Collection`;
+    if (selectedCategory !== "All") return `${selectedCategory}s Collection`;
+    if (colorFilter !== "All") return `${colorFilter} Footwear Pieces`;
+    if (query) return `Search results for "${query}"`;
+    return "All Collection Designs";
+  }, [selectedCollection, selectedCategory, colorFilter, query]);
 
   return (
     <PageShell session={session} onLogout={onLogout} onLogin={onLogin}>
-      <section className="mx-auto max-w-[1500px] px-6 py-8 md:px-12 pt-6">
-        {/* Floating Filter Bar matching Pic 1, 2, 3, 4 */}
-        <motion.div 
-          initial={{ opacity: 0, y: -20 }} 
-          animate={{ opacity: 1, y: 0 }} 
-          transition={{ duration: 0.8, delay: 0.4 }} 
-          className="mb-10 flex flex-wrap items-center justify-between gap-4 rounded-full border border-[var(--ink)]/10 bg-white/95 backdrop-blur-xl px-6 py-2.5 shadow-[var(--shadow-soft)] relative z-20 w-fit mx-auto max-w-full"
-        >
-          <div className="flex flex-wrap items-center gap-4 md:gap-6">
-            <div className="relative flex items-center">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="absolute left-3 text-[var(--ink)]/40"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
-              <input 
-                value={query} 
-                onChange={(e) => setQuery(e.target.value)} 
-                placeholder="Search..." 
-                className="h-9 w-32 md:w-40 bg-transparent pl-9 pr-7 text-xs outline-none transition-all focus:w-48 placeholder:text-[var(--ink)]/40 text-[var(--ink)]" 
-              />
-              {query && (
-                <button 
-                  onClick={() => setQuery("")} 
-                  title="Clear search" 
-                  className="absolute right-2.5 text-xs text-[var(--ink)]/40 hover:text-[var(--ink)]"
-                >
-                  ✕
-                </button>
-              )}
-            </div>
-            
-            <div className="h-4 w-px bg-[var(--ink)]/15 hidden sm:block" />
-
-            <div className="flex flex-wrap items-center gap-4 md:gap-5">
-              <FilterDropdown
-                label="STATUS"
-                value={status}
-                options={["All", "Live"]}
-                onChange={setStatus}
-              />
-
-              <FilterDropdown
-                label="MATERIAL"
-                value={materialFilter}
-                options={MATERIAL_OPTIONS}
-                onChange={setMaterialFilter}
-              />
-
-              <PriceRangeDropdown
-                maxPrice={maxPrice}
-                onChange={setMaxPrice}
-              />
-
-              <ColorFilterDropdown
-                value={colorFilter}
-                onChange={setColorFilter}
-              />
-
-              <FilterDropdown
-                label="STOCK"
-                value={stock}
-                options={["All", "Available now", "Last pairs"]}
-                onChange={setStock}
-              />
-
-              <FilterDropdown
-                label="SORT"
-                value={sort}
-                options={["Featured", "Price low to high", "Price high to low", "Most limited", "Availability"]}
-                onChange={setSort}
-              />
-            </div>
-          </div>
-          
-          <div className="h-4 w-px bg-[var(--ink)]/15 hidden md:block" />
-
-          <button 
-            type="button"
-            onClick={() => {
-              setQuery("");
-              setStatus("All");
-              setMaterialFilter("All");
-              setMaxPrice(40000);
-              setColorFilter("All");
-              setStock("All");
-              setSort("Featured");
-              setSelectedCollection("All");
-            }} 
-            className="text-[10px] uppercase tracking-widest text-[var(--ink)]/50 hover:text-[var(--gold)] transition-colors cursor-pointer"
-          >
-            CLEAR
-          </button>
-        </motion.div>
-
-        {/* Interactive Price Range Slider & Color Swatches Bar */}
-        <motion.div
-          initial={{ opacity: 0, y: -10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5, delay: 0.45 }}
-          className="mb-8 mx-auto flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-[#4b261a15] bg-[#fffdf8] px-6 py-3 shadow-[0_4px_20px_rgba(75,38,26,0.04)] text-xs w-fit max-w-full"
-        >
-          {/* Price Range Slider */}
-          <div className="flex items-center gap-3">
-            <span className="text-[10px] uppercase font-bold tracking-widest text-[#4b261a80]">MAX PRICE:</span>
-            <span className="font-bold text-[#24130d] min-w-[85px]">
-              {maxPrice >= 40000 ? "All Prices (Up to Rs. 40k)" : `Under Rs. ${maxPrice.toLocaleString("en-IN")}`}
+      <div className="mx-auto max-w-[1520px] px-4 sm:px-6 lg:px-8 py-6">
+        {/* Page Top Heading Bar */}
+        <div className="mb-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 border-b border-[#4b261a12] pb-5">
+          <div>
+            <span className="text-[10px] uppercase font-bold tracking-[0.2em] text-[var(--gold)]">
+              Follicia Footwear
             </span>
-            <input
-              type="range"
-              min="3000"
-              max="40000"
-              step="500"
-              value={maxPrice}
-              onChange={(e) => setMaxPrice(Number(e.target.value))}
-              className="w-28 sm:w-40 accent-[#4b261a] cursor-pointer h-1.5 bg-[#4b261a15] rounded-lg"
-            />
-          </div>
-
-          <div className="h-4 w-px bg-[#4b261a15] hidden sm:block" />
-
-          {/* Color Swatches */}
-          <div className="flex items-center gap-2 flex-wrap">
-            <span className="text-[10px] uppercase font-bold tracking-widest text-[#4b261a80]">COLOR:</span>
-            {COLOR_SWATCHES.map((s) => (
-              <button
-                key={s.name}
-                type="button"
-                title={s.name}
-                onClick={() => setColorFilter(s.name)}
-                className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-semibold border transition-all cursor-pointer ${
-                  colorFilter === s.name
-                    ? "border-[#24130d] bg-[#24130d] text-[#fffdf8] shadow-sm"
-                    : "border-[#4b261a20] bg-white text-[#24130d] hover:border-[#24130d]"
-                }`}
-              >
-                <span className="h-3 w-3 rounded-full border border-black/20 shrink-0" style={{ background: s.hex }} />
-                <span>{s.name}</span>
-              </button>
-            ))}
-          </div>
-        </motion.div>
-
-        {/* VIP Preview and Active access banners matching Pic 1 */}
-        <div className="mb-10 grid grid-cols-1 md:grid-cols-12 gap-6 items-center border-b border-[var(--ink)]/10 pb-8">
-          <div className="md:col-span-4">
-            <h2 className="font-display text-3xl md:text-4xl text-[var(--ink)]">Catalogue.</h2>
-            <p className="mt-1 text-xs uppercase tracking-widest text-[var(--ink)]/50">
-              {visible.length} pieces found
+            <h1 className="font-display text-2xl sm:text-3xl text-[#24130d] font-bold tracking-tight">
+              {pageTitle}
+            </h1>
+            <p className="text-xs uppercase tracking-widest text-[#4b261a70] mt-1">
+              {visible.length} {visible.length === 1 ? "piece" : "pieces"} available
             </p>
           </div>
-          
-          <div className="md:col-span-4 border-l border-[var(--ink)]/10 pl-6">
-            <p className="eyebrow text-[var(--gold)] text-[10px] tracking-widest">VIP PREVIEW</p>
-            <h4 className="mt-1 font-semibold text-sm text-[var(--ink)]">Noire Autumn/Winter Drop</h4>
-            <p className="mt-0.5 text-xs text-[var(--ink)]/60">VIP preview active, public release Monday</p>
-          </div>
 
-          <div className="md:col-span-4 border-l border-[var(--ink)]/10 pl-6">
-            <p className="eyebrow text-emerald-600 text-[10px] tracking-widest">ACTIVE</p>
-            <h4 className="mt-1 font-semibold text-sm text-[var(--ink)]">Private Preview Access</h4>
-            <p className="mt-0.5 text-xs text-[var(--ink)]/60">Private Atelier and VIP customers see preview pairs</p>
-          </div>
-        </div>
-
-        {/* Collection Filter Tabs */}
-        <div className="mb-10 flex flex-wrap items-center justify-center gap-2">
-          {["All", "Aura", "Bloom", "Muse", "Noire"].map((col) => (
+          <div className="flex items-center gap-3 self-start sm:self-auto">
+            {/* Mobile Filter Trigger */}
             <button
-              key={col}
               type="button"
-              onClick={() => setSelectedCollection(col)}
-              className={`rounded-full px-5 py-2 text-xs font-semibold uppercase tracking-wider transition-all duration-300 cursor-pointer ${
-                selectedCollection === col
-                  ? "bg-[#24130d] text-[#fffdf8] shadow-md"
-                  : "bg-white/80 text-[#4b261a99] border border-[#4b261a1a] hover:border-[#4b261a40] hover:text-[#24130d]"
-              }`}
+              onClick={() => setMobileFiltersOpen(true)}
+              className="lg:hidden inline-flex items-center gap-2 rounded-xl border border-[#4b261a25] bg-white px-3.5 py-2 text-xs font-semibold text-[#24130d] shadow-2xs hover:bg-[#FAF8F5] cursor-pointer"
             >
-              {col}
+              <SlidersHorizontal size={14} />
+              <span>Filters {activeFilterCount > 0 ? `(${activeFilterCount})` : ""}</span>
             </button>
-          ))}
+
+            {/* Sort Selector */}
+            <div className="flex items-center gap-2">
+              <span className="text-[11px] uppercase tracking-wider text-[#4b261a70] font-semibold hidden sm:inline">Sort:</span>
+              <select
+                value={sort}
+                onChange={(e) => setSort(e.target.value)}
+                className="rounded-xl border border-[#4b261a20] bg-white px-3 py-2 text-xs font-semibold text-[#24130d] outline-none cursor-pointer focus:border-[var(--gold)] shadow-2xs"
+              >
+                <option value="Featured">Featured Pieces</option>
+                <option value="Price low to high">Price: Low to High</option>
+                <option value="Price high to low">Price: High to Low</option>
+                <option value="Availability">Stock Availability</option>
+                <option value="Most limited">Most Limited</option>
+              </select>
+            </div>
+          </div>
         </div>
 
-        {/* Selected Product Order Section */}
-        {selectedProduct && (
-          <section id="selected-product-order" className="mb-16 rounded-3xl border border-[#4b261a1a] bg-[#fffdf8] p-6 md:p-10 shadow-[0_20px_60px_rgba(75,38,26,0.08)]">
-            <div className="mb-6 flex flex-wrap items-center justify-between gap-4 border-b border-[#4b261a12] pb-4">
-              <div className="flex items-center gap-3">
-                <span className="h-2 w-2 rounded-full bg-[var(--gold)] animate-pulse" />
-                <span className="eyebrow text-[var(--gold)]">Order Selected Piece</span>
-                <span className="rounded-full bg-[#fffaf0] border border-[#4b261a20] px-3 py-1 text-xs font-semibold text-[#24130d]">
-                  {selectedProduct.title}
-                </span>
-              </div>
-              <div className="flex items-center gap-4 text-xs">
-                <span className="text-[var(--ink)]/50">Click any piece below to switch</span>
+        {/* Main Two-Column Layout: Left Sidebar + Product Grid */}
+        <div className="flex flex-col lg:flex-row gap-8 items-start">
+          {/* Left Sidebar Filter */}
+          <LeftFilterSidebar
+            query={query}
+            setQuery={setQuery}
+            selectedCollection={selectedCollection}
+            setSelectedCollection={setSelectedCollection}
+            selectedCategory={selectedCategory}
+            setSelectedCategory={setSelectedCategory}
+            maxPrice={maxPrice}
+            setMaxPrice={setMaxPrice}
+            colorFilter={colorFilter}
+            setColorFilter={setColorFilter}
+            materialFilter={materialFilter}
+            setMaterialFilter={setMaterialFilter}
+            stock={stock}
+            setStock={setStock}
+            products={products}
+            activeFilterCount={activeFilterCount}
+            onResetAll={handleResetAll}
+            isMobileOpen={mobileFiltersOpen}
+            onCloseMobile={() => setMobileFiltersOpen(false)}
+          />
+
+          {/* Right Product Grid Area */}
+          <div className="flex-1 min-w-0 w-full">
+            {/* Active Filter Chips */}
+            {activeFilterCount > 0 && (
+              <div className="mb-5 flex flex-wrap items-center gap-1.5 pb-2">
+                <span className="text-[10px] uppercase font-bold tracking-wider text-[#4b261a60] mr-1">Active:</span>
+
+                {selectedCollection !== "All" && (
+                  <button
+                    onClick={() => setSelectedCollection("All")}
+                    className="inline-flex items-center gap-1.5 rounded-full bg-[#351c13] text-white px-3 py-1 text-xs font-medium shadow-2xs cursor-pointer hover:bg-[#24130d]"
+                  >
+                    <span>{selectedCollection} Collection</span>
+                    <X size={12} />
+                  </button>
+                )}
+
+                {selectedCategory !== "All" && (
+                  <button
+                    onClick={() => setSelectedCategory("All")}
+                    className="inline-flex items-center gap-1.5 rounded-full bg-[#351c13] text-white px-3 py-1 text-xs font-medium shadow-2xs cursor-pointer hover:bg-[#24130d]"
+                  >
+                    <span>{selectedCategory}</span>
+                    <X size={12} />
+                  </button>
+                )}
+
+                {maxPrice < 40000 && (
+                  <button
+                    onClick={() => setMaxPrice(40000)}
+                    className="inline-flex items-center gap-1.5 rounded-full bg-[#351c13] text-white px-3 py-1 text-xs font-medium shadow-2xs cursor-pointer hover:bg-[#24130d]"
+                  >
+                    <span>Under ₹{maxPrice.toLocaleString("en-IN")}</span>
+                    <X size={12} />
+                  </button>
+                )}
+
+                {colorFilter !== "All" && (
+                  <button
+                    onClick={() => setColorFilter("All")}
+                    className="inline-flex items-center gap-1.5 rounded-full bg-[#351c13] text-white px-3 py-1 text-xs font-medium shadow-2xs cursor-pointer hover:bg-[#24130d]"
+                  >
+                    <span>Color: {colorFilter}</span>
+                    <X size={12} />
+                  </button>
+                )}
+
+                {materialFilter !== "All" && (
+                  <button
+                    onClick={() => setMaterialFilter("All")}
+                    className="inline-flex items-center gap-1.5 rounded-full bg-[#351c13] text-white px-3 py-1 text-xs font-medium shadow-2xs cursor-pointer hover:bg-[#24130d]"
+                  >
+                    <span>{materialFilter}</span>
+                    <X size={12} />
+                  </button>
+                )}
+
+                {stock !== "All" && (
+                  <button
+                    onClick={() => setStock("All")}
+                    className="inline-flex items-center gap-1.5 rounded-full bg-[#351c13] text-white px-3 py-1 text-xs font-medium shadow-2xs cursor-pointer hover:bg-[#24130d]"
+                  >
+                    <span>{stock}</span>
+                    <X size={12} />
+                  </button>
+                )}
+
+                {query.trim() && (
+                  <button
+                    onClick={() => setQuery("")}
+                    className="inline-flex items-center gap-1.5 rounded-full bg-[#351c13] text-white px-3 py-1 text-xs font-medium shadow-2xs cursor-pointer hover:bg-[#24130d]"
+                  >
+                    <span>"{query}"</span>
+                    <X size={12} />
+                  </button>
+                )}
+
                 <button
-                  type="button"
-                  onClick={() => {
-                    const el = document.getElementById("catalogue-grid");
-                    if (el) el.scrollIntoView({ behavior: "smooth" });
-                  }}
-                  className="eyebrow text-[var(--gold)] hover:underline cursor-pointer"
+                  onClick={handleResetAll}
+                  className="text-xs font-semibold text-[var(--gold)] hover:underline ml-2 cursor-pointer"
                 >
-                  Browse all designs ↓
+                  Clear all
                 </button>
               </div>
+            )}
+
+            {/* Product Cards Grid: 3 columns on desktop, 2 on mobile */}
+            <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-3 gap-3.5 sm:gap-5">
+              {visible.map((product, index) => (
+                <ProductCard
+                  key={product.id}
+                  product={product}
+                  colorFilter={colorFilter}
+                  index={index}
+                />
+              ))}
             </div>
 
-            {/* The 2-column order view */}
-            <div className="grid gap-10 lg:grid-cols-[1.05fr_0.95fr] xl:grid-cols-[1.1fr_0.9fr]">
-              {/* Product Gallery */}
-              <div className="grid gap-4">
-                <div className="relative aspect-[4/5] overflow-hidden rounded-2xl bg-[#fffaf0] border border-[#4b261a12] shadow-sm flex items-center justify-center p-6">
-                  <img
-                    src={activeImage || productPrimaryImage(selectedProduct)}
-                    alt={selectedProduct.title}
-                    onClick={() => {
-                      if (selectedProductGallery.length > 1) {
-                        const currIdx = selectedProductGallery.findIndex((img) => {
-                          const cleanA = (activeImage || productPrimaryImage(selectedProduct)).trim().toLowerCase();
-                          const fileA = cleanA.split("/").pop()?.split("?")[0] || cleanA;
-                          const cleanI = img.trim().toLowerCase();
-                          const fileI = cleanI.split("/").pop()?.split("?")[0] || cleanI;
-                          return cleanA === cleanI || fileA === fileI;
-                        });
-                        const nextIdx = (currIdx + 1) % selectedProductGallery.length;
-                        setActiveImage(selectedProductGallery[nextIdx]);
-                      }
-                    }}
-                    className={`max-h-[90%] max-w-[90%] object-contain mix-blend-multiply transition-transform duration-500 ${
-                      selectedProductGallery.length > 1 ? "cursor-pointer hover:scale-105" : ""
-                    }`}
-                    title={selectedProductGallery.length > 1 ? "Click to view next colour photo" : undefined}
-                  />
-                  <div className="absolute left-3.5 top-3.5 rounded bg-white/90 px-2.5 py-1 text-[9px] font-semibold uppercase tracking-wider text-[#24130d] shadow-sm">
-                    {selectedProduct.status || "AVAILABLE"}
-                  </div>
+            {/* Empty State */}
+            {visible.length === 0 && (
+              <div className="my-8 flex flex-col items-center justify-center border border-[#4b261a1a] bg-white rounded-2xl py-16 px-4 text-center shadow-xs">
+                <div className="h-12 w-12 rounded-full bg-[#FAF8F5] flex items-center justify-center mb-3 text-[#4b261a60]">
+                  <Filter size={20} />
                 </div>
-
-                {/* Thumbnails */}
-                {selectedProductGallery.length > 1 && (
-                  <div className="flex flex-wrap gap-3">
-                    {selectedProductGallery.map((img, idx) => {
-                      const matchingVariant = selectedProductVariants.find((v) => v.image === img);
-                      const cleanActive = (activeImage || productPrimaryImage(selectedProduct)).trim().toLowerCase();
-                      const cleanActiveFile = cleanActive.split("/").pop()?.split("?")[0] || cleanActive;
-                      const cleanImg = img.trim().toLowerCase();
-                      const cleanImgFile = cleanImg.split("/").pop()?.split("?")[0] || cleanImg;
-                      const isCurrent = cleanActive === cleanImg || cleanActiveFile === cleanImgFile || (matchingVariant && activeVariant?.heroColour === matchingVariant.heroColour);
-                      return (
-                        <button
-                          key={`${img}-${idx}`}
-                          type="button"
-                          onClick={() => setActiveImage(img)}
-                          title={matchingVariant?.heroColour ? `Colour: ${matchingVariant.heroColour} (${matchingVariant.colourCode})` : undefined}
-                          className={`h-16 w-16 overflow-hidden rounded-xl border p-1 bg-[#fffaf0] transition-all cursor-pointer relative ${
-                            isCurrent
-                              ? "border-[var(--gold)] ring-2 ring-[var(--gold)]/40 scale-105 shadow-sm"
-                              : "border-[#4b261a1a] opacity-70 hover:opacity-100"
-                          }`}
-                        >
-                          <img src={img} alt="" className="h-full w-full object-contain mix-blend-multiply" />
-                        </button>
-                      );
-                    })}
-                  </div>
-                )}
+                <h3 className="font-display text-lg font-bold text-[#24130d]">No pieces match your filter selection</h3>
+                <p className="mt-1 text-xs text-[#4b261a80] max-w-sm">
+                  Try adjusting your price range, clearing color filters, or searching for another silhouette.
+                </p>
+                <button
+                  type="button"
+                  onClick={handleResetAll}
+                  className="mt-4 px-5 py-2.5 rounded-full bg-[#24130d] text-white text-xs uppercase font-semibold tracking-wider hover:bg-[#351c13] transition-colors cursor-pointer shadow-xs"
+                >
+                  Reset All Filters
+                </button>
               </div>
-
-              {/* Order Form & Details */}
-              <div className="flex flex-col justify-between">
-                <div>
-                  <div className="flex items-start justify-between gap-4">
-                    <div>
-                      <p className="eyebrow text-[var(--gold)]">{selectedProduct.edition || "FOLLICIA ATELIER"}</p>
-                      <h2 className="mt-2 font-display text-4xl md:text-5xl text-[#24130d] leading-tight">
-                        {selectedProduct.title}
-                      </h2>
-                      <div className="mt-2 flex flex-wrap items-center gap-2">
-                        <p className="text-xs uppercase tracking-widest text-[#4b261a99]">
-                          Colour: <strong className="text-[#24130d] font-semibold">{activeHeroColour}</strong>
-                          {activeColourCode ? <span className="ml-1 opacity-70">({activeColourCode})</span> : null}
-                        </p>
-                      </div>
-
-                      {selectedProductVariants.length > 1 && (
-                        <div className="mt-3 flex flex-wrap items-center gap-2">
-                          {selectedProductVariants.map((v, vIdx) => {
-                            const isSel = (activeImage ? v.image === activeImage : vIdx === 0) || activeVariant?.heroColour === v.heroColour;
-                            return (
-                              <button
-                                key={`${v.colourVariantSku || v.heroColour}-${vIdx}`}
-                                type="button"
-                                onClick={() => setActiveImage(v.image)}
-                                className={`px-3 py-1 rounded-full text-xs font-semibold uppercase tracking-wider transition-all flex items-center gap-1.5 cursor-pointer ${
-                                  isSel
-                                    ? "bg-[#24130d] text-[#fffdf8] shadow-sm ring-1 ring-[#24130d]"
-                                    : "bg-white border border-[#4b261a20] text-[#4b261a90] hover:border-[#24130d] hover:text-[#24130d]"
-                                }`}
-                              >
-                                <span
-                                  className="h-2.5 w-2.5 rounded-full border border-black/10 shrink-0"
-                                  style={{ backgroundColor: getColorHex(v.heroColour) }}
-                                />
-                                <span>{v.heroColour}</span>
-                                {isSel && <span className="text-[9px] text-[var(--gold)]">✓</span>}
-                              </button>
-                            );
-                          })}
-                        </div>
-                      )}
-                    </div>
-                    <div className="flex items-center gap-2 shrink-0">
-                      <button
-                        type="button"
-                        onClick={() => void shareProduct(selectedProduct)}
-                        aria-label="Share design"
-                        title="Share this design"
-                        className="grid h-12 w-12 shrink-0 place-items-center rounded-full border border-[#4b261a1a] bg-white shadow-sm transition-transform hover:scale-110 cursor-pointer hover:border-[var(--gold)]"
-                      >
-                        <svg
-                          width="18"
-                          height="18"
-                          viewBox="0 0 24 24"
-                          fill="none"
-                          stroke="currentColor"
-                          strokeWidth="1.8"
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                        >
-                          <path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8" />
-                          <polyline points="16 6 12 2 8 6" />
-                          <line x1="12" y1="2" x2="12" y2="15" />
-                        </svg>
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => toggleWish(selectedProduct.id)}
-                        aria-label="Wishlist"
-                        className="grid h-12 w-12 shrink-0 place-items-center rounded-full border border-[#4b261a1a] bg-white shadow-sm transition-transform hover:scale-110 cursor-pointer"
-                      >
-                      <svg
-                        width="20"
-                        height="20"
-                        viewBox="0 0 24 24"
-                        fill={isWished ? "var(--gold)" : "none"}
-                        stroke={isWished ? "var(--gold)" : "currentColor"}
-                        strokeWidth="1.6"
-                      >
-                        <path d="M12 21s-7-4.35-7-10a4 4 0 0 1 7-2.65A4 4 0 0 1 19 11c0 5.65-7 10-7 10z" />
-                      </svg>
-                    </button>
-                  </div>
-                </div>
-
-                  <div className="mt-4 flex items-baseline gap-4">
-                    <span className="font-display text-3xl font-semibold text-[#24130d]">{selectedProduct.price}</span>
-                    <span className="text-xs text-emerald-700 font-medium bg-emerald-50 border border-emerald-200 px-2.5 py-0.5 rounded-full">
-                      Inclusive of all taxes · Free Shipping
-                    </span>
-                  </div>
-
-                  {/* Size Selector */}
-                  <div className="mt-8 border-t border-[#4b261a12] pt-6">
-                    <div className="flex items-center justify-between">
-                      <span className="eyebrow text-[#4b261a80]">Select Size</span>
-                      <span className="text-[10px] uppercase tracking-widest text-[#4b261a60]">EU Sizing</span>
-                    </div>
-
-                    <div className="mt-3.5 flex flex-wrap gap-3">
-                      {sizes.map((s) => (
-                        <button
-                          key={s}
-                          type="button"
-                          onClick={() => setSelectedSize(s)}
-                          className={`h-12 px-4 min-w-16 rounded-xl border text-sm font-semibold transition-all cursor-pointer ${
-                            selectedSize === s
-                              ? "border-[#24130d] bg-[#24130d] text-[#fffdf8] shadow-md scale-105"
-                              : "border-[#4b261a20] bg-white text-[#24130d] hover:border-[var(--gold)]"
-                          }`}
-                        >
-                          {s}
-                        </button>
-                      ))}
-                    </div>
-
-                    {!selectedSize && (
-                      <p className="mt-2.5 text-xs text-[var(--gold)] font-medium">
-                        Please choose a size to reserve pair
-                      </p>
-                    )}
-
-                    <div className="mt-3 rounded-lg border border-[#4b261a12] bg-[#fffaf0] p-3 text-xs text-[#4b261a99]">
-                      <strong className="font-semibold text-[#24130d]">Size confidence: </strong>
-                      <span>{sizeConfidence(selectedProduct, selectedSize)}</span>
-                    </div>
-                  </div>
-
-                  {/* Action Buttons */}
-                  <div className="mt-6 flex flex-col sm:flex-row gap-3">
-                    <button
-                      type="button"
-                      onClick={handleAddToBag}
-                      style={{
-                        backgroundColor: "#15803d",
-                        backgroundImage: "linear-gradient(135deg, #16a34a, #15803d)",
-                        color: "#ffffff",
-                        border: "none",
-                        boxShadow: "0 4px 16px rgba(22, 163, 74, 0.4)",
-                      }}
-                      className="btn-green-action flex-1 rounded-full py-4 px-6 text-xs font-semibold uppercase tracking-widest text-white transition-all hover:brightness-110 cursor-pointer shadow-lg"
-                    >
-                      {addedToBag ? "✓ Added to Bag!" : "Add to Bag / Reserve Pair →"}
-                    </button>
-
-                    <button
-                      type="button"
-                      onClick={handleBuyNow}
-                      style={{
-                        borderColor: "#16a34a",
-                        color: "#15803d",
-                        backgroundColor: "#ffffff",
-                      }}
-                      className="btn-green-outline rounded-full py-4 px-8 text-xs font-semibold uppercase tracking-widest border transition-all cursor-pointer shadow-sm hover:brightness-95"
-                    >
-                      Buy Now (Card / UPI / COD)
-                    </button>
-                  </div>
-
-                  <div className="mt-4 flex items-center justify-center gap-4 text-xs text-[#4b261a80]">
-                    <span className="flex items-center gap-1.5">
-                      <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                      Dispatches in 24-48 hrs
-                    </span>
-                    <span>·</span>
-                    <span>100% Original &amp; Handcrafted</span>
-                    <span>·</span>
-                    <span>Complimentary Returns</span>
-                  </div>
-                </div>
-
-                {/* Collapsible details */}
-                <div className="mt-8 border-t border-[#4b261a12] pt-4">
-                  {["Product Details", "Delivery & Returns", "Care Instructions"].map((panel) => (
-                    <div key={panel} className="border-b border-[#4b261a12]">
-                      <button
-                        type="button"
-                        onClick={() => setOpenAccordion(openAccordion === panel ? "" : panel)}
-                        className="flex w-full items-center justify-between py-3 text-xs font-semibold uppercase tracking-widest text-[#24130d] cursor-pointer"
-                      >
-                        <span>{panel}</span>
-                        <span className="text-sm">{openAccordion === panel ? "−" : "+"}</span>
-                      </button>
-                      {openAccordion === panel && (
-                        <div className="pb-4 text-xs leading-relaxed text-[#4b261a99]">
-                          {panel === "Product Details" && (
-                            <div className="grid gap-2.5 pt-2">
-                              <div className="grid grid-cols-2 gap-2 border-b border-[#4b261a0d] pb-2">
-                                <span className="text-[10px] uppercase font-bold tracking-widest text-[#4b261a70]">Design ID / Base</span>
-                                <span className="text-xs font-mono font-bold text-[#24130d]">{selectedProduct.designId || selectedProduct.id.toUpperCase()}</span>
-                              </div>
-                              <div className="grid grid-cols-2 gap-2 border-b border-[#4b261a0d] pb-2">
-                                <span className="text-[10px] uppercase font-bold tracking-widest text-[#4b261a70]">Collection</span>
-                                <span className="text-xs font-semibold text-[#24130d]">{selectedProduct.collection || selectedProduct.edition}</span>
-                              </div>
-                              <div className="grid grid-cols-2 gap-2 border-b border-[#4b261a0d] pb-2">
-                                <span className="text-[10px] uppercase font-bold tracking-widest text-[#4b261a70]">Category</span>
-                                <span className="text-xs font-semibold text-[#24130d]">{selectedProduct.category || "Footwear"}</span>
-                              </div>
-                              {selectedProduct.silhouette && (
-                                <div className="grid grid-cols-2 gap-2 border-b border-[#4b261a0d] pb-2">
-                                  <span className="text-[10px] uppercase font-bold tracking-widest text-[#4b261a70]">Silhouette / Toe</span>
-                                  <span className="text-xs text-[#24130d]">{selectedProduct.silhouette}</span>
-                                </div>
-                              )}
-                              {selectedProduct.material && (
-                                <div className="grid grid-cols-2 gap-2 border-b border-[#4b261a0d] pb-2">
-                                  <span className="text-[10px] uppercase font-bold tracking-widest text-[#4b261a70]">Material</span>
-                                  <span className="text-xs text-[#24130d] leading-relaxed">{selectedProduct.material}</span>
-                                </div>
-                              )}
-                              <div className="grid grid-cols-2 gap-2 border-b border-[#4b261a0d] pb-2">
-                                <span className="text-[10px] uppercase font-bold tracking-widest text-[#4b261a70]">Hero Colour</span>
-                                <div className="flex items-center gap-1.5">
-                                  <span
-                                    className="h-3 w-3 rounded-full border border-black/10 shrink-0 inline-block"
-                                    style={{ backgroundColor: getColorHex(activeHeroColour) }}
-                                  />
-                                  <span className="text-xs font-semibold text-[#24130d]">{activeHeroColour}</span>
-                                </div>
-                              </div>
-                              {activeColourCode && (
-                                <div className="grid grid-cols-2 gap-2 border-b border-[#4b261a0d] pb-2">
-                                  <span className="text-[10px] uppercase font-bold tracking-widest text-[#4b261a70]">Colour Code</span>
-                                  <span className="text-xs font-mono text-[#24130d]">{activeColourCode}</span>
-                                </div>
-                              )}
-                              {activeVariantSku && (
-                                <div className="grid grid-cols-2 gap-2 border-b border-[#4b261a0d] pb-2">
-                                  <span className="text-[10px] uppercase font-bold tracking-widest text-[#4b261a70]">Colour Variant SKU</span>
-                                  <span className="text-xs font-mono font-bold text-[#24130d]">{activeVariantSku}</span>
-                                </div>
-                              )}
-
-                              {/* Full SKU - Dynamic Formula: {Design ID}-{Hero Color First 2 Letters}-{Size} */}
-                              <div className="border-b border-[#4b261a0d] pb-2.5">
-                                <div className="flex items-center justify-between gap-2 mb-1.5">
-                                  <div>
-                                    <span className="text-[10px] uppercase font-bold tracking-widest text-[#4b261a70]">
-                                      Full SKU {selectedSize ? `(${selectedSize})` : ""}
-                                    </span>
-                                    <p className="text-[9px] text-[#4b261a60] uppercase tracking-wider mt-0.5">
-                                      Formula: {`{Design ID}-${getHeroColorCode(activeHeroColour)}-{Size}`}
-                                    </p>
-                                  </div>
-                                  {selectedSize && (
-                                    <span className="font-mono text-[11px] font-bold text-[var(--gold)] bg-[#fffaf0] border border-[var(--gold)]/30 px-2.5 py-1 rounded shadow-sm">
-                                      {activeVariant?.fullSkus?.[selectedSize.replace(/\D/g, "")] || computeFullSku(
-                                        selectedProduct.designId || selectedProduct.id,
-                                        activeHeroColour,
-                                        selectedSize
-                                      )}
-                                    </span>
-                                  )}
-                                </div>
-                                <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5 mt-1.5">
-                                  {["38", "39", "40", "41"].map((sz) => {
-                                    const isSelected = selectedSize.includes(sz);
-                                    const dynamicSku = activeVariant?.fullSkus?.[sz] || computeFullSku(
-                                      selectedProduct.designId || selectedProduct.id,
-                                      activeHeroColour,
-                                      sz
-                                    );
-                                    return (
-                                      <div
-                                        key={sz}
-                                        onClick={() => setSelectedSize(`EU${sz}`)}
-                                        className={`p-2 rounded-lg border text-center transition-all cursor-pointer ${
-                                          isSelected
-                                            ? "border-[var(--gold)] bg-[#24130d] text-[#fffdf8] shadow-sm scale-102"
-                                            : "border-[#4b261a18] bg-[#FAF8F5] text-[#24130d] hover:border-[var(--gold)]/50"
-                                        }`}
-                                      >
-                                        <div className="text-[9px] uppercase font-bold tracking-wider opacity-70">EU {sz}</div>
-                                        <div className="font-mono text-[10px] font-bold mt-0.5 truncate" title={dynamicSku}>{dynamicSku}</div>
-                                      </div>
-                                    );
-                                  })}
-                                </div>
-                              </div>
-
-                              {selectedProduct.heelHeight && (
-                                <div className="grid grid-cols-2 gap-2 border-b border-[#4b261a0d] pb-2">
-                                  <span className="text-[10px] uppercase font-bold tracking-widest text-[#4b261a70]">Heel Height</span>
-                                  <span className="text-xs text-[#24130d]">{selectedProduct.heelHeight} mm</span>
-                                </div>
-                              )}
-                              <div className="grid grid-cols-2 gap-2 border-b border-[#4b261a0d] pb-2">
-                                <span className="text-[10px] uppercase font-bold tracking-widest text-[#4b261a70]">Size Range</span>
-                                <span className="text-xs font-semibold text-[#24130d]">{selectedProduct.sizeRange ? `EU ${selectedProduct.sizeRange}` : "EU 38–41"}</span>
-                              </div>
-                              {selectedProduct.notes && (
-                                <div className="mt-1 pt-1 text-[11px] italic text-[#4b261a80] leading-relaxed">
-                                  * {selectedProduct.notes}
-                                </div>
-                              )}
-                            </div>
-                          )}
-                          {panel === "Delivery & Returns" && (
-                            <p>
-                              Complimentary white-glove shipping across India. Standard dispatch within 24-48 hours. 7-day doorstep return and size exchange service included.
-                            </p>
-                          )}
-                          {panel === "Care Instructions" && (
-                            <p>
-                              Store in the provided breathable cotton dust bag. Wipe clean with a soft dry cloth. Avoid prolonged exposure to moisture or direct sunlight.
-                            </p>
-                          )}
-                        </div>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
-          </section>
-        )}
-
-        {/* All Products Catalogue Grid */}
-        <div id="catalogue-grid" className="mt-12">
-          <div className="mb-6 flex items-center justify-between">
-            <h3 className="font-display text-2xl md:text-3xl text-[#24130d]">
-              {selectedProduct ? "All Collection Designs" : "Explore All Designs"}
-            </h3>
-            <span className="text-xs uppercase tracking-widest text-[#4b261a80]">
-              {sortedProducts.length} pieces available
-            </span>
+            )}
           </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-            <AnimatePresence mode="popLayout">
-              {sortedProducts.map((product, index) => {
-                const isSelected = selectedProduct?.id === product.id;
-                return (
-                  <motion.div
-                    key={product.id}
-                    layout
-                    initial={{ opacity: 0, scale: 0.95 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    exit={{ opacity: 0, scale: 0.95 }}
-                    transition={{ duration: 0.35 }}
-                  >
-                    <ProductCard
-                      product={product}
-                      index={index}
-                      isSelected={isSelected}
-                      onSelect={() => handleSelectProduct(product)}
-                    />
-                  </motion.div>
-                );
-              })}
-            </AnimatePresence>
-          </div>
-
-          {sortedProducts.length === 0 && (
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              className="my-24 flex flex-col items-center justify-center border border-[var(--ink)]/10 bg-white py-32 text-center shadow-[var(--shadow-soft)]"
-            >
-              <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="var(--gold)" strokeWidth="1" className="mb-6 opacity-60">
-                <path d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-              </svg>
-              <h2 className="font-display text-4xl">No pieces match your search.</h2>
-              <p className="mt-4 text-[var(--ink)]/60">Try adjusting your filters or search terms.</p>
-              <button
-                onClick={() => {
-                  setQuery("");
-                  setStatus("All");
-                  setMaterialFilter("All");
-                  setStock("All");
-                }}
-                className="magnetic-btn mt-8 bg-[var(--ink)] px-8 py-4 eyebrow text-[var(--bone)] transition-colors hover:bg-[var(--gold)] hover:text-[var(--ink)] cursor-pointer"
-              >
-                Reset all filters
-              </button>
-            </motion.div>
-          )}
         </div>
-      </section>
+      </div>
     </PageShell>
   );
 }
@@ -1615,13 +1926,412 @@ export function ProductDetailPage({
   onLogout: () => void;
   onLogin: () => void;
 }) {
+  const { add, toggleWish, wishlist, setOpen: setCartOpen } = useCart();
+  const [products, setProducts] = useState<CommerceProduct[]>(() => liveProducts());
+  const [size, setSize] = useState("");
+  const [openPanel, setOpenPanel] = useState("Product Details");
+  const [added, setAdded] = useState(false);
+  const [shareCopied, setShareCopied] = useState(false);
+  const [activeImage, setActiveImage] = useState("");
+  const imgRef = useRef<HTMLDivElement>(null);
+  const mx = useMotionValue(0);
+  const my = useMotionValue(0);
+  const rx = useSpring(useTransform(my, [-1, 1], [4, -4]), { stiffness: 100, damping: 20 });
+  const ry = useSpring(useTransform(mx, [-1, 1], [-4, 4]), { stiffness: 100, damping: 20 });
+
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: "instant" });
+  }, [productId]);
+
+  useEffect(() => {
+    const sync = () => setProducts(liveProducts());
+    window.addEventListener(COMMERCE_EVENT, sync);
+    void syncCommerceFromBackend();
+    return () => window.removeEventListener(COMMERCE_EVENT, sync);
+  }, []);
+
+  const product = useMemo(() => {
+    const target = (productId || "").toLowerCase();
+    return products.find(
+      (item) => item.id.toLowerCase() === target || slugify(item.title) === target || item.designId?.toLowerCase() === target
+    );
+  }, [products, productId]);
+
+  const related = useMemo(() => {
+    return products.filter((item) => item.id !== product?.id).slice(0, 4);
+  }, [products, product?.id]);
+
+  useEffect(() => {
+    if (product) {
+      setActiveImage(productPrimaryImage(product));
+      const activeSizes = product.availableSizes && product.availableSizes.length > 0
+        ? product.availableSizes
+        : DEFAULT_PRODUCT_SIZES;
+      setSize((prev) => (activeSizes.includes(prev) ? prev : activeSizes[0]));
+    }
+  }, [product?.id, product?.image, product?.images, product?.availableSizes]);
+
+  const storyRecords = activeRecords("stories", [
+    { id: "story-craft", title: "Craft Note", meta: "Hand-lasted construction, numbered editions and handcrafted finishing.", status: "Published" },
+    { id: "story-size", title: "Size Confidence", meta: "Fits true to size; concierge can review your usual size.", status: "Published" },
+    { id: "story-care", title: "Care Promise", meta: "Care kit, restoration guidance and post-purchase check-in.", status: "Published" },
+  ]);
+  const dropRecords = activeRecords("drops", [{ id: "drop-default", title: "Private drop window", meta: "VIP holds and concierge reservations are open.", status: "Live" }]);
+  const seoRecord = activeRecords("seo").find((record) => record.id.includes("product")) || null;
+
+  useEffect(() => {
+    if (!product || typeof document === "undefined") return;
+    document.title = seoRecord?.title || `${product.title} - Follocia`;
+  }, [product?.id, seoRecord?.title]);
+
+  if (!product) {
+    return (
+      <PageShell session={session} onLogout={onLogout} onLogin={onLogin}>
+        <section className="mx-auto grid min-h-[60vh] max-w-[900px] place-items-center px-6 text-center">
+          <div>
+            <p className="eyebrow text-[var(--gold)]">Shop</p>
+            <motion.h1 initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="mt-4 font-display text-5xl sm:text-6xl text-[#24130d]">Piece not found.</motion.h1>
+            <p className="mt-3 text-sm text-[#4b261a70]">The requested design could not be found or has been archived.</p>
+            <a href="#/shop" className="mt-8 inline-block rounded-full bg-[#24130d] px-8 py-3.5 text-xs font-semibold uppercase tracking-wider text-white transition-colors hover:bg-[#351c13] shadow-md">Back to Catalogue</a>
+          </div>
+        </section>
+      </PageShell>
+    );
+  }
+
+  const wished = wishlist.some((x) => x.toLowerCase() === product.id.toLowerCase());
+  const gallery = productImages(product);
+  const displayImage = activeImage || productPrimaryImage(product);
+  const confidence = sizeConfidence(product, size);
+  const variants = useMemo(() => getProductVariants(product), [product]);
+  const activeVariant = useMemo(() => getActiveVariant(product, displayImage), [product, displayImage]);
+
   return (
-    <ShopPage
-      initialProductId={productId}
-      session={session}
-      onLogout={onLogout}
-      onLogin={onLogin}
-    />
+    <PageShell session={session} onLogout={onLogout} onLogin={onLogin}>
+      <div className="mx-auto max-w-[1400px] w-full min-w-0 px-3.5 sm:px-6 pt-2.5 pb-1 md:px-10 flex items-center justify-between gap-2 overflow-hidden">
+        <nav aria-label="Breadcrumb" className="flex items-center gap-1.5 text-[11px] uppercase tracking-wider text-[#4b261a70] min-w-0">
+          <a href="#/" className="hover:text-[#24130d] transition-colors shrink-0">Home</a>
+          <span className="text-[#4b261a30]">/</span>
+          <a href="#/shop" className="hover:text-[#24130d] transition-colors shrink-0">Shop</a>
+          {product.category && (
+            <>
+              <span className="text-[#4b261a30]">/</span>
+              <a href={`#/shop?category=${encodeURIComponent(product.category)}`} className="hover:text-[#24130d] transition-colors capitalize shrink-0">{product.category}</a>
+            </>
+          )}
+          <span className="text-[#4b261a30]">/</span>
+          <span className="font-semibold text-[#24130d] truncate max-w-[110px] xs:max-w-[180px] sm:max-w-none">{product.title}</span>
+        </nav>
+        <a href="#/shop" className="inline-flex items-center gap-1 text-[11px] uppercase tracking-widest text-[#4b261a80] hover:text-[#24130d] transition-colors font-semibold shrink-0">
+          <span>←</span> <span className="hidden xs:inline">Back to </span><span>Catalogue</span>
+        </a>
+      </div>
+
+      <section className="mx-auto grid max-w-[1400px] w-full min-w-0 gap-5 sm:gap-6 bg-[#fffaf0] px-3.5 sm:px-6 py-2 sm:py-3 md:px-10 lg:grid-cols-[1fr_1fr] xl:grid-cols-[1.05fr_0.95fr] items-start">
+        {/* Left Column: Interactive Zoom Hero Image & Thumbnails */}
+        <div className="grid gap-2 sm:gap-3 w-full min-w-0">
+          <ProductImageZoom
+            src={displayImage}
+            alt={product.title}
+            status={product.status}
+            images={gallery}
+            productTitle={product.title}
+            onSelectImage={(newImg) => setActiveImage(newImg)}
+            containerClassName={`${gallery.length > 1 ? "h-[250px] xs:h-[290px] sm:h-[400px] lg:h-[470px]" : "h-[270px] xs:h-[330px] sm:h-[440px] lg:h-[536px]"} rounded-2xl bg-[#fffdf8] border border-[#4b261a15] holo-shine shadow-[0_16px_40px_rgba(75,38,26,0.06)]`}
+          />
+
+          {/* Thumbnail Gallery */}
+          {gallery.length > 1 && (
+            <div className="grid grid-cols-4 gap-1.5 sm:gap-2">
+              {gallery.slice(0, 4).map((image, index) => (
+                <motion.button type="button" key={`${image}-${index}`} onClick={() => setActiveImage(image)} whileHover={{ scale: 1.02 }} className={`h-12 sm:h-16 w-full overflow-hidden rounded-xl bg-white border cursor-pointer p-1 transition-all flex items-center justify-center ${displayImage === image ? "border-[var(--gold)] ring-2 ring-[var(--gold)]/30 shadow-xs" : "border-[#4b261a15] hover:border-[#4b261a35]"}`}>
+                  <img src={image} alt="" className="h-full w-full object-contain mix-blend-multiply transition-transform duration-500 hover:scale-105" />
+                </motion.button>
+              ))}
+            </div>
+          )}
+        </div>
+        
+        {/* Right Column: Compact Details, Sizing, Add to Bag */}
+        <div className="border border-[#4b261a15] bg-white/95 p-3.5 sm:p-5 lg:p-6 rounded-2xl shadow-[0_12px_35px_rgba(75,38,26,0.05)] backdrop-blur-xl w-full min-w-0 overflow-hidden box-border">
+          <div>
+            {/* Top Row: Edition, Title & Action Buttons */}
+            <div className="flex items-start justify-between gap-2.5 w-full min-w-0">
+              <div className="flex-1 min-w-0">
+                <motion.p initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} className="eyebrow text-[var(--gold)] font-bold tracking-widest text-[10px] uppercase truncate">{product.edition || product.collection || "Follicia Collection"}</motion.p>
+                <motion.h1 initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="mt-1 font-display text-2xl sm:text-3xl font-bold text-[#24130d] tracking-tight leading-tight break-words">{product.title}</motion.h1>
+              </div>
+
+              <div className="flex items-center gap-2 shrink-0">
+                <button
+                  type="button"
+                  onClick={() => {
+                    void shareProduct(product, () => {
+                      setShareCopied(true);
+                      setTimeout(() => setShareCopied(false), 2400);
+                    });
+                  }}
+                  aria-label="Share piece"
+                  title="Share piece"
+                  className="grid h-8 w-8 sm:h-9 sm:w-9 place-items-center rounded-full border border-[#4b261a18] transition-all hover:border-[var(--gold)] hover:scale-105 shadow-xs cursor-pointer bg-white text-[#24130d]"
+                >
+                  {shareCopied ? (
+                    <span className="text-xs font-bold text-emerald-600">✓</span>
+                  ) : (
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <circle cx="18" cy="5" r="3" />
+                      <circle cx="6" cy="12" r="3" />
+                      <circle cx="18" cy="19" r="3" />
+                      <line x1="8.59" y1="13.51" x2="15.42" y2="17.49" />
+                      <line x1="15.41" y1="6.51" x2="8.59" y2="10.49" />
+                    </svg>
+                  )}
+                </button>
+
+                <button type="button" onClick={() => toggleWish(product.id)} aria-label="Wishlist" className="grid h-8 w-8 sm:h-9 sm:w-9 place-items-center rounded-full border border-[#4b261a18] transition-all hover:border-[var(--gold)] hover:scale-105 shadow-xs cursor-pointer bg-white">
+                  <motion.svg animate={{ scale: wished ? [1, 1.25, 1] : 1 }} width="15" height="15" viewBox="0 0 24 24" fill={wished ? "var(--gold)" : "none"} stroke={wished ? "var(--gold)" : "currentColor"} strokeWidth="1.6"><path d="M12 21s-7-4.35-7-10a4 4 0 0 1 7-2.65A4 4 0 0 1 19 11c0 5.65-7 10-7 10z" /></motion.svg>
+                </button>
+              </div>
+            </div>
+
+            {/* Colour and Price Row */}
+            <div className="mt-2 flex items-start justify-between gap-2 border-b border-[#4b261a10] pb-2.5 w-full min-w-0">
+              <div className="flex-1 min-w-0 pr-1">
+                <p className="text-[11px] text-[#4b261a80] uppercase tracking-[0.12em] font-medium truncate">
+                  Colour: <span className="font-semibold text-[#24130d] ml-0.5">{activeVariant.heroColour || product.heroColour || product.colourName || product.tone}</span>
+                </p>
+                {variants.length > 1 && (
+                  <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
+                    {variants.map((v) => {
+                      const isSel = v.heroColour === activeVariant.heroColour || v.image === displayImage;
+                      return (
+                        <button
+                          key={v.heroColour}
+                          type="button"
+                          onClick={() => {
+                            if (v.image) setActiveImage(v.image);
+                          }}
+                          className={`h-6 px-2 rounded-full text-[9.5px] font-semibold uppercase tracking-wider transition-all flex items-center gap-1 cursor-pointer border ${
+                            isSel
+                              ? "bg-[#24130d] text-white border-[#24130d] shadow-2xs"
+                              : "bg-white text-[#4b261a90] border-[#4b261a20] hover:border-[#24130d]"
+                          }`}
+                          title={v.heroColour}
+                        >
+                          <span className="h-2 w-2 rounded-full border border-black/10 shrink-0" style={{ backgroundColor: getColorHex(v.heroColour) }} />
+                          <span className="truncate max-w-[120px]">{v.colourCode ? `${v.colourCode} - ` : ""}{v.heroColour}</span>
+                          {isSel && <span className="text-[9px] text-[var(--gold)]">✓</span>}
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+              <div className="text-right shrink-0 whitespace-nowrap pl-2 self-start">
+                <span className="font-display text-xl sm:text-2xl text-[#24130d] font-bold whitespace-nowrap inline-block tracking-tight">
+                  {typeof product.price === "string" ? product.price.replace(/^Rs\.\s*/, "Rs.\u00A0") : product.price}
+                </span>
+                <span className="block text-[9px] text-[#4b261a70] whitespace-nowrap">Incl. all taxes</span>
+              </div>
+            </div>
+
+            {/* Size Selector */}
+            <div className="mt-2.5 w-full min-w-0">
+              <div className="flex items-center justify-between">
+                <p className="eyebrow text-[#4b261a80] font-bold tracking-widest text-[10px]">SELECT SIZE</p>
+                <span className="text-[9px] uppercase tracking-widest text-[#4b261a50] font-semibold">EU SIZING</span>
+              </div>
+              <div className="mt-2 flex flex-wrap gap-1.5 sm:gap-2">
+                {(product.availableSizes && product.availableSizes.length > 0 ? product.availableSizes : DEFAULT_PRODUCT_SIZES).map((item) => (
+                  <motion.button 
+                    type="button"
+                    key={item} 
+                    onClick={() => setSize(item)} 
+                    whileTap={{ scale: 0.95 }}
+                    className={`h-8 sm:h-9 min-w-[44px] sm:min-w-[48px] px-2 sm:px-2.5 rounded-lg border text-[11px] font-semibold uppercase tracking-wider transition-all duration-200 cursor-pointer ${size === item ? "border-[#24130d] bg-[#24130d] text-white shadow-sm ring-1 ring-[#24130d]/20" : "border-[#4b261a20] bg-white text-[#24130d] hover:border-[var(--gold)] hover:bg-[#fffdf8]"}`}
+                  >
+                    {item}
+                  </motion.button>
+                ))}
+              </div>
+              
+              {/* Compact Size Confidence helper banner */}
+              <div className="mt-2.5 flex items-center justify-between rounded-lg bg-[#fffaf0] border border-[#4b261a15] px-2.5 sm:px-3 py-1.5 text-[10px] sm:text-[11px] text-[#4b261a90] w-full min-w-0 box-border">
+                <div className="flex items-center gap-1.5 min-w-0 truncate">
+                  <span className="text-[var(--gold)] font-bold text-xs shrink-0">✦</span>
+                  <span className="truncate">{confidence || "Standard Italian lasts · True to size"}</span>
+                </div>
+                {size ? (
+                  <span className="text-[9.5px] sm:text-[10px] font-semibold text-emerald-700 uppercase tracking-wider shrink-0 ml-1.5">EU {size.replace(/\D/g, "")}</span>
+                ) : (
+                  <span className="text-[9.5px] sm:text-[10px] text-[var(--gold)] font-medium shrink-0 ml-1.5">Size</span>
+                )}
+              </div>
+            </div>
+
+            {/* Order Action Button */}
+            <motion.button 
+              type="button"
+              whileHover={{ scale: size ? 1.005 : 1 }} 
+              whileTap={{ scale: size ? 0.98 : 1 }}
+              onClick={() => { 
+                if (!size) return;
+                add({ id: `${product.id}-${size}`, title: product.title, price: product.price, image: productPrimaryImage(product), tone: product.tone, size }, 1);
+                setAdded(true);
+                setCartOpen(true);
+                setTimeout(() => setAdded(false), 2500);
+              }} 
+              className={`mt-2.5 w-full rounded-full py-3 sm:py-3.5 eyebrow transition-all duration-300 font-semibold cursor-pointer text-xs uppercase tracking-widest ${size ? "bg-[#15803d] text-white hover:bg-[#166534] shadow-md hover:shadow-lg" : "border border-[#4b261a20] bg-gray-100 text-gray-400 cursor-not-allowed"}`}
+              style={size ? { backgroundColor: "#15803d", color: "#ffffff", boxShadow: "0 6px 20px rgba(21, 128, 61, 0.35)" } : undefined}
+            >
+              {added ? <><motion.span initial={{ scale: 0 }} animate={{ scale: 1 }} className="inline-block mr-2 text-white font-bold">✓</motion.span> Added to Follicia Bag</> : size ? "Reserve & Order Pair →" : "Select Size First"}
+            </motion.button>
+
+            {/* Stylist & Hold Buttons */}
+            <div className="mt-2 grid gap-2 grid-cols-2 w-full min-w-0">
+              <button
+                type="button"
+                onClick={() => {
+                  void saveContactQuery(session?.user.name || "Guest", session?.user.email || "guest@follicia.local", "Concierge reservation", `${product.title}${size ? ` size ${size}` : ""}`);
+                  alert("Concierge request sent! Our Follicia team will contact you shortly.");
+                }}
+                className="rounded-full border border-[#4b261a25] bg-white px-2.5 py-2 text-[10px] sm:text-[11px] uppercase tracking-wider font-semibold text-[#24130d] transition-colors hover:border-[#24130d] hover:bg-[#FAF8F5] cursor-pointer shadow-2xs flex items-center justify-center gap-1 min-w-0"
+              >
+                <span className="shrink-0">💬</span> <span className="truncate">Ask Stylist</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  void saveContactQuery(session?.user.name || "Guest", session?.user.email || "guest@follicia.local", "24h hold request", `${product.title}${size ? ` size ${size}` : ""}`);
+                  alert("24h Hold Requested! Your pair has been reserved for the next 24 hours.");
+                }}
+                className="rounded-full border border-[var(--gold)]/40 bg-[var(--gold)]/10 px-2.5 py-2 text-[10px] sm:text-[11px] uppercase tracking-wider font-semibold text-[#24130d] transition-colors hover:bg-[var(--gold)]/20 cursor-pointer shadow-2xs flex items-center justify-center gap-1 min-w-0"
+              >
+                <span className="shrink-0">⏳</span> <span className="truncate">24h Hold</span>
+              </button>
+            </div>
+
+            {/* Trust Signals: Compact 3-Pill Banner */}
+            <div className="mt-2.5 pt-2 border-t border-[#4b261a10] grid grid-cols-3 gap-1 text-center w-full min-w-0">
+              <div className="rounded-md bg-[#fffaf0] border border-[#4b261a0f] p-1 sm:p-1.5 min-w-0 overflow-hidden">
+                <span className="block text-[8px] xs:text-[9px] sm:text-[10px] font-bold uppercase text-[#24130d] truncate">⚡ 48h Dispatch</span>
+                <span className="block text-[7.5px] xs:text-[8px] sm:text-[9px] text-[#4b261a70] truncate">Ready to ship</span>
+              </div>
+              <div className="rounded-md bg-[#fffaf0] border border-[#4b261a0f] p-1 sm:p-1.5 min-w-0 overflow-hidden">
+                <span className="block text-[8px] xs:text-[9px] sm:text-[10px] font-bold uppercase text-[#24130d] truncate">🚚 Free Express</span>
+                <span className="block text-[7.5px] xs:text-[8px] sm:text-[9px] text-[#4b261a70] truncate">All India</span>
+              </div>
+              <div className="rounded-md bg-[#fffaf0] border border-[#4b261a0f] p-1 sm:p-1.5 min-w-0 overflow-hidden">
+                <span className="block text-[8px] xs:text-[9px] sm:text-[10px] font-bold uppercase text-[#24130d] truncate">🔄 7D Return</span>
+                <span className="block text-[7.5px] xs:text-[8px] sm:text-[9px] text-[#4b261a70] truncate">Size exchange</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Accordion Panels */}
+          <div className="mt-3 border-t border-[#4b261a12]">
+            {["Product Details", "Craft Story", "Delivery & Returns", "Contact Concierge"].map((panel) => (
+              <div key={panel} className="border-b border-[#4b261a10]">
+                <button type="button" onClick={() => setOpenPanel(openPanel === panel ? "" : panel)} className="flex w-full items-center justify-between py-2 text-[11px] font-bold uppercase tracking-[0.12em] text-[#24130d] cursor-pointer hover:text-[var(--gold)] transition-colors">
+                  <span>{panel}</span>
+                  <motion.span animate={{ rotate: openPanel === panel ? 180 : 0 }}>↓</motion.span>
+                </button>
+                <AnimatePresence>
+                  {openPanel === panel && (
+                    <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="overflow-hidden">
+                      {panel === "Craft Story" ? (
+                        <div className="grid gap-1.5 pb-2.5">
+                          {storyRecords.slice(0, 3).map((record) => <p key={record.id} className="text-xs leading-relaxed text-[#4b261a80]"><strong className="text-[#24130d]">{record.title}:</strong> {record.meta}</p>)}
+                        </div>
+                      ) : panel === "Product Details" ? (
+                        <div className="grid gap-2 pb-2.5 text-xs leading-relaxed text-[#4b261a80]">
+                          <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5 p-3 rounded-xl bg-[#fffaf0] border border-[#4b261a10]">
+                            <div>
+                              <span className="block text-[10px] uppercase font-bold tracking-wider text-[#4b261a70]">Design ID</span>
+                              <strong className="text-[#24130d] font-mono text-xs">{product.designId || product.id.toUpperCase()}</strong>
+                            </div>
+                            <div>
+                              <span className="block text-[10px] uppercase font-bold tracking-wider text-[#4b261a70]">Product Name</span>
+                              <strong className="text-[#24130d] text-xs">{product.title}</strong>
+                            </div>
+                            <div>
+                              <span className="block text-[10px] uppercase font-bold tracking-wider text-[#4b261a70]">Category</span>
+                              <strong className="text-[#24130d] text-xs">{product.category || "Heel"}</strong>
+                            </div>
+                            <div>
+                              <span className="block text-[10px] uppercase font-bold tracking-wider text-[#4b261a70]">Silhouette / Toe</span>
+                              <strong className="text-[#24130d] text-xs">{product.silhouette || "Open square toe"}</strong>
+                            </div>
+                            <div className="sm:col-span-2">
+                              <span className="block text-[10px] uppercase font-bold tracking-wider text-[#4b261a70]">Material</span>
+                              <strong className="text-[#24130d] text-xs">{product.material || "Fine Italian leather & handcrafted textiles"}</strong>
+                            </div>
+                            <div>
+                              <span className="block text-[10px] uppercase font-bold tracking-wider text-[#4b261a70]">Hero Colour</span>
+                              <strong className="text-[#24130d] text-xs flex items-center gap-1.5 mt-0.5">
+                                <span className="h-2 w-2 rounded-full border border-black/10 inline-block" style={{ backgroundColor: getColorHex(activeVariant.heroColour) }} />
+                                {activeVariant.heroColour}
+                              </strong>
+                            </div>
+                            <div>
+                              <span className="block text-[10px] uppercase font-bold tracking-wider text-[#4b261a70]">Variant SKU</span>
+                              <strong className="text-[#24130d] font-mono text-xs">{activeVariant.colourVariantSku || `${(product.designId || product.id).toUpperCase()}-${activeVariant.colourCode || getHeroColorCode(activeVariant.heroColour)}`}</strong>
+                            </div>
+                            <div>
+                              <span className="block text-[10px] uppercase font-bold tracking-wider text-[#4b261a70]">Full SKU ({size || "EU 38"})</span>
+                              <strong className="text-[var(--gold)] font-mono text-xs font-bold">{computeFullSku(product.designId || product.id, activeVariant.colourCode || activeVariant.heroColour, size || "38")}</strong>
+                            </div>
+                          </div>
+                          {product.notes && (
+                            <p className="mt-1 text-[11px] text-[#4b261a70] italic">
+                              {product.notes}
+                            </p>
+                          )}
+                        </div>
+                      ) : panel === "Delivery & Returns" ? (
+                        <p className="pb-2.5 text-xs leading-relaxed text-[#4b261a80]">
+                          Every order is dispatched in handcrafted luxury packaging. Enjoy complimentary doorstep delivery across India and seamless 7-day complimentary size exchanges.
+                        </p>
+                      ) : (
+                        <p className="pb-2.5 text-xs leading-relaxed text-[#4b261a80]">
+                          Need custom sizing or styling assistance? Reach our private concierge at{" "}
+                          <a
+                            href="mailto:concierge@follicia.com"
+                            className="font-medium text-[#24130d] hover:text-[var(--gold)] underline decoration-dotted transition-colors"
+                          >
+                            concierge@follicia.com
+                          </a>{" "}
+                          or WhatsApp our personal stylists 24/7.
+                        </p>
+                      )}
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Curated For You Related Products */}
+      <section className="mx-auto max-w-[1400px] px-4 sm:px-6 py-14 md:px-12">
+        <div className="mb-8 h-px bg-gradient-to-r from-[var(--gold)]/50 to-transparent" />
+        <div className="flex items-center justify-between mb-6">
+          <div>
+            <span className="text-[10px] uppercase font-bold tracking-[0.2em] text-[var(--gold)]">Curated Selection</span>
+            <h2 className="font-display text-2xl sm:text-3xl text-[#24130d] font-bold">You may also admire</h2>
+          </div>
+          <a href="#/shop" className="text-xs uppercase tracking-wider font-semibold text-[var(--gold)] hover:underline">
+            View All →
+          </a>
+        </div>
+        <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-4 gap-4">
+          {related.map((item, index) => (
+            <ProductCard key={item.id} product={item} index={index} />
+          ))}
+        </div>
+      </section>
+    </PageShell>
   );
 }
 
@@ -1641,21 +2351,9 @@ export function SecureCheckoutPage({ session, onLogout, onLogin }: { session: Au
   const profile = useMemo(() => (session ? ensureCustomer(session.user) : null), [session]);
   const [step, setStep] = useState<"delivery" | "payment" | "done">("delivery");
   const [deliveryType, setDeliveryType] = useState("Home Delivery");
-  const [paymentMethod, setPaymentMethod] = useState("Card Authorization");
+  const [paymentMethod, setPaymentMethod] = useState("Razorpay Live Gateway");
   const [billingSame, setBillingSame] = useState(true);
   const [saving, setSaving] = useState(false);
-
-  // Card Payment States
-  const [cardHolder, setCardHolder] = useState(profile?.name || "");
-  const [cardNumber, setCardNumber] = useState("");
-  const [cardExpiry, setCardExpiry] = useState("");
-  const [cardCvv, setCardCvv] = useState("");
-  const [saveCard, setSaveCard] = useState(true);
-
-  // UPI Payment States
-  const [upiTab, setUpiTab] = useState<"vpa" | "qr" | "apps">("vpa");
-  const [upiId, setUpiId] = useState("");
-  const [selectedUpiApp, setSelectedUpiApp] = useState("Google Pay");
 
   // COD State
   const [codAgreed, setCodAgreed] = useState(true);
@@ -1664,21 +2362,6 @@ export function SecureCheckoutPage({ session, onLogout, onLogin }: { session: Au
   const [payError, setPayError] = useState("");
   const [payProcessingMessage, setPayProcessingMessage] = useState("");
   const [placedOrderSummary, setPlacedOrderSummary] = useState<{ id: string; method: string; total: number } | null>(null);
-
-  useEffect(() => {
-    if (profile?.name && !cardHolder) {
-      setCardHolder(profile.name);
-    }
-  }, [profile, cardHolder]);
-
-  const getCardType = (num: string) => {
-    const clean = num.replace(/\D/g, "");
-    if (/^4/.test(clean)) return { brand: "Visa", icon: "VISA" };
-    if (/^(5[1-5]|2[2-7])/.test(clean)) return { brand: "Mastercard", icon: "MC" };
-    if (/^(60|65|81|82)/.test(clean)) return { brand: "RuPay", icon: "RUPAY" };
-    if (/^3[47]/.test(clean)) return { brand: "Amex", icon: "AMEX" };
-    return { brand: "Card", icon: "CARD" };
-  };
 
   const [draft, setDraft] = useState<CommerceAddress>(() => ({
     id: `addr-${Date.now()}`,
@@ -1696,10 +2379,103 @@ export function SecureCheckoutPage({ session, onLogout, onLogin }: { session: Au
   }));
   const [billing, setBilling] = useState<CommerceAddress>(() => ({ ...draft, id: `bill-${Date.now()}` }));
   const [selectedAddress, setSelectedAddress] = useState(profile?.addresses.find((address) => address.isDefault)?.id || profile?.addresses[0]?.id || "new");
+  const [locating, setLocating] = useState(false);
+  const [locError, setLocError] = useState("");
+  const [locSuccess, setLocSuccess] = useState("");
+  const [pinLoading, setPinLoading] = useState(false);
+  const [pinSuccess, setPinSuccess] = useState("");
+  const [pinOffices, setPinOffices] = useState<string[]>([]);
+
+  const handleZipChange = async (value: string) => {
+    const clean = value.replace(/\D/g, "").slice(0, 6);
+    setDraftField("zip", clean);
+    setPinSuccess("");
+    setPinOffices([]);
+
+    if (clean.length === 6) {
+      setPinLoading(true);
+      try {
+        const info = await lookupPincodeDetails(clean);
+        if (info && (info.district || info.state)) {
+          setDraft((curr) => ({
+            ...curr,
+            city: info.district || curr.city,
+            region: info.state || curr.region,
+          }));
+          setPinSuccess(`✓ PIN Verified: ${info.district}, ${info.state}`);
+          if (info.offices && info.offices.length > 0) {
+            setPinOffices(info.offices.slice(0, 6));
+          }
+        }
+      } finally {
+        setPinLoading(false);
+      }
+    }
+  };
+
+  const handleGetLocation = async () => {
+    setLocating(true);
+    setLocError("");
+    setLocSuccess("");
+    setPinSuccess("");
+    setPinOffices([]);
+    try {
+      const geo = await fetchFreeCurrentLocation();
+
+      // Guarantee pure English district & state via official Indian Postal service
+      let finalCity = geo.city;
+      let finalRegion = geo.region;
+      if (geo.zip && geo.zip.length === 6) {
+        try {
+          const info = await lookupPincodeDetails(geo.zip);
+          if (info) {
+            if (info.district) finalCity = info.district;
+            if (info.state) finalRegion = info.state;
+            setPinSuccess(`✓ PIN Verified: ${info.district}, ${info.state}`);
+            if (info.offices && info.offices.length > 0) {
+              setPinOffices(info.offices.slice(0, 6));
+            }
+          }
+        } catch {}
+      }
+
+      setDraft((curr) => ({
+        ...curr,
+        address: geo.address && geo.address !== "Current Area" && geo.address !== "Current Location" ? geo.address : curr.address,
+        address2: geo.address2 || curr.address2,
+        city: finalCity || curr.city,
+        region: finalRegion || curr.region,
+        zip: geo.zip || curr.zip,
+        country: geo.country || curr.country,
+      }));
+
+      const pinText = geo.zip ? ` (PIN: ${geo.zip})` : "";
+      const locParts = [
+        geo.address && geo.address !== "Current Area" && geo.address !== "Current Location" ? geo.address : "",
+        finalCity,
+        finalRegion,
+      ].filter(Boolean);
+      const locText = locParts.length > 0 ? locParts.join(", ") : "Current Location";
+      if (geo.source === "gps") {
+        setLocSuccess(`📍 Live GPS Detected: ${locText}${pinText}`);
+      } else if (finalCity || finalRegion) {
+        setLocSuccess(`📍 Location Detected: ${locText}${pinText}. Please verify your street and PIN.`);
+      } else {
+        setLocError("Could not auto-detect location. Please type your 6-digit PIN code to auto-fill.");
+      }
+    } catch (err: any) {
+      setLocError(err?.message || "Failed to retrieve location. Please type your 6-digit PIN code below.");
+    } finally {
+      setLocating(false);
+    }
+  };
+
+  const [couponRefreshKey, setCouponRefreshKey] = useState(0);
   const subtotal = items.reduce((sum, item) => sum + (priceNumber(item.price) * item.qty), 0);
-  const checkoutCoupon = readCheckoutCoupon(subtotal);
+  const checkoutCoupon = readCheckoutCoupon(subtotal, session?.user?.email);
   const discount = checkoutCoupon?.discount ?? 0;
   const orderTotal = Math.max(subtotal - discount, 0);
+  const privilege = getUserDiscountEligibility(session?.user?.email);
 
   useEffect(() => {
     if (!profile) return;
@@ -1710,87 +2486,35 @@ export function SecureCheckoutPage({ session, onLogout, onLogin }: { session: Au
   const setBillingField = (key: keyof CommerceAddress, value: string | boolean) => setBilling((current) => ({ ...current, [key]: value }));
   const activeAddress = selectedAddress === "new" ? draft : profile?.addresses.find((address) => address.id === selectedAddress) || draft;
 
-  const placeOrder = async () => {
-    if (!session || !profile || items.length === 0) return;
-    setPayError("");
-
-    let resolvedPaymentMethod = paymentMethod;
-
-    if (paymentMethod === "Card Authorization") {
-      const cleanNum = cardNumber.replace(/\s/g, "");
-      if (cleanNum.length < 15) {
-        setPayError("Please enter a valid 16-digit card number.");
-        return;
-      }
-      if (!cardExpiry || cardExpiry.length < 5) {
-        setPayError("Please enter a valid card expiry date (MM / YY).");
-        return;
-      }
-      if (cardCvv.length < 3) {
-        setPayError("Please enter a valid 3 or 4 digit CVV.");
-        return;
-      }
-      if (!cardHolder.trim()) {
-        setPayError("Please enter the name printed on your card.");
-        return;
-      }
-      const brand = getCardType(cleanNum).brand;
-      resolvedPaymentMethod = `Card (${brand} •••• ${cleanNum.slice(-4)})`;
-    } else if (paymentMethod === "UPI Intent") {
-      if (upiTab === "vpa") {
-        if (!upiId || !upiId.includes("@") || upiId.length < 4) {
-          setPayError("Please enter a valid UPI ID (e.g. mobile@paytm or name@okhdfcbank).");
-          return;
-        }
-        resolvedPaymentMethod = `UPI (${upiId})`;
-      } else if (upiTab === "qr") {
-        resolvedPaymentMethod = "UPI (QR Payment)";
-      } else {
-        resolvedPaymentMethod = `UPI (${selectedUpiApp})`;
-      }
-    } else if (paymentMethod === "Cash on Delivery") {
-      if (!codAgreed) {
-        setPayError("Please confirm your acceptance of Cash on Delivery.");
-        return;
-      }
-      resolvedPaymentMethod = "Cash on Delivery";
-    }
-
-    setSaving(true);
-
-    if (paymentMethod === "Card Authorization") {
-      setPayProcessingMessage("Connecting to 3D Secure Gateway...");
-      await new Promise((r) => setTimeout(r, 600));
-      setPayProcessingMessage("Authorizing card payment with your bank...");
-      await new Promise((r) => setTimeout(r, 600));
-      setPayProcessingMessage("Payment Approved ✓");
-      await new Promise((r) => setTimeout(r, 400));
-    } else if (paymentMethod === "UPI Intent") {
-      setPayProcessingMessage("Initiating secure UPI request...");
-      await new Promise((r) => setTimeout(r, 700));
-      setPayProcessingMessage("UPI Payment Verified & Approved ✓");
-      await new Promise((r) => setTimeout(r, 500));
-    } else {
-      setPayProcessingMessage("Confirming Cash on Delivery Reservation...");
-      await new Promise((r) => setTimeout(r, 600));
-    }
-
-    let customer: CustomerProfile = profile;
+  const finalizeOrder = async (payMethodString: string) => {
+    let customer: CustomerProfile = profile!;
     if (selectedAddress === "new") {
-      const addresses = draft.isDefault ? profile.addresses.map((address) => ({ ...address, isDefault: false })) : profile.addresses;
-      customer = { ...profile, addresses: [...addresses, draft], phone: draft.phone || profile.phone };
+      const addresses = draft.isDefault ? profile!.addresses.map((address) => ({ ...address, isDefault: false })) : profile!.addresses;
+      customer = { ...profile!, addresses: [...addresses, draft], phone: draft.phone || profile!.phone };
       upsertCustomer(customer);
       await saveCustomerRemote(customer);
     }
     const created = await createOrdersFromCartRemote(items, customer, {
       deliveryAddress: `${deliveryType}: ${addressLine(activeAddress)}${billingSame ? "" : ` | Billing: ${addressLine(billing)}`}`,
-      paymentMethod: `${resolvedPaymentMethod}${checkoutCoupon ? ` / Coupon ${checkoutCoupon.code}` : ""}`,
+      paymentMethod: `${payMethodString}${checkoutCoupon ? ` / Coupon ${checkoutCoupon.code}` : ""}`,
     });
 
     const firstOrderId = Array.isArray(created) && created[0]?.id ? created[0].id : `RSV-${Date.now().toString().slice(-6)}`;
+    
+    // Record launch discount order for first 10 clients milestone
+    if (session?.user?.email) {
+      recordLaunchOrder(
+        session.user.email,
+        session.user.name || profile?.fullName || "Private Client",
+        firstOrderId,
+        checkoutCoupon?.code
+      );
+    }
+    saveCheckoutCoupon(null);
+
     setPlacedOrderSummary({
       id: firstOrderId,
-      method: resolvedPaymentMethod,
+      method: payMethodString,
       total: orderTotal,
     });
 
@@ -1798,6 +2522,138 @@ export function SecureCheckoutPage({ session, onLogout, onLogin }: { session: Au
     setSaving(false);
     setPayProcessingMessage("");
     setStep("done");
+  };
+
+  const placeOrder = async () => {
+    if (!session || !profile || items.length === 0) return;
+    setPayError("");
+
+    if (paymentMethod === "Cash on Delivery") {
+      if (!codAgreed) {
+        setPayError("Please confirm your acceptance of Cash on Delivery.");
+        return;
+      }
+      setSaving(true);
+      setPayProcessingMessage("Confirming Cash on Delivery Reservation...");
+      await new Promise((r) => setTimeout(r, 600));
+      await finalizeOrder("Cash on Delivery");
+      return;
+    }
+
+    // Official Razorpay Payment Gateway Ecosystem
+    setSaving(true);
+    setPayProcessingMessage("Connecting to Razorpay Secure Gateway...");
+
+    // 1. Ensure official Razorpay checkout.js script is loaded
+    const loaded = await loadRazorpayScript();
+    if (!loaded) {
+      setSaving(false);
+      setPayProcessingMessage("");
+      setPayError("Unable to load Razorpay checkout script. Please check your internet connection or adblocker.");
+      return;
+    }
+
+    // 2. Call backend to create authentic Razorpay Order via Razorpay Orders API
+    let rzpOrderData: { orderId: string; keyId: string; amount: number; currency: string } | null = null;
+    try {
+      const orderRes = await fetch("/api/commerce/razorpay/create-order", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          amount: orderTotal,
+          currency: "INR",
+          receipt: `rcpt_${Date.now()}`,
+          customerName: `${activeAddress.firstName} ${activeAddress.lastName}`.trim() || session.user.name,
+          customerEmail: session.user.email,
+        }),
+      });
+
+      const data = await orderRes.json();
+      if (!orderRes.ok || !data.success || !data.orderId) {
+        setSaving(false);
+        setPayProcessingMessage("");
+        setPayError(data.message || "Failed to initialize Razorpay order. Please configure Razorpay Key ID & Secret in Admin Settings or appsettings.json.");
+        return;
+      }
+      rzpOrderData = data;
+    } catch (err: any) {
+      setSaving(false);
+      setPayProcessingMessage("");
+      setPayError("Cannot connect to server to generate Razorpay order. Ensure backend is running.");
+      return;
+    }
+
+    // 3. Open official Razorpay Checkout Modal
+    setPayProcessingMessage("Opening Razorpay Payment Gateway...");
+
+    const options: any = {
+      key: rzpOrderData.keyId,
+      amount: rzpOrderData.amount,
+      currency: rzpOrderData.currency || "INR",
+      name: "Follicia Footwear",
+      description: `Reservation - ${items.map((i) => i.title).join(", ")}`,
+      image: "/react/assets/follocia-logo-new.png",
+      order_id: rzpOrderData.orderId,
+      prefill: {
+        name: `${activeAddress.firstName} ${activeAddress.lastName}`.trim() || session.user.name,
+        email: session.user.email,
+        contact: activeAddress.phone || profile.phone || "",
+      },
+      notes: {
+        address: `${activeAddress.address}, ${activeAddress.city}, ${activeAddress.region}`,
+      },
+      theme: {
+        color: "#24130d",
+      },
+      handler: async function (response: any) {
+        setSaving(true);
+        setPayProcessingMessage("Verifying Razorpay payment with bank...");
+        try {
+          const verifyRes = await fetch("/api/commerce/razorpay/verify-payment", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              razorpayOrderId: response.razorpay_order_id,
+              razorpayPaymentId: response.razorpay_payment_id,
+              razorpaySignature: response.razorpay_signature,
+            }),
+          });
+
+          const verifyData = await verifyRes.json();
+          if (verifyRes.ok && verifyData.success) {
+            await finalizeOrder(`Razorpay (${response.razorpay_payment_id})`);
+          } else {
+            setSaving(false);
+            setPayProcessingMessage("");
+            setPayError(verifyData.message || "Razorpay signature verification failed.");
+          }
+        } catch (err: any) {
+          setSaving(false);
+          setPayProcessingMessage("");
+          setPayError("Network error during Razorpay payment verification.");
+        }
+      },
+      modal: {
+        ondismiss: function () {
+          setSaving(false);
+          setPayProcessingMessage("");
+        },
+      },
+    };
+
+    try {
+      const razorpayInstance = new (window as any).Razorpay(options);
+      razorpayInstance.on("payment.failed", function (resp: any) {
+        setSaving(false);
+        setPayProcessingMessage("");
+        setPayError(resp.error?.description || "Payment failed via Razorpay.");
+      });
+      razorpayInstance.open();
+    } catch (err: any) {
+      setSaving(false);
+      setPayProcessingMessage("");
+      setPayError(err?.message || "Failed to initialize Razorpay checkout.");
+    }
   };
 
   return (
@@ -1814,17 +2670,16 @@ export function SecureCheckoutPage({ session, onLogout, onLogin }: { session: Au
           <div className="mx-auto grid min-h-[60vh] max-w-[720px] place-items-center px-6 text-center">
             <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="glass border border-[var(--ink)]/10 p-16 shadow-[var(--shadow-soft)] bg-white/80">
               <h1 className="font-display text-6xl">Sign in to checkout.</h1>
-              <p className="mt-4 text-[var(--ink)]/60">Reserve your pair from the private atelier.</p>
+              <p className="mt-4 text-[var(--ink)]/60">Reserve your pair from Follicia.</p>
               <button
                 onClick={onLogin}
                 style={{
                   backgroundColor: "#15803d",
-                  backgroundImage: "linear-gradient(135deg, #16a34a, #15803d)",
                   color: "#ffffff",
                   border: "none",
-                  boxShadow: "0 4px 16px rgba(22, 163, 74, 0.4)",
+                  boxShadow: "0 6px 20px rgba(21, 128, 61, 0.35)",
                 }}
-                className="btn-green-action mt-8 px-8 py-4 eyebrow text-white transition-all duration-300 hover:brightness-110 cursor-pointer"
+                className="mt-8 rounded-full px-8 py-4 eyebrow text-white transition-all duration-300 bg-[#15803d] hover:bg-[#166534] hover:scale-105 cursor-pointer font-semibold shadow-md"
               >
                 Open Login
               </button>
@@ -1835,7 +2690,7 @@ export function SecureCheckoutPage({ session, onLogout, onLogin }: { session: Au
             <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="glass border border-[var(--ink)]/10 p-16 shadow-[var(--shadow-soft)] bg-white/80">
               <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="var(--gold)" strokeWidth="1" className="mx-auto mb-6 opacity-60"><path d="M6 7h12l-1 13H7L6 7z" /><path d="M9 7a3 3 0 1 1 6 0" /></svg>
               <h1 className="font-display text-5xl">Your bag is empty.</h1>
-              <a href="#/shop" className="magnetic-btn mt-8 inline-block bg-[var(--ink)] px-8 py-4 eyebrow text-white transition-colors hover:bg-[var(--gold)] hover:text-[var(--ink)]">Start shopping</a>
+              <a href="#/shop" className="magnetic-btn mt-8 inline-block bg-[#15803d] px-8 py-4 eyebrow text-white transition-colors hover:bg-[#166534]">Start shopping</a>
             </motion.div>
           </div>
         ) : step === "done" ? (
@@ -1847,7 +2702,7 @@ export function SecureCheckoutPage({ session, onLogout, onLogin }: { session: Au
                 <p className="eyebrow text-[var(--gold)]">Order Placed Successfully</p>
                 <h1 className="mt-4 font-display text-5xl md:text-6xl text-[var(--ink)]">Reservation confirmed.</h1>
                 <p className="mt-4 text-[var(--ink)]/70 max-w-md mx-auto text-sm leading-relaxed">
-                  Your luxury atelier footwear has been reserved and registered for preparation.
+                  Your luxury Follicia footwear has been reserved and registered for preparation.
                 </p>
 
                     {placedOrderSummary && (
@@ -1872,45 +2727,44 @@ export function SecureCheckoutPage({ session, onLogout, onLogin }: { session: Au
                     href="#/account/my-orders"
                     style={{
                       backgroundColor: "#15803d",
-                      backgroundImage: "linear-gradient(135deg, #16a34a, #15803d)",
                       color: "#ffffff",
                       border: "none",
-                      boxShadow: "0 4px 16px rgba(22, 163, 74, 0.4)",
+                      boxShadow: "0 6px 20px rgba(21, 128, 61, 0.35)",
                     }}
-                    className="btn-green-action px-8 py-4 eyebrow text-white transition-all duration-300 hover:brightness-110"
+                    className="rounded-full px-8 py-4 eyebrow text-white transition-all duration-300 bg-[#15803d] hover:bg-[#166534] hover:scale-105 font-semibold shadow-md inline-block"
                   >
                     View Orders Timeline
                   </a>
-                  <a href="#/shop" className="border border-[var(--ink)]/20 px-8 py-4 eyebrow text-[var(--ink)] transition-colors hover:border-[var(--gold)] hover:text-[var(--gold)]">Continue Shopping</a>
+                  <a href="#/shop" className="rounded-full border border-[var(--ink)]/20 px-8 py-4 eyebrow text-[var(--ink)] transition-colors hover:border-[#24130d] hover:text-[#24130d] font-semibold inline-block">Continue Shopping</a>
                 </div>
               </div>
             </motion.div>
           </div>
         ) : (
-          <div className="mx-auto grid max-w-[1300px] gap-8 px-6 py-10 md:px-12 lg:grid-cols-[1.1fr_0.9fr]">
+          <div className="mx-auto grid max-w-[1300px] gap-8 px-4 sm:px-6 py-6 sm:py-10 md:px-12 lg:grid-cols-[1.1fr_0.9fr]">
             <div className="grid gap-6 h-fit">
               <motion.article initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} className="glass border border-[var(--ink)]/10 bg-white/80 shadow-[var(--shadow-soft)] relative overflow-hidden">
                 {step !== "delivery" && <div className="absolute left-0 top-0 bottom-0 w-1 bg-emerald-500" />}
-                <header className="grid grid-cols-[76px_1fr_auto] items-center border-b border-[var(--ink)]/10">
-                  <div className="grid h-20 place-items-center bg-[var(--gold)]/10 text-2xl text-[var(--gold)]">✓</div>
-                  <h2 className="px-6 font-display text-2xl text-[var(--ink)]">Identity</h2>
+                <header className="grid grid-cols-[52px_1fr_auto] sm:grid-cols-[76px_1fr_auto] items-center border-b border-[var(--ink)]/10">
+                  <div className="grid h-14 sm:h-20 place-items-center bg-[var(--gold)]/10 text-xl sm:text-2xl text-[var(--gold)]">✓</div>
+                  <h2 className="px-4 sm:px-6 font-display text-xl sm:text-2xl text-[var(--ink)]">Identity</h2>
                 </header>
-                <div className="px-10 py-8">
+                <div className="px-5 sm:px-10 py-5 sm:py-8">
                   <p className="text-sm text-[var(--ink)]/60">Checkout securely as</p>
-                  <p className="mt-1 text-lg font-semibold">{session.user.email}</p>
+                  <p className="mt-1 text-base sm:text-lg font-semibold truncate">{session.user.email}</p>
                 </div>
               </motion.article>
 
               <motion.article initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.1 }} className={`glass border bg-white/80 shadow-[var(--shadow-soft)] relative overflow-hidden ${step === "payment" ? "border-[var(--ink)]/10" : "border-[var(--gold)] shadow-[0_0_20px_oklch(0.78_0.12_80/0.1)]"}`}>
                 {step === "payment" && <div className="absolute left-0 top-0 bottom-0 w-1 bg-emerald-500" />}
-                <header className="grid grid-cols-[76px_1fr_auto] items-center border-b border-[var(--ink)]/10">
-                  <div className={`grid h-20 place-items-center text-xl font-display ${step === "payment" ? "bg-[var(--gold)]/10 text-[var(--gold)]" : "bg-[var(--ink)] text-white"}`}>{step === "payment" ? "✓" : "2"}</div>
-                  <h2 className="px-6 font-display text-2xl">Delivery</h2>
-                  {step === "payment" && <button onClick={() => setStep("delivery")} className="px-6 text-sm underline text-[var(--gold)] cursor-pointer">Edit</button>}
+                <header className="grid grid-cols-[52px_1fr_auto] sm:grid-cols-[76px_1fr_auto] items-center border-b border-[var(--ink)]/10">
+                  <div className={`grid h-14 sm:h-20 place-items-center text-lg sm:text-xl font-display ${step === "payment" ? "bg-[var(--gold)]/10 text-[var(--gold)]" : "bg-[var(--ink)] text-white"}`}>{step === "payment" ? "✓" : "2"}</div>
+                  <h2 className="px-4 sm:px-6 font-display text-xl sm:text-2xl">Delivery</h2>
+                  {step === "payment" && <button onClick={() => setStep("delivery")} className="px-4 sm:px-6 text-sm underline text-[var(--gold)] cursor-pointer">Edit</button>}
                 </header>
                 <AnimatePresence>
                   {step === "delivery" ? (
-                    <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="grid gap-8 p-10">
+                    <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="grid gap-6 sm:gap-8 p-4 sm:p-10">
                       <div>
                         <p className="eyebrow text-[var(--gold)] mb-3">Delivery Method</p>
                         <div className="grid gap-3 md:grid-cols-2">
@@ -1947,14 +2801,47 @@ export function SecureCheckoutPage({ session, onLogout, onLogin }: { session: Au
                       <AnimatePresence>
                         {selectedAddress === "new" && (
                           <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="overflow-hidden">
-                            <div className="grid gap-4 md:grid-cols-3 border-t border-[var(--ink)]/10 pt-6">
-                              <CheckoutInput label="First Name*" value={draft.firstName} onChange={(value) => setDraftField("firstName", value)} />
-                              <CheckoutInput label="Last Name*" value={draft.lastName} onChange={(value) => setDraftField("lastName", value)} />
-                              <CheckoutInput label="Phone Number*" value={draft.phone} onChange={(value) => setDraftField("phone", value)} />
-                              <CheckoutInput label="Find Your Address*" value={draft.address} onChange={(value) => setDraftField("address", value)} wide />
-                              <CheckoutInput label="City*" value={draft.city} onChange={(value) => setDraftField("city", value)} />
-                              <CheckoutInput label="Region*" value={draft.region} onChange={(value) => setDraftField("region", value)} />
-                              <CheckoutInput label="Zip*" value={draft.zip} onChange={(value) => setDraftField("zip", value)} />
+                            <div className="border-t border-[var(--ink)]/10 pt-6">
+
+
+                              <div className="grid gap-4 md:grid-cols-3">
+                                <CheckoutInput label="First Name*" value={draft.firstName} onChange={(value) => setDraftField("firstName", value)} />
+                                <CheckoutInput label="Last Name*" value={draft.lastName} onChange={(value) => setDraftField("lastName", value)} />
+                                <CheckoutInput label="Phone Number*" value={draft.phone} onChange={(value) => setDraftField("phone", value)} />
+                                <CheckoutInput label="Street Address / House No.*" value={draft.address} onChange={(value) => setDraftField("address", value)} wide />
+                                <CheckoutInput label="Apartment, Suite, Landmark (Optional)" value={draft.address2} onChange={(value) => setDraftField("address2", value)} wide />
+                                <div className="space-y-1">
+                                  <CheckoutInput label="PIN / Postal Code*" value={draft.zip} onChange={handleZipChange} />
+                                  {pinLoading && (
+                                    <p className="text-[11px] text-amber-700 animate-pulse font-medium">⚡ Verifying PIN code...</p>
+                                  )}
+                                  {pinSuccess && (
+                                    <p className="text-[11px] text-emerald-700 font-medium">✓ {pinSuccess}</p>
+                                  )}
+                                </div>
+                                <CheckoutInput label="City*" value={draft.city} onChange={(value) => setDraftField("city", value)} />
+                                <CheckoutInput label="State / Region*" value={draft.region} onChange={(value) => setDraftField("region", value)} />
+                              </div>
+
+                              {pinOffices.length > 0 && (
+                                <div className="mt-3 p-3 rounded-lg bg-[var(--champagne)]/25 border border-[var(--gold)]/30">
+                                  <span className="text-[11px] font-semibold text-[var(--ink)] block mb-1.5">
+                                    📍 Quick Select Area / Colony for PIN {draft.zip}:
+                                  </span>
+                                  <div className="flex flex-wrap gap-1.5">
+                                    {pinOffices.map((office) => (
+                                      <button
+                                        key={office}
+                                        type="button"
+                                        onClick={() => setDraftField("address2", office)}
+                                        className="text-[11px] px-2.5 py-1 rounded-full bg-white hover:bg-[var(--gold)]/20 text-[var(--ink)] border border-[var(--gold)]/40 cursor-pointer transition-colors shadow-2xs font-medium"
+                                      >
+                                        + {office}
+                                      </button>
+                                    ))}
+                                  </div>
+                                </div>
+                              )}
                             </div>
                           </motion.div>
                         )}
@@ -1965,12 +2852,11 @@ export function SecureCheckoutPage({ session, onLogout, onLogin }: { session: Au
                         onClick={() => setStep("payment")}
                         style={{
                           backgroundColor: "#15803d",
-                          backgroundImage: "linear-gradient(135deg, #16a34a, #15803d)",
                           color: "#ffffff",
                           border: "none",
-                          boxShadow: "0 4px 16px rgba(22, 163, 74, 0.4)",
+                          boxShadow: "0 6px 20px rgba(21, 128, 61, 0.35)",
                         }}
-                        className="btn-green-action ml-auto w-full px-8 py-4 eyebrow text-white disabled:opacity-50 disabled:cursor-not-allowed md:w-auto transition-all duration-300 hover:brightness-110 cursor-pointer font-medium"
+                        className="ml-auto w-full rounded-full px-8 py-4 eyebrow text-white disabled:opacity-50 disabled:cursor-not-allowed md:w-auto transition-all duration-300 bg-[#15803d] hover:bg-[#166534] hover:scale-105 cursor-pointer font-semibold shadow-md"
                       >
                         Continue to Payment →
                       </button>
@@ -1986,13 +2872,13 @@ export function SecureCheckoutPage({ session, onLogout, onLogin }: { session: Au
               </motion.article>
 
               <motion.article initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.2 }} className={`glass border bg-white/80 shadow-[var(--shadow-soft)] ${step === "payment" ? "border-[var(--gold)] shadow-[0_0_20px_oklch(0.78_0.12_80/0.1)]" : "border-[var(--ink)]/15 text-[var(--ink)]/50"}`}>
-                <header className="grid grid-cols-[76px_1fr] items-center border-b border-[var(--ink)]/10">
-                  <div className={`grid h-20 place-items-center text-xl font-display ${step === "payment" ? "bg-[var(--ink)] text-white" : "bg-[var(--ink)]/5"}`}>3</div>
-                  <h2 className="px-6 font-display text-2xl">Payment</h2>
+                <header className="grid grid-cols-[52px_1fr] sm:grid-cols-[76px_1fr] items-center border-b border-[var(--ink)]/10">
+                  <div className={`grid h-14 sm:h-20 place-items-center text-lg sm:text-xl font-display ${step === "payment" ? "bg-[var(--ink)] text-white" : "bg-[var(--ink)]/5"}`}>3</div>
+                  <h2 className="px-4 sm:px-6 font-display text-xl sm:text-2xl">Payment</h2>
                 </header>
                 <AnimatePresence>
                   {step === "payment" && (
-                    <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} className="grid gap-8 p-10">
+                    <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} className="grid gap-6 sm:gap-8 p-4 sm:p-10">
                       <div>
                         <div className="flex items-center justify-between"><p className="eyebrow text-[var(--gold)]">Billing Address</p><button onClick={() => setBillingSame((value) => !value)} className="text-sm underline cursor-pointer">Edit</button></div>
                         <label className="mt-4 flex items-center gap-3 text-sm cursor-pointer select-none"><input type="checkbox" checked={billingSame} onChange={(event) => setBillingSame(event.target.checked)} className="w-4 h-4 accent-[var(--gold)]" />Same as delivery address</label>
@@ -2003,7 +2889,8 @@ export function SecureCheckoutPage({ session, onLogout, onLogin }: { session: Au
                                 <CheckoutInput label="First Name" value={billing.firstName} onChange={(value) => setBillingField("firstName", value)} />
                                 <CheckoutInput label="Last Name" value={billing.lastName} onChange={(value) => setBillingField("lastName", value)} />
                                 <CheckoutInput label="Phone" value={billing.phone} onChange={(value) => setBillingField("phone", value)} />
-                                <CheckoutInput label="Billing Address" value={billing.address} onChange={(value) => setBillingField("address", value)} wide />
+                                <CheckoutInput label="Billing Address / Street" value={billing.address} onChange={(value) => setBillingField("address", value)} wide />
+                                <CheckoutInput label="Apartment, Suite, Landmark (Optional)" value={billing.address2} onChange={(value) => setBillingField("address2", value)} wide />
                               </div>
                             </motion.div>
                           )}
@@ -2012,10 +2899,9 @@ export function SecureCheckoutPage({ session, onLogout, onLogin }: { session: Au
                       
                       <div>
                         <p className="eyebrow text-[var(--gold)] mb-3">Select Payment Method</p>
-                        <div className="grid gap-3 md:grid-cols-3">
+                        <div className="grid gap-3 md:grid-cols-2">
                           {[
-                            { id: "Card Authorization", label: "Credit / Debit Card", sub: "Visa, Mastercard, RuPay", icon: "💳" },
-                            { id: "UPI Intent", label: "Instant UPI", sub: "GPay, PhonePe, Paytm, QR", icon: "⚡" },
+                            { id: "Razorpay Live Gateway", label: "Razorpay Payment Gateway", sub: "Instant UPI (GPay/PhonePe/Paytm), Cards & Netbanking", icon: "🛡️" },
                             { id: "Cash on Delivery", label: "Cash on Delivery", sub: "Pay at Doorstep", icon: "💵" },
                           ].map((item) => (
                             <button
@@ -2044,257 +2930,6 @@ export function SecureCheckoutPage({ session, onLogout, onLogin }: { session: Au
                             </button>
                           ))}
                         </div>
-
-                        {/* Card Authorization Panel */}
-                        {paymentMethod === "Card Authorization" && (
-                          <div className="mt-6 p-6 rounded-xl border border-[var(--gold)]/30 bg-[#fffdfa] shadow-sm">
-                            <div className="flex items-center justify-between border-b border-[var(--ink)]/10 pb-4 mb-5">
-                              <div>
-                                <h3 className="font-display text-lg text-[var(--ink)]">Debit / Credit Card</h3>
-                                <p className="text-xs text-[var(--ink)]/60">Bank-grade 256-bit 3D Secure Authorization</p>
-                              </div>
-                              <div className="flex items-center gap-2">
-                                <span className="rounded bg-neutral-100 px-2 py-1 text-[11px] font-bold tracking-wider text-neutral-700 border border-neutral-200">VISA</span>
-                                <span className="rounded bg-neutral-100 px-2 py-1 text-[11px] font-bold tracking-wider text-neutral-700 border border-neutral-200">MC</span>
-                                <span className="rounded bg-neutral-100 px-2 py-1 text-[11px] font-bold tracking-wider text-neutral-700 border border-neutral-200">RUPAY</span>
-                                <span className="rounded bg-neutral-100 px-2 py-1 text-[11px] font-bold tracking-wider text-neutral-700 border border-neutral-200">AMEX</span>
-                              </div>
-                            </div>
-
-                            <div className="grid gap-4">
-                              <div>
-                                <label className="block text-xs font-semibold uppercase tracking-[0.1em] text-[var(--ink)]/70 mb-1.5">Card Number</label>
-                                <div className="relative">
-                                  <input
-                                    type="text"
-                                    maxLength={19}
-                                    placeholder="4532  ••••  ••••  ••••"
-                                    value={cardNumber}
-                                    onChange={(e) => {
-                                      const val = e.target.value.replace(/\D/g, "").slice(0, 16);
-                                      const formatted = val.replace(/(\d{4})(?=\d)/g, "$1 ");
-                                      setCardNumber(formatted);
-                                      setPayError("");
-                                    }}
-                                    className="h-12 w-full rounded-lg border border-[var(--ink)]/20 bg-white px-4 text-base tracking-widest outline-none focus:border-[var(--gold)] focus:ring-2 focus:ring-[var(--gold)]/20 shadow-sm"
-                                  />
-                                  <div className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-bold text-[var(--gold)]">
-                                    {getCardType(cardNumber).icon}
-                                  </div>
-                                </div>
-                              </div>
-
-                              <div>
-                                <label className="block text-xs font-semibold uppercase tracking-[0.1em] text-[var(--ink)]/70 mb-1.5">Cardholder Name</label>
-                                <input
-                                  type="text"
-                                  placeholder="Name as printed on card"
-                                  value={cardHolder}
-                                  onChange={(e) => { setCardHolder(e.target.value); setPayError(""); }}
-                                  className="h-12 w-full rounded-lg border border-[var(--ink)]/20 bg-white px-4 text-sm outline-none focus:border-[var(--gold)] focus:ring-2 focus:ring-[var(--gold)]/20 shadow-sm"
-                                />
-                              </div>
-
-                              <div className="grid grid-cols-2 gap-4">
-                                <div>
-                                  <label className="block text-xs font-semibold uppercase tracking-[0.1em] text-[var(--ink)]/70 mb-1.5">Expires (MM / YY)</label>
-                                  <input
-                                    type="text"
-                                    maxLength={7}
-                                    placeholder="MM / YY"
-                                    value={cardExpiry}
-                                    onChange={(e) => {
-                                      let val = e.target.value.replace(/\D/g, "").slice(0, 4);
-                                      if (val.length >= 3) val = `${val.slice(0, 2)} / ${val.slice(2)}`;
-                                      setCardExpiry(val);
-                                      setPayError("");
-                                    }}
-                                    className="h-12 w-full rounded-lg border border-[var(--ink)]/20 bg-white px-4 text-sm tracking-wider outline-none focus:border-[var(--gold)] focus:ring-2 focus:ring-[var(--gold)]/20 shadow-sm"
-                                  />
-                                </div>
-                                <div>
-                                  <label className="block text-xs font-semibold uppercase tracking-[0.1em] text-[var(--ink)]/70 mb-1.5">Security Code (CVV)</label>
-                                  <input
-                                    type="password"
-                                    maxLength={4}
-                                    placeholder="•••"
-                                    value={cardCvv}
-                                    onChange={(e) => {
-                                      setCardCvv(e.target.value.replace(/\D/g, "").slice(0, 4));
-                                      setPayError("");
-                                    }}
-                                    className="h-12 w-full rounded-lg border border-[var(--ink)]/20 bg-white px-4 text-base tracking-widest outline-none focus:border-[var(--gold)] focus:ring-2 focus:ring-[var(--gold)]/20 shadow-sm"
-                                  />
-                                </div>
-                              </div>
-
-                              <label className="flex items-center gap-2.5 text-xs text-[var(--ink)]/70 cursor-pointer pt-2 select-none">
-                                <input type="checkbox" checked={saveCard} onChange={(e) => setSaveCard(e.target.checked)} className="w-4 h-4 accent-[var(--gold)] rounded" />
-                                Save card details securely for 1-click checkout in future reservations
-                              </label>
-
-                              <div className="mt-2 flex items-center gap-2 text-[11px] text-[var(--ink)]/60 bg-[#fbf6ed] p-3 rounded-lg border border-[#4b261a]/10">
-                                <span>🔒</span>
-                                <span>Your card details are protected by 256-bit encryption. No plain text card details are saved.</span>
-                              </div>
-                            </div>
-                          </div>
-                        )}
-
-                        {/* UPI Payment Panel */}
-                        {paymentMethod === "UPI Intent" && (
-                          <div className="mt-6 p-6 rounded-xl border border-[var(--gold)]/30 bg-[#fffdfa] shadow-sm">
-                            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-[var(--ink)]/10 pb-4 mb-5">
-                              <div>
-                                <h3 className="font-display text-lg text-[var(--ink)]">Instant UPI Payment</h3>
-                                <p className="text-xs text-[var(--ink)]/60">Pay instantly using any Indian UPI app</p>
-                              </div>
-                              <div className="flex gap-2">
-                                <button
-                                  type="button"
-                                  onClick={() => setUpiTab("vpa")}
-                                  className={`px-3 py-1.5 rounded text-xs font-semibold uppercase tracking-wider transition-colors cursor-pointer ${upiTab === "vpa" ? "bg-[var(--ink)] text-white" : "bg-neutral-100 text-neutral-600 hover:bg-neutral-200"}`}
-                                >
-                                  UPI ID
-                                </button>
-                                <button
-                                  type="button"
-                                  onClick={() => setUpiTab("qr")}
-                                  className={`px-3 py-1.5 rounded text-xs font-semibold uppercase tracking-wider transition-colors cursor-pointer ${upiTab === "qr" ? "bg-[var(--ink)] text-white" : "bg-neutral-100 text-neutral-600 hover:bg-neutral-200"}`}
-                                >
-                                  Scan QR
-                                </button>
-                                <button
-                                  type="button"
-                                  onClick={() => setUpiTab("apps")}
-                                  className={`px-3 py-1.5 rounded text-xs font-semibold uppercase tracking-wider transition-colors cursor-pointer ${upiTab === "apps" ? "bg-[var(--ink)] text-white" : "bg-neutral-100 text-neutral-600 hover:bg-neutral-200"}`}
-                                >
-                                  UPI Apps
-                                </button>
-                              </div>
-                            </div>
-
-                            {upiTab === "vpa" && (
-                              <div className="grid gap-4">
-                                <div>
-                                  <label className="block text-xs font-semibold uppercase tracking-[0.1em] text-[var(--ink)]/70 mb-1.5">
-                                    Enter your UPI ID / Virtual Payment Address (VPA)
-                                  </label>
-                                  <input
-                                    type="text"
-                                    placeholder="e.g. 9876543210@paytm or username@okhdfcbank"
-                                    value={upiId}
-                                    onChange={(e) => {
-                                      setUpiId(e.target.value.toLowerCase().trim());
-                                      setPayError("");
-                                    }}
-                                    className="h-12 w-full rounded-lg border border-[var(--ink)]/20 bg-white px-4 text-sm outline-none focus:border-[var(--gold)] focus:ring-2 focus:ring-[var(--gold)]/20 shadow-sm"
-                                  />
-                                </div>
-
-                                <div>
-                                  <p className="text-xs text-[var(--ink)]/60 mb-2">Quick UPI Handle Shortcuts:</p>
-                                  <div className="flex flex-wrap gap-2">
-                                    {["@okhdfcbank", "@okaxis", "@okicici", "@paytm", "@ybl", "@upi"].map((handle) => (
-                                      <button
-                                        type="button"
-                                        key={handle}
-                                        onClick={() => {
-                                          const base = upiId.includes("@") ? upiId.split("@")[0] : upiId;
-                                          setUpiId(base ? `${base}${handle}` : handle);
-                                          setPayError("");
-                                        }}
-                                        className="rounded-md border border-[var(--ink)]/15 bg-white px-3 py-1 text-xs font-mono text-[var(--ink)]/80 hover:border-[var(--gold)] hover:text-[var(--gold)] hover:bg-[var(--champagne)]/20 transition-all cursor-pointer"
-                                      >
-                                        {handle}
-                                      </button>
-                                    ))}
-                                  </div>
-                                </div>
-
-                                <div className="mt-2 flex items-center gap-2 text-[11px] text-[var(--ink)]/60 bg-[#fbf6ed] p-3 rounded-lg border border-[#4b261a]/10">
-                                  <span>⚡</span>
-                                  <span>A payment authorization request will be sent to your UPI app. Approve it to complete this order.</span>
-                                </div>
-                              </div>
-                            )}
-
-                            {upiTab === "qr" && (
-                              <div className="flex flex-col items-center justify-center p-4 text-center">
-                                <div className="relative p-4 rounded-xl border-2 border-[var(--gold)]/40 bg-white shadow-md">
-                                  <svg className="w-44 h-44 mx-auto" viewBox="0 0 200 200">
-                                    <rect width="200" height="200" fill="#fff" />
-                                    <rect x="20" y="20" width="40" height="40" fill="#351c13" />
-                                    <rect x="26" y="26" width="28" height="28" fill="#fff" />
-                                    <rect x="32" y="32" width="16" height="16" fill="#351c13" />
-                                    <rect x="140" y="20" width="40" height="40" fill="#351c13" />
-                                    <rect x="146" y="26" width="28" height="28" fill="#fff" />
-                                    <rect x="152" y="32" width="16" height="16" fill="#351c13" />
-                                    <rect x="20" y="140" width="40" height="40" fill="#351c13" />
-                                    <rect x="26" y="146" width="28" height="28" fill="#fff" />
-                                    <rect x="32" y="152" width="16" height="16" fill="#351c13" />
-                                    {[
-                                      [70, 20], [80, 20], [100, 20], [120, 20],
-                                      [70, 30], [90, 30], [110, 30],
-                                      [70, 40], [80, 40], [100, 40], [120, 40],
-                                      [20, 70], [40, 70], [60, 70], [80, 70], [100, 70], [120, 70], [140, 70], [160, 70],
-                                      [30, 80], [50, 80], [70, 80], [90, 80], [110, 80], [130, 80], [150, 80], [170, 80],
-                                      [20, 90], [40, 90], [80, 90], [120, 90], [140, 90], [160, 90],
-                                      [70, 100], [90, 100], [110, 100], [130, 100],
-                                      [20, 110], [50, 110], [70, 110], [100, 110], [140, 110], [170, 110],
-                                      [30, 120], [60, 120], [80, 120], [110, 120], [150, 120],
-                                      [70, 140], [90, 140], [110, 140], [130, 140], [160, 140],
-                                      [80, 150], [100, 150], [120, 150], [140, 150], [170, 150],
-                                      [70, 160], [90, 160], [110, 160], [150, 160],
-                                      [70, 170], [80, 170], [100, 170], [120, 170], [140, 170], [160, 170]
-                                    ].map(([x, y], idx) => (
-                                      <rect key={idx} x={x} y={y} width="8" height="8" fill="#351c13" />
-                                    ))}
-                                    <circle cx="100" cy="100" r="16" fill="#fff" stroke="#a87648" strokeWidth="2" />
-                                    <text x="100" y="104" textAnchor="middle" fontSize="10" fontWeight="bold" fill="#351c13">FOLLICIA</text>
-                                  </svg>
-                                </div>
-                                <p className="mt-4 font-display text-lg text-[var(--ink)]">Scan to pay Rs. {orderTotal.toLocaleString("en-IN")}</p>
-                                <p className="text-xs text-[var(--ink)]/60 mt-1">Open Google Pay, PhonePe, Paytm or BHIM on your mobile phone to scan</p>
-                                <div className="mt-3 flex items-center gap-2 rounded-full border border-[var(--gold)]/30 bg-[var(--gold)]/10 px-4 py-1.5 text-xs text-[var(--gold)] font-mono">
-                                  <span>VPA: follicia.atelier@icici</span>
-                                </div>
-                              </div>
-                            )}
-
-                            {upiTab === "apps" && (
-                              <div className="grid gap-3">
-                                <p className="text-xs text-[var(--ink)]/70 mb-1">Select your preferred UPI app for instant redirection:</p>
-                                <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-                                  {[
-                                    { name: "Google Pay", badge: "GPay" },
-                                    { name: "PhonePe", badge: "PhonePe" },
-                                    { name: "Paytm", badge: "Paytm" },
-                                    { name: "BHIM UPI", badge: "BHIM" },
-                                  ].map((app) => (
-                                    <button
-                                      type="button"
-                                      key={app.name}
-                                      onClick={() => {
-                                        setSelectedUpiApp(app.name);
-                                        setPayError("");
-                                      }}
-                                      className={`flex flex-col items-center justify-center p-4 rounded-xl border text-center transition-all cursor-pointer ${
-                                        selectedUpiApp === app.name ? "border-[var(--gold)] bg-[var(--gold)]/15 shadow-md ring-2 ring-[var(--gold)]/30" : "bg-white border-[var(--ink)]/15 hover:shadow-sm"
-                                      }`}
-                                    >
-                                      <div className="h-10 w-10 rounded-full bg-[#fbf6ed] border border-[var(--gold)]/20 flex items-center justify-center font-bold text-xs text-[var(--ink)] mb-2 shadow-inner">
-                                        {app.badge}
-                                      </div>
-                                      <span className="text-xs font-semibold text-[var(--ink)]">{app.name}</span>
-                                    </button>
-                                  ))}
-                                </div>
-                                <p className="text-xs text-[var(--ink)]/60 text-center mt-2">Clicking below will initiate intent on {selectedUpiApp}</p>
-                              </div>
-                            )}
-                          </div>
-                        )}
 
                         {/* Cash on Delivery Panel */}
                         {paymentMethod === "Cash on Delivery" && (
@@ -2352,21 +2987,12 @@ export function SecureCheckoutPage({ session, onLogout, onLogin }: { session: Au
                       <button
                         onClick={placeOrder}
                         disabled={saving || (paymentMethod === "Cash on Delivery" && !codAgreed)}
-                        style={{
-                          backgroundColor: "#15803d",
-                          backgroundImage: "linear-gradient(135deg, #16a34a, #15803d)",
-                          color: "#ffffff",
-                          border: "none",
-                          boxShadow: "0 4px 20px rgba(22, 163, 74, 0.4)",
-                        }}
-                        className="btn-green-action w-full px-8 py-5 eyebrow text-white disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-300 hover:brightness-110 cursor-pointer font-medium"
+                        className="w-full rounded-full px-8 py-5 eyebrow text-white disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-300 bg-[#24130d] hover:bg-[#381e14] hover:scale-[1.01] cursor-pointer font-semibold shadow-xl border border-[var(--gold)]/40"
                       >
                         {saving ? (
-                          payProcessingMessage || "Processing securely..."
-                        ) : paymentMethod === "Card Authorization" ? (
-                          `Authorize & Pay Rs. ${orderTotal.toLocaleString("en-IN")}`
-                        ) : paymentMethod === "UPI Intent" ? (
-                          `Pay Rs. ${orderTotal.toLocaleString("en-IN")} via UPI`
+                          payProcessingMessage || "Authorizing payment..."
+                        ) : paymentMethod === "Razorpay Live Gateway" ? (
+                          `Pay Rs. ${orderTotal.toLocaleString("en-IN")} via Razorpay`
                         ) : (
                           `Confirm Order (Cash on Delivery) · Rs. ${orderTotal.toLocaleString("en-IN")}`
                         )}
@@ -2394,7 +3020,7 @@ export function SecureCheckoutPage({ session, onLogout, onLogin }: { session: Au
                       <strong className="font-display text-lg leading-tight mt-1 group-hover:text-[var(--gold)] transition-colors">{item.title}</strong>
                       <div className="flex justify-between mt-2 text-[var(--ink)]/70">
                         <span>Size {item.size} × {item.qty}</span>
-                        <span className="font-medium text-[var(--ink)]">{item.price}</span>
+                        <span className="font-medium text-[var(--ink)]">Rs. {(priceNumber(item.price) * item.qty).toLocaleString("en-IN")}</span>
                       </div>
                     </div>
                   </div>
@@ -2404,7 +3030,50 @@ export function SecureCheckoutPage({ session, onLogout, onLogin }: { session: Au
               <div className="mt-8 border-t border-[var(--ink)]/10 pt-6">
                 <div className="grid gap-3 text-sm text-[var(--ink)]/70">
                   <div className="flex justify-between"><span>Subtotal</span><span>Rs. {subtotal.toLocaleString("en-IN")}</span></div>
-                  {discount > 0 && <div className="flex justify-between text-emerald-600 font-medium"><span>{checkoutCoupon?.title}</span><span>- Rs. {discount.toLocaleString("en-IN")}</span></div>}
+                  {discount > 0 && (
+                    <div className="flex justify-between items-center text-emerald-600 font-medium">
+                      <div className="flex items-center gap-1.5">
+                        <span>{checkoutCoupon?.title}</span>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            saveCheckoutCoupon(null);
+                            setCouponRefreshKey((k) => k + 1);
+                          }}
+                          className="text-[10px] text-red-500 hover:underline font-normal cursor-pointer"
+                        >
+                          (Remove)
+                        </button>
+                      </div>
+                      <span>- Rs. {discount.toLocaleString("en-IN")}</span>
+                    </div>
+                  )}
+                  {!checkoutCoupon && session?.user?.email && (
+                    <div className="my-1.5 p-2.5 rounded-xl border border-amber-300/80 bg-amber-50/80 flex items-center justify-between gap-2 text-xs">
+                      <div>
+                        <span className="font-bold text-[#24130d] flex items-center gap-1">
+                          <span>✨</span>
+                          <span>{privilege.code}: {privilege.percent}% OFF</span>
+                        </span>
+                        <span className="text-[10.5px] text-[#4b261a90] block">
+                          {privilege.badge}
+                        </span>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const res = validateCoupon(privilege.code, subtotal, session?.user?.email);
+                          if (res.quote) {
+                            saveCheckoutCoupon(res.quote);
+                            setCouponRefreshKey((k) => k + 1);
+                          }
+                        }}
+                        className="bg-[#24130d] text-white hover:bg-[var(--gold)] hover:text-[#24130d] px-2.5 py-1 rounded text-[11px] font-bold uppercase tracking-wider transition-colors cursor-pointer shrink-0"
+                      >
+                        Apply
+                      </button>
+                    </div>
+                  )}
                   <div className="flex justify-between"><span>Shipping</span><span>Complimentary</span></div>
                   <div className="flex justify-between"><span>Taxes & Duties</span><span>Included</span></div>
                 </div>
@@ -2424,34 +3093,7 @@ export function SecureCheckoutPage({ session, onLogout, onLogin }: { session: Au
   );
 }
 
-export function ContactPage({ session, onLogout, onLogin }: { session: AuthSession | null; onLogout: () => void; onLogin: () => void }) {
-  useEffect(() => {
-    if (typeof window !== "undefined") {
-      window.location.hash = "#our-story";
-    }
-  }, []);
-
-  return (
-    <PageShell session={session} onLogout={onLogout} onLogin={onLogin}>
-      <section className="story py-20" id="our-story">
-        <div className="story-image">
-          <img src="/campaigns/aura-motion.webp" alt="Follicia Aura footwear worn in motion" />
-        </div>
-        <div className="story-copy">
-          <p className="eyebrow">Designed around movement</p>
-          <h2>Beauty begins with how it feels.</h2>
-          <p>
-            From soft flats to sculptural heels and confident mules, each Follicia design balances a distinct point of view with thoughtful proportions for real movement.
-          </p>
-          <a className="button outline" href="#/shop">
-            Discover the collection
-          </a>
-        </div>
-      </section>
-    </PageShell>
-  );
-}
-
+export { ContactPage } from "./ContactPage";
 export { NewArrivalsPage } from "./NewArrivalsPage";
 export { OurStoryPage } from "./OurStoryPage";
 export { CollectionsPage } from "./CollectionsPage";

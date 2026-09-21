@@ -1,11 +1,14 @@
 import c1 from "@/assets/collection-1.jpg";
 import c2 from "@/assets/collection-2.jpg";
 import c3 from "@/assets/collection-3.jpg";
-import atelier from "@/assets/atelier.jpg";
+import Footwear from "@/assets/Footwear.jpg";
 import type { CartItem } from "@/components/cart/CartContext";
 import { FOLLICIA_PRODUCTS, type ProductVariant } from "@/data/folliciaCatalogue";
 
 export type { ProductVariant };
+
+export const ALL_AVAILABLE_EU_SIZES = ["EU 35", "EU 36", "EU 37", "EU 38", "EU 39", "EU 40", "EU 41", "EU 42", "EU 43"] as const;
+export const DEFAULT_PRODUCT_SIZES = ["EU 38", "EU 39", "EU 40", "EU 41"];
 
 export type CommerceProduct = {
   id: string;
@@ -16,6 +19,7 @@ export type CommerceProduct = {
   color?: string;
   colors?: string;
   availableColors?: string[];
+  availableSizes?: string[];
   heroColour?: string;
   colourName?: string;
   colourCode?: string;
@@ -89,7 +93,7 @@ export type CustomerProfile = {
   subscriptions: string[];
 };
 
-const PRODUCTS_KEY = "follocia_products_v9";
+const PRODUCTS_KEY = "follocia_products_v12";
 const ORDERS_KEY = "follocia_orders";
 const CUSTOMERS_KEY = "follocia_customers";
 export const COMMERCE_EVENT = "follocia-commerce-change";
@@ -97,21 +101,29 @@ const API_ROOT = "/api/commerce";
 
 if (typeof window !== "undefined") {
   try {
-    localStorage.removeItem("follocia_products");
-    localStorage.removeItem("follocia_products_v2");
-    localStorage.removeItem("follocia_products_v3");
-    localStorage.removeItem("follocia_products_v4");
-    localStorage.removeItem("follocia_products_v5");
-    localStorage.removeItem("follocia_products_v6");
-    localStorage.removeItem("follocia_products_v7");
-    localStorage.removeItem("follocia_products_v8");
+    for (let i = 1; i <= 11; i++) {
+      localStorage.removeItem(i === 1 ? "follocia_products" : `follocia_products_v${i}`);
+    }
   } catch {
     // Ignore in SSR / restricted storage
   }
 }
 
 export function getHeroColorCode(heroColor?: string): string {
-  if (!heroColor) return "WA";
+  if (!heroColor) return "WI";
+  const upper = heroColor.trim().toUpperCase();
+  if (upper.length === 2 && /^[A-Z]{2}$/.test(upper)) return upper;
+  if (upper.includes("WARM IVORY") || upper.includes("IVORY")) return "WI";
+  if (upper.includes("CHOCOLATE") || upper.includes("BROWN")) return "CB";
+  if (upper.includes("CHAMPAGNE") || upper.includes("NUDE")) return "CN";
+  if (upper.includes("JET BLACK") || upper.includes("BLACK") || upper.includes("NOIR") || upper.includes("ONYX")) return "BK";
+  if (upper.includes("BURGUNDY") || upper.includes("WINE") || upper.includes("MAROON")) return "BG";
+  if (upper.includes("GOLD") || upper.includes("AMBER")) return "GD";
+  if (upper.includes("SILVER") || upper.includes("PLATINUM") || upper.includes("CHROME")) return "SV";
+  if (upper.includes("ROSE") || upper.includes("BLUSH") || upper.includes("PINK")) return "RS";
+  if (upper.includes("OLIVE") || upper.includes("SAGE") || upper.includes("GREEN")) return "OL";
+  if (upper.includes("TAN") || upper.includes("COGNAC") || upper.includes("CAMEL")) return "TN";
+  if (upper.includes("WHITE")) return "WH";
   const clean = heroColor.trim().replace(/[^a-zA-Z]/g, "");
   if (clean.length >= 2) {
     return clean.slice(0, 2).toUpperCase();
@@ -119,18 +131,31 @@ export function getHeroColorCode(heroColor?: string): string {
   return clean.toUpperCase().padEnd(2, "X");
 }
 
-export function computeFullSku(designId?: string, heroColor?: string, size?: string | number): string {
-  const dId = (designId || "FA-01").toUpperCase().trim();
-  const colorPrefix = getHeroColorCode(heroColor);
-  const sz = String(size || "38").replace(/\D/g, "") || "38";
-  return `${dId}-${colorPrefix}-${sz}`;
+export function parsePriceNumber(val: unknown): number {
+  if (typeof val === "number") return isNaN(val) ? 0 : val;
+  if (!val) return 0;
+  const withoutPrefix = String(val).replace(/^[^0-9]*/, "").replace(/,/g, "").trim();
+  const parsed = parseFloat(withoutPrefix);
+  return isNaN(parsed) ? 0 : parsed;
 }
 
-export function computeAllFullSkus(designId?: string, heroColor?: string): Record<string, string> {
-  const sizes = ["38", "39", "40", "41"];
+export function computeFullSku(designId?: string, colourCodeOrHeroColor?: string, size?: string | number): string {
+  const dId = (designId || "FA-01").toUpperCase().trim();
+  let code = (colourCodeOrHeroColor || "").trim().toUpperCase();
+  if (!code) {
+    code = "WI";
+  } else if (code.length !== 2) {
+    code = getHeroColorCode(code);
+  }
+  const sz = String(size || "38").replace(/\D/g, "") || "38";
+  return `${dId}-${code}-${sz}`;
+}
+
+export function computeAllFullSkus(designId?: string, colourCodeOrHeroColor?: string, sizes?: string[]): Record<string, string> {
+  const effectiveSizes = (sizes && sizes.length > 0 ? sizes : ["38", "39", "40", "41"]).map((s) => s.replace(/\D/g, "")).filter(Boolean);
   const map: Record<string, string> = {};
-  for (const sz of sizes) {
-    map[sz] = computeFullSku(designId, heroColor, sz);
+  for (const sz of effectiveSizes) {
+    map[sz] = computeFullSku(designId, colourCodeOrHeroColor, sz);
   }
   return map;
 }
@@ -252,6 +277,7 @@ const catalogueCommerceProducts: CommerceProduct[] = FOLLICIA_PRODUCTS.map((p) =
     colourVariantSku: p.colourVariantSku || `${dId}-${getHeroColorCode(heroCol)}`,
     fullSkus: dynamicFullSkus,
     sizeRange: p.sizeRange || "38–41",
+    availableSizes: DEFAULT_PRODUCT_SIZES,
     heelHeight: p.heelHeight,
     price: `Rs. ${p.price.toLocaleString("en-IN")}`,
     image: p.image,
@@ -288,7 +314,7 @@ const seedCustomers: CustomerProfile[] = [
     firstName: "Ananya",
     lastName: "Sharma",
     phone: "",
-    tier: "Private Atelier",
+    tier: "Follicia Member",
     memberSince: "MMXXIV",
     wishlist: ["fl-aura-01", "fl-bloom-01"],
     subscriptions: [],
@@ -326,34 +352,39 @@ export function productImages(product: CommerceProduct) {
   const variantImgs = (matched?.variants?.map((v) => v.image) || []).filter(Boolean);
   const matchedVariantDict = matched?.variantImages ? Object.values(matched.variantImages) : [];
   const prodVariantImgs = (product.variants?.map((v) => v.image) || []).filter(Boolean);
+  const fallbackCatalogImg = `/products/${(matched?.designId || product.designId || product.id).toLowerCase()}.webp`;
 
   const gallery = [
-    product.image,
     matched?.image,
-    ...(product.images ?? []),
-    ...prodVariantImgs,
+    fallbackCatalogImg,
+    product.image,
     ...variantImgs,
     ...matchedVariantDict,
+    ...(product.images ?? []),
+    ...prodVariantImgs,
   ].filter(Boolean);
 
   return Array.from(new Set(gallery)).slice(0, 5);
 }
 
 export function productPrimaryImage(product: CommerceProduct) {
-  return productImages(product)[0] || "";
+  const pId = (product.designId || product.id || "").toLowerCase();
+  const matched = FOLLICIA_PRODUCTS.find(
+    (p) => p.id.toLowerCase() === pId || p.designId.toLowerCase() === pId
+  );
+  return matched?.image || `/products/${(matched?.designId || product.designId || product.id).toLowerCase()}.webp` || productImages(product)[0] || "/products/fa-01.webp";
 }
 
 const OLD_PRODUCT_IDS = new Set([
-  "atelier-01", "atelier-02", "atelier-03", "prod-atelier-01", "prod-atelier-02", "prod-atelier-03",
+  "Footwear-01", "Footwear-02", "Footwear-03", "Footwear-04",
+  "prod-Footwear-01", "prod-Footwear-02", "prod-Footwear-03",
   "prod-01", "prod-02", "prod-03"
 ]);
 
 export function isOldProduct(product: CommerceProduct): boolean {
   if (!product || !product.id) return true;
   const id = product.id.toLowerCase();
-  const title = (product.title || "").toLowerCase();
-  const price = (product.price || "").toLowerCase();
-  return OLD_PRODUCT_IDS.has(id) || id.startsWith("atelier-") || id.startsWith("prod-") || title.includes("atelier") || title.includes("noir suspendu") || price.includes("eur") || price.includes("€");
+  return OLD_PRODUCT_IDS.has(id) || id.startsWith("Footwear-") || id.startsWith("prod-Footwear-");
 }
 
 function normalizeProduct(product: CommerceProduct): CommerceProduct {
@@ -379,32 +410,36 @@ function normalizeProduct(product: CommerceProduct): CommerceProduct {
         }
       ]);
 
-  const priceNum = matched?.price ?? (Number(String(product.price).replace(/[^\d]/g, "")) || 0);
+  const rawPrice = parsePriceNumber(product.price);
+  const priceNum = rawPrice > 0 ? rawPrice : (matched?.price ?? 0);
   const formattedPrice = `Rs. ${priceNum.toLocaleString("en-IN")}`;
 
   return {
     ...product,
     designId: dId,
     price: formattedPrice,
-    image: images[0] || product.image || "",
-    images,
+    image: matched?.image || images[0] || product.image || "/products/fa-01.webp",
+    images: images.length > 0 ? images : [matched?.image || "/products/fa-01.webp"],
     variants,
-    availableColors: matched?.availableColors || product.availableColors,
-    colors: matched?.colors || product.colors,
-    category: matched?.category || product.category || "Heel",
-    material: matched?.material || product.material || "Vegan Leather",
-    silhouette: matched?.silhouette || product.silhouette || "",
-    collection: matched?.collection || product.collection || product.edition.replace(/ Collection$/i, ""),
-    subCollection: matched?.subCollection || product.subCollection,
+    availableColors: product.availableColors || matched?.availableColors,
+    colors: product.colors || matched?.colors,
+    category: product.category || matched?.category || "Heel",
+    material: product.material || matched?.material || "Vegan Leather",
+    silhouette: product.silhouette || matched?.silhouette || "",
+    collection: product.collection || matched?.collection || (product.edition ? product.edition.replace(/ Collection$/i, "") : "Aura"),
+    subCollection: product.subCollection || matched?.subCollection,
     heroColour: heroCol,
     colourName: product.colourName || matched?.colourName || heroCol,
     colourCode: colorCode,
     colourFamily: product.colourFamily || matched?.colourFamily || "",
     colourVariantSku: product.colourVariantSku || matched?.colourVariantSku || `${dId}-${colorCode}`,
-    fullSkus: computeAllFullSkus(dId, heroCol),
-    sizeRange: matched?.sizeRange || product.sizeRange || "38–41",
-    heelHeight: matched?.heelHeight || product.heelHeight,
-    notes: matched?.notes || product.notes,
+    availableSizes: (product.availableSizes && product.availableSizes.length > 0)
+      ? product.availableSizes
+      : DEFAULT_PRODUCT_SIZES,
+    fullSkus: computeAllFullSkus(dId, heroCol, product.availableSizes),
+    sizeRange: product.sizeRange || matched?.sizeRange || "38–41",
+    heelHeight: product.heelHeight || matched?.heelHeight,
+    notes: product.notes || matched?.notes,
   };
 }
 
@@ -453,7 +488,19 @@ export function saveOrders(orders: CommerceOrder[]) {
 }
 
 export function getCustomers() {
-  return read<CustomerProfile[]>(CUSTOMERS_KEY, seedCustomers);
+  const list = read<CustomerProfile[]>(CUSTOMERS_KEY, seedCustomers);
+  let changed = false;
+  const sanitized = list.map((c) => {
+    if (c.tier === "Private Footwear") {
+      changed = true;
+      return { ...c, tier: "Follicia Member" };
+    }
+    return c;
+  });
+  if (changed) {
+    write(CUSTOMERS_KEY, sanitized);
+  }
+  return sanitized;
 }
 
 export function saveCustomers(customers: CustomerProfile[]) {
@@ -463,8 +510,15 @@ export function saveCustomers(customers: CustomerProfile[]) {
 export function ensureCustomer(user: { id: string; name: string; email: string; tier: string }) {
   const customers = getCustomers();
   const existing = customers.find((customer) => customer.id === user.id || customer.email.toLowerCase() === user.email.toLowerCase());
-  if (existing) return existing;
+  if (existing) {
+    if (existing.tier === "Private Footwear") {
+      existing.tier = "Follicia Member";
+      saveCustomers(customers);
+    }
+    return existing;
+  }
   const [firstName, ...rest] = user.name.split(" ");
+  const cleanTier = user.tier === "Private Footwear" ? "Follicia Member" : (user.tier || "Follicia Member");
   const customer: CustomerProfile = {
     id: user.id,
     name: user.name,
@@ -472,7 +526,7 @@ export function ensureCustomer(user: { id: string; name: string; email: string; 
     firstName: firstName || user.name,
     lastName: rest.join(" "),
     phone: "",
-    tier: user.tier,
+    tier: cleanTier,
     memberSince: "MMXXVI",
     addresses: [],
     wishlist: [],
@@ -507,11 +561,54 @@ async function api<T>(path: string, init?: RequestInit): Promise<T | null> {
 export async function syncCommerceFromBackend() {
   const data = await api<{ products: CommerceProduct[]; orders: CommerceOrder[]; customers: CustomerProfile[] }>("/bootstrap");
   if (!data) return false;
-  const filteredProducts = (data.products || []).filter((p) => !isOldProduct(p)).map(normalizeProduct);
-  const productsToStore = filteredProducts.length > 0 ? filteredProducts : seedProducts.map(normalizeProduct);
-  localStorage.setItem(PRODUCTS_KEY, JSON.stringify(productsToStore));
-  localStorage.setItem(ORDERS_KEY, JSON.stringify(data.orders));
-  localStorage.setItem(CUSTOMERS_KEY, JSON.stringify(data.customers));
+
+  // 1. Read existing local products from localStorage
+  const currentLocalProducts = read<CommerceProduct[]>(PRODUCTS_KEY, seedProducts)
+    .filter((p) => !isOldProduct(p))
+    .map(normalizeProduct);
+
+  const incomingProducts = (data.products || []).filter((p) => !isOldProduct(p)).map(normalizeProduct);
+
+  // 2. Build merged map keyed by lowercased product ID
+  const productMap = new Map<string, CommerceProduct>();
+
+  // A. Start with seed products
+  seedProducts.forEach((p) => productMap.set(p.id.toLowerCase(), normalizeProduct(p)));
+
+  // B. Overlay incoming products from backend DB
+  incomingProducts.forEach((p) => {
+    productMap.set(p.id.toLowerCase(), p);
+  });
+
+  // C. PRESERVE ALL local products!
+  // Any product created locally (such as new pieces added in Admin Panel)
+  // MUST NEVER be wiped out if backend hasn't synced it yet or returned stale data.
+  currentLocalProducts.forEach((p) => {
+    const existing = productMap.get(p.id.toLowerCase());
+    if (!existing) {
+      productMap.set(p.id.toLowerCase(), p);
+      // Proactively sync this new product to the backend
+      void saveProductRemote(p);
+    } else {
+      productMap.set(p.id.toLowerCase(), {
+        ...existing,
+        ...p,
+        price: p.price || existing.price,
+        status: p.status || existing.status,
+      });
+    }
+  });
+
+  const mergedProducts = Array.from(productMap.values()).filter((p) => !isOldProduct(p));
+  write(PRODUCTS_KEY, mergedProducts);
+
+  if (data.orders && Array.isArray(data.orders) && data.orders.length > 0) {
+    localStorage.setItem(ORDERS_KEY, JSON.stringify(data.orders));
+  }
+  if (data.customers && Array.isArray(data.customers) && data.customers.length > 0) {
+    localStorage.setItem(CUSTOMERS_KEY, JSON.stringify(data.customers));
+  }
+
   window.dispatchEvent(new CustomEvent(COMMERCE_EVENT));
   return true;
 }
@@ -527,10 +624,30 @@ export async function ensureCustomerRemote(user: { id: string; name: string; ema
   return customer;
 }
 
-export async function saveCustomerRemote(profile: CustomerProfile) {
-  await api(`/customers/${encodeURIComponent(profile.id)}`, {
-    method: "PUT",
-    body: JSON.stringify(profile),
+const pendingCustomerSaves = new Map<string, ReturnType<typeof setTimeout>>();
+
+export async function saveCustomerRemote(profile: CustomerProfile): Promise<void> {
+  const customerId = profile?.id;
+  if (!customerId) return;
+
+  return new Promise<void>((resolve) => {
+    const existing = pendingCustomerSaves.get(customerId);
+    if (existing) clearTimeout(existing);
+
+    const timer = setTimeout(async () => {
+      pendingCustomerSaves.delete(customerId);
+      try {
+        await api(`/customers/${encodeURIComponent(customerId)}`, {
+          method: "PUT",
+          body: JSON.stringify(profile),
+        });
+      } catch (err) {
+        console.warn("Silent remote customer sync warning:", err);
+      }
+      resolve();
+    }, 200);
+
+    pendingCustomerSaves.set(customerId, timer);
   });
 }
 
@@ -544,6 +661,12 @@ export async function saveProductRemote(product: CommerceProduct) {
   await api(`/products/${encodeURIComponent(product.id)}`, {
     method: "PUT",
     body: JSON.stringify(normalizeProduct(product)),
+  });
+}
+
+export async function deleteProductRemote(id: string) {
+  await api(`/products/${encodeURIComponent(id)}`, {
+    method: "DELETE",
   });
 }
 
@@ -602,6 +725,22 @@ export function createOrdersFromCart(items: CartItem[], customer: CustomerProfil
   });
   saveProducts(updatedProducts);
   saveOrders([...newOrders, ...orders]);
+  newOrders.forEach((order) => {
+    void fetch("/api/commerce/notify-order", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        orderId: order.id,
+        customer: order.customer,
+        email: order.email,
+        product: order.product,
+        size: order.size,
+        amount: order.amount,
+        paymentMethod: order.paymentMethod,
+        deliveryAddress: order.deliveryAddress,
+      }),
+    }).catch(() => {});
+  });
   return newOrders;
 }
 

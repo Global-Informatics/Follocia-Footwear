@@ -15,6 +15,7 @@ import {
   getActiveVariant,
   type CommerceProduct,
 } from "@/lib/commerceStore";
+import { ProductCard } from "./ShopPages";
 import "@/components/home/follicia.css";
 
 const STYLE_FILTERS = ["All styles", "Flat", "Heel", "Mule", "Boot"] as const;
@@ -37,7 +38,7 @@ function getColorHex(colorName?: string): string {
 
 function formatPriceString(price: string | number): string {
   if (typeof price === "string" && price.trim().startsWith("Rs.")) return price;
-  const num = typeof price === "number" ? price : Number(String(price).replace(/[^\d]/g, "")) || 0;
+  const num = typeof price === "number" ? price : parseFloat(String(price || "").replace(/^[^0-9]*/, "").replace(/,/g, "")) || 0;
   return `Rs. ${num.toLocaleString("en-IN")}`;
 }
 
@@ -102,11 +103,6 @@ export function CollectionsPage({
     return () => window.removeEventListener(COMMERCE_EVENT, sync);
   }, []);
 
-  // Quick View modal state
-  const [quickProduct, setQuickProduct] = useState<CommerceProduct | null>(null);
-  const [quickSize, setQuickSize] = useState<number | null>(38);
-  const [quickColor, setQuickColor] = useState<string>("");
-
   const [newsletterEmail, setNewsletterEmail] = useState("");
   const [toastMessage, setToastMessage] = useState("");
 
@@ -127,28 +123,6 @@ export function CollectionsPage({
     window.addEventListener("hashchange", syncFromUrl);
     return () => window.removeEventListener("hashchange", syncFromUrl);
   }, []);
-
-  // Quick view escape key & body scroll lock
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "Escape") {
-        setQuickProduct(null);
-      }
-    };
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
-  }, []);
-
-  useEffect(() => {
-    if (quickProduct) {
-      document.body.style.overflow = "hidden";
-    } else {
-      document.body.style.overflow = "";
-    }
-    return () => {
-      document.body.style.overflow = "";
-    };
-  }, [quickProduct]);
 
   const filteredProducts = useMemo(() => {
     if (!selectedCollection) return [];
@@ -185,40 +159,12 @@ export function CollectionsPage({
   }, [storeProducts, selectedCollection, selectedStyle]);
 
   const handleOpenQuickView = (product: CommerceProduct) => {
-    setQuickProduct(product);
-    setQuickSize(38);
-    setQuickColor(product.color || product.tone || "");
-  };
-
-  const handleAddToBag = (product: CommerceProduct) => {
-    if (!quickSize) {
-      showToast("Please select a size");
-      return;
-    }
-    const color = quickColor || product.color || product.tone || "Classic";
-    const activeVar = getActiveVariant(product, color);
-    const image = activeVar?.image || productPrimaryImage(product);
-
-    add(
-      {
-        id: `${product.id}-${quickSize}-${color}`,
-        title: product.title,
-        price: formatPriceString(product.price),
-        image,
-        tone: color,
-        size: `EU ${quickSize}`,
-      },
-      1
-    );
-
-    showToast(`${product.title} · EU ${quickSize} added to bag`);
-    setQuickProduct(null);
-    setCartOpen(true);
+    window.location.hash = `#/shop/${product.id.toLowerCase()}`;
   };
 
   const handleToggleWishlist = (productId: string, productName: string) => {
     toggleWish(productId);
-    const isNowSaved = !wishlist.includes(productId);
+    const isNowSaved = !wishlist.some((x) => x.toLowerCase() === productId.toLowerCase());
     showToast(isNowSaved ? `${productName} saved to wishlist` : `${productName} removed from wishlist`);
   };
 
@@ -254,9 +200,27 @@ export function CollectionsPage({
 
   const handleNewsletterSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newsletterEmail) return;
+    const emailVal = newsletterEmail.trim();
+    if (!emailVal) return;
     try {
-      localStorage.setItem("follicia-newsletter-email", newsletterEmail);
+      localStorage.setItem("follicia-newsletter-email", emailVal);
+      const key = "follocia_admin_newsletter";
+      const raw = localStorage.getItem(key);
+      const existing = raw ? JSON.parse(raw) : [];
+      const newEntry = {
+        id: `sub-${Date.now()}`,
+        title: emailVal,
+        meta: `Subscribed on ${new Date().toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })} via Collections Page`,
+        status: "Subscribed",
+      };
+      const updated = [newEntry, ...existing.filter((item: any) => item.title?.toLowerCase() !== emailVal.toLowerCase())];
+      localStorage.setItem(key, JSON.stringify(updated));
+
+      void fetch("/api/commerce/admin-records/newsletter", {
+        method: "PUT",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify(updated.map((item) => ({ ...item, module: "newsletter" }))),
+      }).catch(() => {});
     } catch {}
     setNewsletterEmail("");
     showToast("You’re on the Follicia VIP list");
@@ -279,7 +243,7 @@ export function CollectionsPage({
           /* Matches exact reference layout: eyebrow, Title, EU 38–41,    */
           /* All styles | Flat | Heel | Mule | Boot tabs & product grid   */
           /* ============================================================ */
-          <section className="shop collection-page" id="shop" style={{ paddingTop: "110px" }}>
+          <section className="shop collection-page" id="shop" style={{ paddingTop: "24px" }}>
             {/* Top switcher bar with back to all collections */}
             <div className="collection-nav-bar flex flex-wrap items-center justify-between gap-4 mb-6 pb-4 border-b border-[var(--line,#e8ded2)]">
               <button
@@ -357,96 +321,16 @@ export function CollectionsPage({
               </div>
             ) : (
               <div className="product-grid">
-                {filteredProducts.map((product) => {
-                  const isSaved = wishlist.includes(product.id);
-                  const pImage = productPrimaryImage(product);
-                  const pTone = product.color || product.tone || "";
-                  const pPrice = formatPriceString(product.price);
-
-                  return (
-                    <article key={product.id} className="product-card">
-                      <button
-                        type="button"
-                        className="product-image"
-                        aria-label={`View ${product.title}`}
-                        onClick={() => handleOpenQuickView(product)}
-                      >
-                        <img
-                          loading="lazy"
-                          src={pImage}
-                          alt={`${product.title} in ${pTone}`}
-                        />
-                        <span className="quick">Choose size &amp; colour</span>
-                      </button>
-
-                      <div className="product-meta">
-                        <div>
-                          <p>
-                            {product.collection || selectedCollection} · {pTone}
-                          </p>
-                          <a
-                            href={`#/shop/${product.id.toLowerCase()}`}
-                            className="product-title-link"
-                          >
-                            <h3>{product.title}</h3>
-                          </a>
-                        </div>
-                        <strong>{pPrice}</strong>
-                      </div>
-
-                      <div
-                        className="colour-preview"
-                        aria-label={`Available colours for ${product.title}`}
-                      >
-                        <span
-                          title={pTone}
-                          style={{ background: getColorHex(pTone) }}
-                        />
-                        <small>{pTone}</small>
-                      </div>
-
-                      <div className="product-actions">
-                        <span>EU 38–41</span>
-                        <div className="flex items-center gap-3">
-                          <button
-                            type="button"
-                            className="hover:text-[var(--gold)] flex items-center gap-1 transition-colors cursor-pointer"
-                            aria-label={`Share ${product.title}`}
-                            title="Share design"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleShareProduct(product);
-                            }}
-                          >
-                            <svg
-                              width="11"
-                              height="11"
-                              viewBox="0 0 24 24"
-                              fill="none"
-                              stroke="currentColor"
-                              strokeWidth="2"
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                            >
-                              <path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8" />
-                              <polyline points="16 6 12 2 8 6" />
-                              <line x1="12" y1="2" x2="12" y2="15" />
-                            </svg>
-                            <span>Share</span>
-                          </button>
-                          <button
-                            type="button"
-                            className={isSaved ? "saved active" : ""}
-                            aria-label={`Save ${product.title}`}
-                            onClick={() => handleToggleWishlist(product.id, product.title)}
-                          >
-                            {isSaved ? "Saved" : "♡ Save"}
-                          </button>
-                        </div>
-                      </div>
-                    </article>
-                  );
-                })}
+                {filteredProducts.map((product, idx) => (
+                  <ProductCard
+                    key={product.id}
+                    product={product}
+                    index={idx}
+                    onSelect={() => {
+                      window.location.hash = `#/shop/${product.id.toLowerCase()}`;
+                    }}
+                  />
+                ))}
               </div>
             )}
           </section>
@@ -455,7 +339,7 @@ export function CollectionsPage({
           /* MAIN COLLECTIONS OVERVIEW PAGE (Four Moods. One signature.) */
           /* ============================================================ */
           <>
-            <section className="intro page-intro" id="collections">
+            <section className="intro page-intro" id="collections" style={{ paddingTop: "28px", paddingBottom: "36px" }}>
               <p className="eyebrow">The collections</p>
               <h2>
                 Four moods.<br />
@@ -497,7 +381,7 @@ export function CollectionsPage({
         <section className="newsletter">
           <p className="eyebrow">The Follicia Edit</p>
           <h2>Step into our world.</h2>
-          <p>New arrivals, private previews and stories from our atelier.</p>
+          <p>New arrivals, private previews and stories from Follicia.</p>
           <form onSubmit={handleNewsletterSubmit}>
             <input
               aria-label="Email address"
@@ -513,121 +397,7 @@ export function CollectionsPage({
         </section>
       </main>
 
-      {/* Quick View Modal */}
-      {quickProduct && (
-        <div
-          className="quick-view-backdrop"
-          role="presentation"
-          onMouseDown={(e) => {
-            if (e.target === e.currentTarget) setQuickProduct(null);
-          }}
-        >
-          <section
-            className="quick-view"
-            role="dialog"
-            aria-modal="true"
-            aria-label={`${quickProduct.title} details`}
-          >
-            <button
-              className="close"
-              aria-label="Close product details"
-              onClick={() => setQuickProduct(null)}
-            >
-              ×
-            </button>
 
-            <div className="quick-view-image">
-              <img
-                src={
-                  getActiveVariant(quickProduct, quickColor)?.image ||
-                  productPrimaryImage(quickProduct)
-                }
-                alt={`${quickProduct.title} in ${quickColor || quickProduct.tone}`}
-              />
-            </div>
-
-            <div className="quick-view-copy">
-              <p className="eyebrow">
-                {quickProduct.collection} · {quickProduct.category}
-              </p>
-              <h2>{quickProduct.title}</h2>
-              <strong>{formatPriceString(quickProduct.price)}</strong>
-
-              <p className="size-label" style={{ marginTop: 24 }}>Select colour</p>
-              <div className="colour-options">
-                {(quickProduct.availableColors || (quickProduct.color ? [quickProduct.color] : [quickProduct.tone])).map((color) => (
-                  <button
-                    key={color}
-                    type="button"
-                    className={(quickColor || quickProduct.color || quickProduct.tone) === color ? "active" : ""}
-                    onClick={() => setQuickColor(color)}
-                  >
-                    {color}
-                  </button>
-                ))}
-              </div>
-
-              <div className="size-label">
-                <span>SELECT SIZE</span>
-                <span>EU SIZING</span>
-              </div>
-              <div className="size-grid">
-                {SIZES.map((size) => (
-                  <button
-                    key={size}
-                    type="button"
-                    className={quickSize === size ? "active" : ""}
-                    onClick={() => setQuickSize(size)}
-                  >
-                    {size}
-                  </button>
-                ))}
-              </div>
-
-              <div className="flex flex-col gap-3 mt-6">
-                <button
-                  type="button"
-                  className="button dark add-button"
-                  onClick={() => handleAddToBag(quickProduct)}
-                >
-                  Add to bag
-                </button>
-                <div className="flex items-center justify-center gap-4 pt-1">
-                  <button
-                    type="button"
-                    onClick={() => handleShareProduct(quickProduct)}
-                    className="text-center text-xs uppercase tracking-wider text-[#4b261a90] hover:text-[var(--gold)] flex items-center justify-center gap-1.5 cursor-pointer transition-colors"
-                  >
-                    <svg
-                      width="12"
-                      height="12"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="2"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                    >
-                      <path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8" />
-                      <polyline points="16 6 12 2 8 6" />
-                      <line x1="12" y1="2" x2="12" y2="15" />
-                    </svg>
-                    <span>Share piece</span>
-                  </button>
-                  <span className="text-[#4b261a30]">·</span>
-                  <a
-                    href={`#/shop/${quickProduct.id.toLowerCase()}`}
-                    onClick={() => setQuickProduct(null)}
-                    className="text-center text-xs uppercase tracking-wider text-[var(--gold)] hover:underline"
-                  >
-                    View full details →
-                  </a>
-                </div>
-              </div>
-            </div>
-          </section>
-        </div>
-      )}
 
       {/* Footer */}
       <Footer />

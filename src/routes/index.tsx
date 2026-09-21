@@ -8,7 +8,7 @@ export const Route = createFileRoute("/")({
       {
         name: "description",
         content:
-          "Maison Follicia releases six rare collections of women's footwear per year, hand-sculpted in Florence. Numbered, never reissued.",
+          "Follicia releases six rare collections of women's footwear per year, hand-sculpted in Florence. Numbered, never reissued.",
       },
       { property: "og:title", content: "Follicia — Limited Edition Footwear" },
       {

@@ -4,11 +4,11 @@ import { Reveal } from "../Reveal";
 import { CountUp } from "../CountUp";
 import { GoldenParticles } from "../GoldenParticles";
 import { ParallaxLayer } from "../ParallaxLayer";
-import atelier from "@/assets/atelier.jpg";
+import Footwear from "@/assets/Footwear.jpg";
 import detail1 from "/images/shoe-detail-2.jpg";
 import detail2 from "/images/shoe-detail-4.jpg";
 
-export function Atelier() {
+export function Footwear() {
   const ref = useRef<HTMLDivElement>(null);
   const { scrollYProgress } = useScroll({ target: ref, offset: ["start end", "end start"] });
   const y1 = useTransform(scrollYProgress, [0, 1], ["-12%", "12%"]);
@@ -57,7 +57,7 @@ export function Atelier() {
           <Reveal mode="clip-left">
             <div className="flex items-center gap-3">
               <div className="h-px w-6 bg-[var(--gold)]/60" />
-              <p className="eyebrow text-[var(--gold)]">The Atelier</p>
+              <p className="eyebrow text-[var(--gold)]">The Craft</p>
             </div>
           </Reveal>
           <Reveal delay={0.1} mode="rotate-in">
@@ -102,7 +102,7 @@ export function Atelier() {
             <motion.img
               whileHover={{ scale: 1.04 }}
               transition={{ duration: 1.2, ease: [0.2, 0.8, 0.2, 1] }}
-              src={atelier}
+              src={Footwear}
               alt="Artisan stitching golden thread"
               loading="lazy"
               width={1536}

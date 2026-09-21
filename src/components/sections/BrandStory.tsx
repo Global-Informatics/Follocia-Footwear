@@ -3,7 +3,7 @@ import { useRef } from "react";
 import { Reveal } from "../Reveal";
 import { ParallaxLayer } from "../ParallaxLayer";
 
-const words = ["Rare", "Limited", "Sculpted in Italy", "MMXXV", "Six Releases", "Worn by the Few", "Atelier", "Florentine"];
+const words = ["Rare", "Limited", "Sculpted in Italy", "MMXXV", "Six Releases", "Worn by the Few", "Handcrafted", "Florentine"];
 
 export function Marquee() {
   return (
@@ -94,7 +94,7 @@ export function BrandStory() {
             <div className="mt-10 grid grid-cols-1 gap-10 text-base leading-[1.9] text-[var(--ink)]/70 md:grid-cols-2">
               <p>
                 Follicia exists for the woman who has stopped translating fashion and started writing it. Every silhouette
-                is sculpted by hand in our Florentine atelier — drawn slowly, finished slower, signed only when perfect.
+                is sculpted by hand with Florentine heritage — drawn slowly, finished slower, signed only when perfect.
               </p>
               <p>
                 We release six collections a year. No restocks. No repeats. When the last pair leaves the box, that

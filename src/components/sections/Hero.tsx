@@ -17,7 +17,7 @@ const SLIDES = [
   },
   {
     url: assetUrl("images/hero/hero_slide_3.png"),
-    title: "Atelier Gold",
+    title: "Signature Gold",
     subtitle: "Private Reserve"
   }
 ];
@@ -71,7 +71,7 @@ export function Hero() {
               className="flex items-center gap-3 mb-6"
             >
               <div className="h-px w-6 bg-[var(--gold)]/60" />
-              <p className="eyebrow text-[var(--gold)]">Maison Follicia · MMXXV</p>
+              <p className="eyebrow text-[var(--gold)]">Follicia · MMXXV</p>
             </motion.div>
 
             <h1 className="font-display text-[clamp(2.5rem,7vw,6.5rem)] leading-[0.9] tracking-[-0.02em] text-[var(--bone)]">
@@ -87,7 +87,7 @@ export function Hero() {
               transition={{ delay: 1.2, duration: 1 }}
               className="mt-6 text-xs md:text-sm leading-relaxed text-[var(--bone)]/60 max-w-sm"
             >
-              Footwear sculpted in Italian ateliers. Released only six times a year. Once gone, never reissued.
+              Footwear handcrafted in limited editions. Released only six times a year. Once gone, never reissued.
             </motion.p>
           </div>
 

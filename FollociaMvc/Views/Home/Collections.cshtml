@@ -1,11 +1,11 @@
 @model FollociaMvc.Models.CollectionsViewModel
 @{
-    ViewData["Title"] = "Seasonal Collections | Maison Follicia";
+    ViewData["Title"] = "Seasonal Collections | Follicia";
 }
 
 <div class="page-banner">
     <div class="section-container">
-        <span class="eyebrow-tag">ATELIER SERIES</span>
+        <span class="eyebrow-tag">SIGNATURE SERIES</span>
         <h1>Rare Collections MMXXV</h1>
         <p>Each series is conceived around a singular architectural theme and executed with Florence handcraft.</p>
     </div>
@@ -24,7 +24,7 @@
                         <span class="eyebrow-tag">@col.Season</span>
                         <h2>@col.Name</h2>
                         <p class="lead-text">@col.Subtitle</p>
-                        <p>Produced in numbered allocations of @col.PairsCount pairs worldwide. Accompanied by a hand-signed parchment of authenticity from our Florence atelier master.</p>
+                        <p>Produced in numbered allocations of @col.PairsCount pairs worldwide. Accompanied by a hand-signed parchment of authenticity from our master craftsman.</p>
                         
                         <div class="col-feature-actions">
                             <a asp-controller="Home" asp-action="Shop" class="btn-gold-solid">RESERVE SILHOUETTE</a>

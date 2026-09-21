@@ -4,6 +4,7 @@ import { Footer } from "@/components/sections/Footer";
 import { CartDrawer } from "@/components/cart/CartDrawer";
 import type { AuthSession } from "@/components/auth/AuthGateway";
 import { getProducts, COMMERCE_EVENT, type CommerceProduct } from "@/lib/commerceStore";
+import { shareProduct } from "./ShopPages";
 import "@/components/home/follicia.css";
 
 export function NewArrivalsPage({
@@ -17,6 +18,7 @@ export function NewArrivalsPage({
 }) {
   const [newsletterEmail, setNewsletterEmail] = useState("");
   const [toastMessage, setToastMessage] = useState("");
+  const [copiedId, setCopiedId] = useState<string | null>(null);
   const [products, setProducts] = useState<CommerceProduct[]>(() => getProducts());
 
   // Waitlist / Notify Modal State
@@ -32,9 +34,27 @@ export function NewArrivalsPage({
 
   const handleNewsletterSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newsletterEmail) return;
+    const emailVal = newsletterEmail.trim();
+    if (!emailVal) return;
     try {
-      localStorage.setItem("follicia-newsletter-email", newsletterEmail);
+      localStorage.setItem("follicia-newsletter-email", emailVal);
+      const key = "follocia_admin_newsletter";
+      const raw = localStorage.getItem(key);
+      const existing = raw ? JSON.parse(raw) : [];
+      const newEntry = {
+        id: `sub-${Date.now()}`,
+        title: emailVal,
+        meta: `Subscribed on ${new Date().toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })} via New Arrivals Page`,
+        status: "Subscribed",
+      };
+      const updated = [newEntry, ...existing.filter((item: any) => item.title?.toLowerCase() !== emailVal.toLowerCase())];
+      localStorage.setItem(key, JSON.stringify(updated));
+
+      void fetch("/api/commerce/admin-records/newsletter", {
+        method: "PUT",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify(updated.map((item) => ({ ...item, module: "newsletter" }))),
+      }).catch(() => {});
     } catch {}
     setNewsletterEmail("");
     setToastMessage("You’re on the Follicia VIP list");
@@ -138,9 +158,9 @@ export function NewArrivalsPage({
         <section className="px-6 py-20 md:px-12 max-w-[1400px] mx-auto border-t border-[#4b261a15]">
           <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-12">
             <div>
-              <p className="eyebrow text-[var(--gold)]">Private Atelier Previews</p>
+              <p className="eyebrow text-[var(--gold)]">Private Previews</p>
               <h2 className="font-display text-4xl md:text-5xl text-[#351c13]">
-                Upcoming Atelier Drops
+                Upcoming Follicia Drops
               </h2>
             </div>
             <p className="max-w-md text-xs uppercase tracking-widest text-[#7d6659]">
@@ -153,7 +173,7 @@ export function NewArrivalsPage({
               <span className="text-3xl mb-3 block">✨</span>
               <h3 className="font-display text-2xl text-[#351c13]">New Editions in the Workshop</h3>
               <p className="mt-2 text-sm text-[#7d6659] max-w-lg mx-auto">
-                Our artisans are currently shaping the next series. When new designs or coming-soon drops are announced in the atelier admin, they will appear here.
+                Our artisans are currently shaping the next series. When new designs or coming-soon drops are announced, they will appear here.
               </p>
             </div>
           ) : (
@@ -181,12 +201,40 @@ export function NewArrivalsPage({
                           </span>
                         )}
                       </div>
+
+                      {/* Share Button on Card Image */}
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          e.preventDefault();
+                          void shareProduct(p, () => {
+                            setCopiedId(p.id);
+                            setTimeout(() => setCopiedId(null), 2200);
+                          });
+                        }}
+                        aria-label={`Share ${p.title}`}
+                        title="Share piece"
+                        className="absolute top-4 right-4 z-10 grid h-8 w-8 place-items-center rounded-full bg-white/95 border border-black/5 text-[#351c13] shadow-sm hover:scale-110 transition-all cursor-pointer hover:text-[var(--gold)]"
+                      >
+                        {copiedId === p.id ? (
+                          <span className="text-[10px] font-bold text-emerald-600">✓</span>
+                        ) : (
+                          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <circle cx="18" cy="5" r="3" />
+                            <circle cx="6" cy="12" r="3" />
+                            <circle cx="18" cy="19" r="3" />
+                            <line x1="8.59" y1="13.51" x2="15.42" y2="17.49" />
+                            <line x1="15.41" y1="6.51" x2="8.59" y2="10.49" />
+                          </svg>
+                        )}
+                      </button>
                     </div>
 
                     <div className="flex flex-1 flex-col justify-between p-6">
                       <div>
                         <p className="text-[10px] uppercase tracking-widest text-[#a87648] font-bold">
-                          {p.edition || "Atelier Edition"} · {p.tone || "Fine Craft"}
+                          {p.edition || "Follicia Edition"} · {p.tone || "Fine Craft"}
                         </p>
                         <h3 className="mt-1 font-display text-2xl text-[#351c13]">{p.title}</h3>
                         <p className="mt-2 text-xs text-[#7d6659] line-clamp-2">
@@ -195,25 +243,54 @@ export function NewArrivalsPage({
                       </div>
 
                       <div className="mt-6 flex items-center justify-between border-t border-[#4b261a12] pt-4">
-                        <span className="font-semibold text-sm text-[#351c13]">{p.price}</span>
-                        {isComingSoon ? (
+                        <span className="font-semibold text-sm text-[#351c13] whitespace-nowrap shrink-0">{typeof p.price === "string" ? p.price.replace(/^Rs\.\s*/, "Rs.\u00A0") : p.price}</span>
+                        <div className="flex items-center gap-2">
                           <button
                             type="button"
-                            onClick={() => {
-                              setNotifyModalProduct(p);
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              void shareProduct(p, () => {
+                                setCopiedId(p.id);
+                                setTimeout(() => setCopiedId(null), 2200);
+                              });
                             }}
-                            className="inline-flex items-center gap-1.5 rounded-full bg-[#351c13] px-4 py-2 text-[11px] font-semibold uppercase tracking-wider text-white hover:bg-[var(--gold)] transition-colors cursor-pointer shadow-xs"
+                            className="inline-flex items-center gap-1 rounded-full border border-[#4b261a20] px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wider text-[#351c13] hover:border-[var(--gold)] hover:text-[var(--gold)] transition-colors cursor-pointer"
+                            title="Share"
                           >
-                            <span>🔔 Notify Me</span>
+                            {copiedId === p.id ? (
+                              <span className="text-emerald-600 font-bold">✓ Copied</span>
+                            ) : (
+                              <>
+                                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                  <circle cx="18" cy="5" r="3" />
+                                  <circle cx="6" cy="12" r="3" />
+                                  <circle cx="18" cy="19" r="3" />
+                                  <line x1="8.59" y1="13.51" x2="15.42" y2="17.49" />
+                                  <line x1="15.41" y1="6.51" x2="8.59" y2="10.49" />
+                                </svg>
+                                <span>Share</span>
+                              </>
+                            )}
                           </button>
-                        ) : (
-                          <a
-                            href={`#/shop/${p.id.toLowerCase()}`}
-                            className="inline-flex items-center gap-1.5 rounded-full bg-[#351c13] px-4 py-2 text-[11px] font-semibold uppercase tracking-wider text-white hover:bg-[var(--gold)] transition-colors"
-                          >
-                            <span>View Piece →</span>
-                          </a>
-                        )}
+                          {isComingSoon ? (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setNotifyModalProduct(p);
+                              }}
+                              className="inline-flex items-center gap-1.5 rounded-full bg-[#351c13] px-4 py-2 text-[11px] font-semibold uppercase tracking-wider text-white hover:bg-[var(--gold)] transition-colors cursor-pointer shadow-xs"
+                            >
+                              <span>🔔 Notify Me</span>
+                            </button>
+                          ) : (
+                            <a
+                              href={`#/shop/${p.id.toLowerCase()}`}
+                              className="inline-flex items-center gap-1.5 rounded-full bg-[#351c13] px-4 py-2 text-[11px] font-semibold uppercase tracking-wider text-white hover:bg-[var(--gold)] transition-colors"
+                            >
+                              <span>View Piece →</span>
+                            </a>
+                          )}
+                        </div>
                       </div>
                     </div>
                   </article>
@@ -227,7 +304,7 @@ export function NewArrivalsPage({
         <section className="newsletter">
           <p className="eyebrow">The Follicia Edit</p>
           <h2>Step into our world.</h2>
-          <p>New arrivals, private previews and stories from our atelier.</p>
+          <p>New arrivals, private previews and stories from Follicia.</p>
           <form onSubmit={handleNewsletterSubmit}>
             <input
               aria-label="Email address"

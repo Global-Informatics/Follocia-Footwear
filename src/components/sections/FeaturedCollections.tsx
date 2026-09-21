@@ -2,8 +2,9 @@ import { useEffect, useRef, useState, type MouseEvent } from "react";
 import { motion, useMotionValue, useSpring, useTransform } from "framer-motion";
 import { Reveal } from "../Reveal";
 import { useCart } from "../cart/CartContext";
-import { QuickView, type QuickItem } from "../cart/QuickView";
+import type { QuickItem } from "../cart/QuickView";
 import { COMMERCE_EVENT, getProducts, productPrimaryImage, syncCommerceFromBackend } from "@/lib/commerceStore";
+import { shareProduct } from "@/components/pages/ShopPages";
 import { FOLLICIA_PRODUCTS, formatINR } from "@/data/folliciaCatalogue";
 
 const items: QuickItem[] = FOLLICIA_PRODUCTS.slice(0, 3).map((p) => ({
@@ -24,7 +25,7 @@ function Heart({ active }: { active: boolean }) {
   );
 }
 
-function Card({ item, i, onQuick }: { item: QuickItem; i: number; onQuick: (it: QuickItem) => void }) {
+function Card({ item, i }: { item: QuickItem; i: number }) {
   const ref = useRef<HTMLDivElement>(null);
   const mx = useMotionValue(0);
   const my = useMotionValue(0);
@@ -34,7 +35,8 @@ function Card({ item, i, onQuick }: { item: QuickItem; i: number; onQuick: (it: 
   const shadowX = useSpring(useTransform(mx, [-1, 1], [20, -20]), { stiffness: 100, damping: 20 });
   const shadowY = useSpring(useTransform(my, [-1, 1], [20, -20]), { stiffness: 100, damping: 20 });
   const { wishlist, toggleWish } = useCart();
-  const wished = wishlist.includes(item.id);
+  const wished = wishlist.some((x) => x.toLowerCase() === item.id.toLowerCase());
+  const [copied, setCopied] = useState(false);
 
   const onMove = (e: MouseEvent<HTMLDivElement>) => {
     const r = ref.current!.getBoundingClientRect();
@@ -49,8 +51,11 @@ function Card({ item, i, onQuick }: { item: QuickItem; i: number; onQuick: (it: 
         ref={ref}
         onMouseMove={onMove}
         onMouseLeave={reset}
+        onClick={() => {
+          window.location.hash = `#/shop/${item.id.toLowerCase()}`;
+        }}
         style={{ rotateX: rx, rotateY: ry, transformPerspective: 1200 }}
-        className="group relative card-3d"
+        className="group relative card-3d cursor-pointer"
         data-cursor="hover"
         data-cursor-label="View"
       >
@@ -75,6 +80,33 @@ function Card({ item, i, onQuick }: { item: QuickItem; i: number; onQuick: (it: 
             № {String(i + 1).padStart(2, "0")}
           </div>
 
+          {/* Share Button */}
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              void shareProduct(item, () => {
+                setCopied(true);
+                setTimeout(() => setCopied(false), 2200);
+              });
+            }}
+            aria-label={`Share ${item.title}`}
+            title="Share piece"
+            data-cursor="hover"
+            className="absolute right-17 top-5 flex h-10 w-10 items-center justify-center rounded-full border border-[var(--bone)]/30 bg-[var(--ink)]/40 text-[var(--bone)] backdrop-blur-md transition-all hover:scale-110 hover:border-[var(--gold)]/50 hover:shadow-[0_0_15px_var(--gold)/0.3] cursor-pointer"
+          >
+            {copied ? (
+              <span className="text-xs font-bold text-emerald-400">✓</span>
+            ) : (
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="18" cy="5" r="3" />
+                <circle cx="6" cy="12" r="3" />
+                <circle cx="18" cy="19" r="3" />
+                <line x1="8.59" y1="13.51" x2="15.42" y2="17.49" />
+                <line x1="15.41" y1="6.51" x2="8.59" y2="10.49" />
+              </svg>
+            )}
+          </button>
+
           {/* Wishlist */}
           <button
             onClick={(e) => { e.stopPropagation(); toggleWish(item.id); }}
@@ -85,14 +117,18 @@ function Card({ item, i, onQuick }: { item: QuickItem; i: number; onQuick: (it: 
             <Heart active={wished} />
           </button>
 
-          {/* Quick view button */}
+          {/* Order Pair button */}
           <div className="absolute inset-x-5 bottom-5 flex translate-y-6 flex-col gap-2 opacity-0 transition-all duration-600 ease-[cubic-bezier(.2,.8,.2,1)] group-hover:translate-y-0 group-hover:opacity-100">
             <button
-              onClick={() => onQuick(item)}
-              data-cursor="hover"
-              className="w-full bg-[var(--bone)] py-3.5 eyebrow text-[var(--ink)] transition-all hover:bg-[var(--gold)] hover:shadow-[var(--shadow-gold-glow)]"
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                window.location.hash = `#/shop/${item.id.toLowerCase()}`;
+              }}
+              style={{ backgroundColor: "#24130d", color: "#ffffff" }}
+              className="w-full rounded-full bg-[#24130d] py-2.5 text-[11px] font-semibold uppercase tracking-widest text-white transition-all hover:bg-[#351c13] shadow-md cursor-pointer"
             >
-              Quick View
+              VIEW
             </button>
           </div>
 
@@ -107,12 +143,12 @@ function Card({ item, i, onQuick }: { item: QuickItem; i: number; onQuick: (it: 
         </div>
 
         {/* Card info */}
-        <div className="mt-6 flex items-end justify-between">
-          <div>
+        <div className="mt-6 flex items-end justify-between gap-2">
+          <div className="min-w-0">
             <p className="eyebrow text-[var(--ink)]/45">{item.tone}</p>
             <h3 className="mt-2 font-display text-2xl text-[var(--ink)] md:text-3xl">{item.title}</h3>
           </div>
-          <p className="font-display text-xl text-[var(--gold)]">{item.price}</p>
+          <p className="font-display text-xl text-[var(--gold)] whitespace-nowrap shrink-0">{typeof item.price === "string" ? item.price.replace(/^Rs\.\s*/, "Rs.\u00A0") : item.price}</p>
         </div>
 
         {/* Subtle reflection */}
@@ -125,7 +161,6 @@ function Card({ item, i, onQuick }: { item: QuickItem; i: number; onQuick: (it: 
 }
 
 export function FeaturedCollections() {
-  const [quick, setQuick] = useState<QuickItem | null>(null);
   const [query, setQuery] = useState("");
   const [status, setStatus] = useState("All");
   const [sort, setSort] = useState("Recommended");
@@ -193,7 +228,7 @@ export function FeaturedCollections() {
                 <p className="eyebrow text-[var(--ink)]/60">Edition MMXXV / III</p>
               </div>
               <h2 className="mt-4 font-display text-[clamp(2.5rem,6vw,5.5rem)] leading-[1] tracking-[-0.02em] text-[var(--ink)]">
-                The Current <em className="italic text-[var(--gold)] gold-glow-text">Atelier</em>.
+                The Current <em className="italic text-[var(--gold)] gold-glow-text">Collection</em>.
               </h2>
             </div>
             <a href="#/shop" className="eyebrow text-[var(--ink)] hover-underline" data-cursor="hover">
@@ -230,7 +265,7 @@ export function FeaturedCollections() {
         </Reveal>
 
         <div className="grid grid-cols-1 gap-12 md:grid-cols-3 md:gap-10">
-          {visibleCatalogue.map((item, i) => <Card key={item.id} item={item} i={i} onQuick={setQuick} />)}
+          {visibleCatalogue.map((item, i) => <Card key={item.id} item={item} i={i} />)}
         </div>
         {visibleCatalogue.length === 0 && (
           <Reveal>
@@ -241,8 +276,6 @@ export function FeaturedCollections() {
           </Reveal>
         )}
       </div>
-
-      <QuickView item={quick} onClose={() => setQuick(null)} />
     </section>
   );
 }

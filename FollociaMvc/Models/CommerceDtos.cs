@@ -36,3 +36,20 @@ public record SendOtpRequest(string Email, string? Purpose);
 public record VerifyOtpRequest(string Email, string Otp);
 
 public record OtpResponseDto(bool Success, string Message, bool SentViaSmtp, string? PreviewCode);
+
+public record CreateRazorpayOrderRequest(decimal Amount, string? Currency, string? Receipt);
+
+public record CreateRazorpayOrderResponse(bool Success, string? OrderId, string KeyId, int AmountInPaise, string Currency, string? Message);
+
+public record VerifyRazorpayPaymentRequest(string RazorpayOrderId, string RazorpayPaymentId, string RazorpaySignature);
+
+public record SaveRazorpayConfigRequest(string KeyId, string KeySecret);
+
+public record RazorpayConfigDto(bool Success, bool IsConfigured, string KeyId, string Mode, string? MaskedSecret);
+
+public record ContactNotificationRequest(string Name, string Email, string? Phone, string Subject, string Message);
+
+public record OrderNotificationRequest(string OrderId, string Customer, string Email, string Product, string Size, string Amount, string? PaymentMethod, string? DeliveryAddress);
+
+public record NotificationResultDto(bool Success, string Message, bool SentViaSmtp);
+

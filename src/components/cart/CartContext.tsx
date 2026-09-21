@@ -1,4 +1,5 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
+import { FOLLICIA_PRODUCTS } from "@/data/folliciaCatalogue";
 
 export type CartItem = {
   id: string;
@@ -27,7 +28,7 @@ const Ctx = createContext<CartCtx | null>(null);
 const CART_KEY = "follocia_cart_items";
 const WISHLIST_KEY = "follocia_wishlist_items";
 
-const OLD_PREFIXES = ["atelier-", "prod-"];
+const OLD_PREFIXES = ["Footwear-", "prod-"];
 
 export const isOldCartItem = (item: CartItem | { id?: string; title?: string; price?: string }): boolean => {
   if (!item || !item.id) return true;
@@ -36,12 +37,76 @@ export const isOldCartItem = (item: CartItem | { id?: string; title?: string; pr
   const price = (item.price || "").toLowerCase();
   return (
     OLD_PREFIXES.some((p) => id.startsWith(p)) ||
-    title.includes("atelier") ||
+    title.includes("Footwear") ||
     title.includes("noir suspendu") ||
     price.includes("eur") ||
     price.includes("€")
   );
 };
+
+export function parsePriceNumber(val: string | number | undefined | null): number {
+  if (val === undefined || val === null) return 0;
+  if (typeof val === "number") return isNaN(val) ? 0 : Math.round(val);
+  const digits = String(val).match(/\d+/g);
+  if (!digits || digits.length === 0) return 0;
+  return parseInt(digits.join(""), 10) || 0;
+}
+
+export function cleanPrice(price: string | number | undefined | null): string {
+  const num = parsePriceNumber(price);
+  return `Rs. ${num.toLocaleString("en-IN")}`;
+}
+
+import { getProducts } from "@/lib/commerceStore";
+
+export function getLatestProductPrice(item: { id?: string; title?: string; price?: string }): string {
+  if (!item) return "Rs. 0";
+  const itemTitle = (item.title || "").trim().toLowerCase();
+  const itemId = (item.id || "").trim().toLowerCase();
+
+  // 1. Try matching from live dynamic products (managed via admin panel)
+  try {
+    const liveList = getProducts();
+    const dynamicMatch = liveList.find(
+      (p) =>
+        p.title.trim().toLowerCase() === itemTitle ||
+        p.id.toLowerCase() === itemId ||
+        (p.designId && p.designId.toLowerCase() === itemId) ||
+        (itemId && p.id && itemId.startsWith(`${p.id.toLowerCase()}-`))
+    );
+    if (dynamicMatch && dynamicMatch.price) {
+      return cleanPrice(dynamicMatch.price);
+    }
+  } catch {}
+
+  // 2. Try matching by catalogue product title
+  let matched = FOLLICIA_PRODUCTS.find(
+    (p) => p.name.trim().toLowerCase() === itemTitle
+  );
+
+  // 3. If not matched by title, try matching by ID / SKU prefix
+  if (!matched && itemId) {
+    matched = FOLLICIA_PRODUCTS.find((p) => {
+      const pId = p.id.toLowerCase();
+      const dId = (p.designId || "").toLowerCase();
+      return (
+        itemId === pId ||
+        itemId === dId ||
+        itemId.startsWith(`${pId}-`) ||
+        itemId.startsWith(`${dId}-`) ||
+        (p.fullSkus && Object.values(p.fullSkus).some((sku) => sku.toLowerCase() === itemId)) ||
+        (p.variants && p.variants.some((v) => v.fullSkus && Object.values(v.fullSkus).some((sku) => sku.toLowerCase() === itemId)))
+      );
+    });
+  }
+
+  // 4. Return catalogue price
+  if (matched && typeof matched.price === "number") {
+    return `Rs. ${matched.price.toLocaleString("en-IN")}`;
+  }
+
+  return cleanPrice(item.price);
+}
 
 function readStoredCart(): CartItem[] {
   if (typeof window === "undefined") return [];
@@ -50,8 +115,13 @@ function readStoredCart(): CartItem[] {
     if (!raw) return [];
     const parsed = JSON.parse(raw) as CartItem[];
     if (!Array.isArray(parsed)) return [];
-    const sanitized = parsed.filter((item) => !isOldCartItem(item));
-    if (sanitized.length !== parsed.length) {
+    const sanitized = parsed
+      .filter((item) => !isOldCartItem(item))
+      .map((item) => {
+        const upToDatePrice = getLatestProductPrice(item);
+        return { ...item, price: upToDatePrice };
+      });
+    if (sanitized.length !== parsed.length || sanitized.some((it, idx) => it.price !== parsed[idx]?.price)) {
       localStorage.setItem(CART_KEY, JSON.stringify(sanitized));
     }
     return sanitized;
@@ -94,10 +164,12 @@ export function CartProvider({ children }: { children: ReactNode }) {
 
   const add: CartCtx["add"] = (i, qty = 1) => {
     if (isOldCartItem(i)) return;
+    const upToDatePrice = getLatestProductPrice(i);
+    const normalizedItem = { ...i, price: upToDatePrice };
     setItems((prev) => {
-      const existing = prev.find((p) => p.id === i.id);
-      if (existing) return prev.map((p) => (p.id === i.id ? { ...p, qty: p.qty + qty } : p));
-      return [...prev, { ...i, qty }];
+      const existing = prev.find((p) => p.id === normalizedItem.id);
+      if (existing) return prev.map((p) => (p.id === normalizedItem.id ? { ...p, qty: p.qty + qty, price: upToDatePrice } : p));
+      return [...prev, { ...normalizedItem, qty }];
     });
     setOpen(true);
   };
@@ -107,7 +179,11 @@ export function CartProvider({ children }: { children: ReactNode }) {
     setItems((prev) => prev.flatMap((p) => (p.id === id ? (qty <= 0 ? [] : [{ ...p, qty }]) : [p])));
   const clear = () => setItems([]);
   const toggleWish = (id: string) =>
-    setWishlist((p) => (p.includes(id) ? p.filter((x) => x !== id) : [...p, id]));
+    setWishlist((p) => {
+      const lower = id.toLowerCase();
+      const exists = p.some((x) => x.toLowerCase() === lower);
+      return exists ? p.filter((x) => x.toLowerCase() !== lower) : [...p, id];
+    });
 
   const count = items.reduce((s, i) => s + i.qty, 0);
 

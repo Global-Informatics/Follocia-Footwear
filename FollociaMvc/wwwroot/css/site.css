@@ -109,7 +109,7 @@ button { font: inherit; cursor: pointer; border: none; background: none; color: 
 .section-header h2 { font-family: var(--font-display); font-size: clamp(2rem, 4vw, 3.5rem); font-weight: 400; color: var(--bone); line-height: 1.1; }
 
 /* Hero */
-.hero-section { position: relative; min-height: 88vh; display: flex; align-items: center; justify-content: center; text-align: center; background: url('/react/assets/atelier.jpg') center/cover no-repeat; padding: 4rem 2rem; }
+.hero-section { position: relative; min-height: 88vh; display: flex; align-items: center; justify-content: center; text-align: center; background: url('/react/assets/Footwear.jpg') center/cover no-repeat; padding: 4rem 2rem; }
 .hero-bg-overlay { position: absolute; inset: 0; background: radial-gradient(circle at center, rgba(11,11,13,0.75) 0%, rgba(11,11,13,0.96) 100%); }
 .hero-content { position: relative; z-index: 2; max-width: 850px; }
 .hero-eyebrow { font-size: 0.7rem; font-weight: 700; letter-spacing: 0.4em; color: var(--gold); margin-bottom: 1.2rem; }
@@ -121,20 +121,20 @@ button { font: inherit; cursor: pointer; border: none; background: none; color: 
 .stamp-title { display: block; font-size: 0.55rem; letter-spacing: 0.25em; color: var(--gold); }
 .stamp-value { font-family: var(--font-display); font-size: 1.2rem; color: var(--bone); }
 
-/* Atelier Section */
-.atelier-section { background: var(--ink-surface); border-top: 1px solid rgba(212, 175, 55, 0.1); border-bottom: 1px solid rgba(212, 175, 55, 0.1); }
-.atelier-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 4rem; align-items: center; }
-.atelier-text-col h2 { font-family: var(--font-display); font-size: 3rem; font-weight: 400; line-height: 1.2; margin-bottom: 1.5rem; }
-.atelier-text-col p { color: rgba(250, 248, 245, 0.75); margin-bottom: 2.5rem; font-weight: 300; }
+/* Footwear Section */
+.Footwear-section { background: var(--ink-surface); border-top: 1px solid rgba(212, 175, 55, 0.1); border-bottom: 1px solid rgba(212, 175, 55, 0.1); }
+.Footwear-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 4rem; align-items: center; }
+.Footwear-text-col h2 { font-family: var(--font-display); font-size: 3rem; font-weight: 400; line-height: 1.2; margin-bottom: 1.5rem; }
+.Footwear-text-col p { color: rgba(250, 248, 245, 0.75); margin-bottom: 2.5rem; font-weight: 300; }
 .craft-metrics { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1.5rem; border-top: 1px solid rgba(252, 252, 252, 0.1); padding-top: 2rem; }
 .metric-num { font-family: var(--font-display); font-size: 2.5rem; color: var(--gold-light); display: block; font-weight: 300; }
 .metric-label { font-size: 0.65rem; letter-spacing: 0.2em; color: rgba(250, 248, 245, 0.6); text-transform: uppercase; }
 
 .image-frame-gold { position: relative; border: 1px solid rgba(212, 175, 55, 0.4); padding: 12px; }
-.atelier-img { width: 100%; height: auto; display: block; }
-.atelier-caption { position: absolute; bottom: 24px; left: 24px; background: rgba(11,11,13,0.85); padding: 0.8rem 1.2rem; border-left: 2px solid var(--gold); }
-.atelier-caption strong { display: block; font-size: 0.9rem; color: var(--bone); }
-.atelier-caption span { font-size: 0.7rem; color: rgba(250, 248, 245, 0.6); }
+.Footwear-img { width: 100%; height: auto; display: block; }
+.Footwear-caption { position: absolute; bottom: 24px; left: 24px; background: rgba(11,11,13,0.85); padding: 0.8rem 1.2rem; border-left: 2px solid var(--gold); }
+.Footwear-caption strong { display: block; font-size: 0.9rem; color: var(--bone); }
+.Footwear-caption span { font-size: 0.7rem; color: rgba(250, 248, 245, 0.6); }
 
 /* Product Cards Grid */
 .product-cards-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 2rem; }
@@ -151,10 +151,10 @@ button { font: inherit; cursor: pointer; border: none; background: none; color: 
 .card-overlay-actions { position: absolute; inset: 0; background: rgba(11, 11, 13, 0.75); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 0.8rem; padding: 2rem; opacity: 0; transition: opacity 0.3s ease; }
 .product-card:hover .card-overlay-actions { opacity: 1; }
 
-.btn-quickview { background: transparent; border: 1px solid var(--bone); color: var(--bone); font-size: 0.65rem; font-weight: 700; letter-spacing: 0.2em; padding: 0.7rem 1.4rem; width: 100%; transition: all 0.3s ease; }
-.btn-quickview:hover { background: var(--bone); color: var(--ink); }
-.btn-add-bag { background: var(--gold); border: none; color: var(--ink); font-size: 0.65rem; font-weight: 700; letter-spacing: 0.2em; padding: 0.7rem 1.4rem; width: 100%; transition: all 0.3s ease; }
-.btn-add-bag:hover { background: var(--gold-light); }
+.btn-quickview { background: #24130d !important; border: 1px solid #24130d !important; border-radius: 9999px !important; color: #ffffff !important; font-size: 0.65rem; font-weight: 700; letter-spacing: 0.2em; padding: 0.7rem 1.4rem; width: 100%; transition: all 0.3s ease; box-shadow: 0 4px 15px rgba(36, 19, 13, 0.3); }
+.btn-quickview:hover { background: #3d2016 !important; border-color: #3d2016 !important; color: #ffffff !important; transform: translateY(-1px); }
+.btn-add-bag { background: #351c13 !important; border: 1px solid #351c13 !important; border-radius: 9999px !important; color: #ffffff !important; font-size: 0.65rem; font-weight: 700; letter-spacing: 0.2em; padding: 0.7rem 1.4rem; width: 100%; transition: all 0.3s ease; }
+.btn-add-bag:hover { background: #24130d !important; }
 
 .card-body { padding: 1.5rem; }
 .card-meta { display: flex; justify-content: space-between; font-size: 0.65rem; color: rgba(250, 248, 245, 0.5); letter-spacing: 0.15em; text-transform: uppercase; margin-bottom: 0.5rem; }
@@ -255,7 +255,7 @@ button { font: inherit; cursor: pointer; border: none; background: none; color: 
 
 /* Product Detail Page */
 .product-detail-section { padding: 4rem 0; }
-.detail-grid { display: grid; grid-template-columns: 1.2fr 1fr; gap: 4rem; margin-bottom: 6rem; }
+.detail-grid { display: grid; grid-template-columns: 1.2fr 1fr; gap: 4rem; margin-bottom: 6rem; align-items: start; }
 .main-image-wrap { position: relative; aspect-ratio: 3/4; background: var(--ink-card); border: 1px solid rgba(212, 175, 55, 0.2); }
 .detail-main-img { width: 100%; height: 100%; object-fit: cover; }
 
@@ -350,7 +350,7 @@ button { font: inherit; cursor: pointer; border: none; background: none; color: 
 @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
 
 @media (max-width: 992px) {
-    .atelier-grid, .contact-grid, .detail-grid, .collection-feature-row { grid-template-columns: 1fr; gap: 2.5rem; }
+    .Footwear-grid, .contact-grid, .detail-grid, .collection-feature-row { grid-template-columns: 1fr; gap: 2.5rem; }
     .collections-grid, .lookbook-grid, .testimonials-grid, .services-grid, .footer-grid { grid-template-columns: 1fr; }
     .nav-links { display: none; }
     .form-row { grid-template-columns: 1fr; }
