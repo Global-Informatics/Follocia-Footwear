@@ -827,7 +827,7 @@ export function FolliciaHomePage({
             {/* Profile Dropdown if logged in */}
             {profileOpen && session?.user && (
               <div
-                className="account-dropdown-menu absolute right-0 top-12 z-[70] w-56 rounded-xl border border-[#4b261a26] bg-[#fffdf8] p-4 text-xs shadow-2xl flex flex-col gap-1"
+                className="account-dropdown-menu absolute right-0 top-12 z-[70] w-56 rounded-xl border border-[#4b261a26] bg-white p-4 text-xs shadow-2xl flex flex-col gap-1"
                 style={{ color: "#351c13" }}
               >
                 <p className="mb-2 text-[10px] uppercase tracking-wider text-[#a87648]">

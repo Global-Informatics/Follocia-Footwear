@@ -88,7 +88,7 @@ export function CartDrawer({ session, onLogin }: { session?: AuthSession | null;
                           exit={{ opacity: 0, x: -30 }}
                           transition={{ duration: 0.35, delay: idx * 0.04, ease }}
                           layout
-                          className="relative flex flex-col rounded-2xl border border-[#4b261a12] bg-[#faf8f5]/90 hover:border-[#4b261a25] transition-all p-3 sm:p-3.5 shadow-xs overflow-hidden w-full"
+                          className="relative flex flex-col rounded-2xl border border-[#4b261a12] bg-white hover:border-[#4b261a25] transition-all p-3 sm:p-3.5 shadow-xs overflow-hidden w-full"
                         >
                           {/* Top Row: Image + Details + Quick Remove */}
                           <div className="flex gap-3 sm:gap-3.5 items-start">
@@ -96,7 +96,8 @@ export function CartDrawer({ session, onLogin }: { session?: AuthSession | null;
                               <img
                                 src={item.image}
                                 alt={item.title}
-                                className="h-full w-full object-contain mix-blend-multiply transition-transform duration-500 hover:scale-105"
+                                className="h-full w-full object-contain brightness-[1.15] contrast-[1.05] saturate-[1.05] transition-transform duration-500 hover:scale-105"
+                                style={{ backgroundColor: 'white' }}
                               />
                             </div>
 

@@ -1,16 +1,16 @@
 /* ==================== FOLLICIA REFERENCE REDESIGN STYLES ==================== */
 :root,
 .follicia-home {
-  --ivory: #fffaf0;
-  --cream: #f1e4d2;
-  --paper: #fffdf8;
+  --ivory: #ffffff;
+  --cream: #ffffff;
+  --paper: #ffffff;
   --ink: #351c13;
   --chocolate: #4b261a;
   --milk: #8c624d;
   --muted: #7d6659;
   --gold: #a87648;
   --line: #4b261a29;
-  background: var(--ivory);
+  background: #ffffff;
   color: var(--ink);
   font-family: Arial, Helvetica, sans-serif;
   font-size: 16px;
@@ -19,14 +19,7 @@
 }
 
 .follicia-home::before {
-  content: "";
-  z-index: 0;
-  opacity: .42;
-  pointer-events: none;
-  background-image: radial-gradient(#4b261a17 .7px, #0000 .7px);
-  background-size: 9px 9px;
-  position: fixed;
-  inset: 0;
+  display: none;
 }
 
 .follicia-home * {

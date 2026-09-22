@@ -311,9 +311,9 @@ async function saveContactQuery(name: string, email: string, requestType: string
 
 function PageShell({ session, onLogout, onLogin, children, darkNav }: PageShellProps) {
   return (
-    <div className="follicia-home flex flex-col min-h-screen bg-[#fffaf0]">
+    <div className="follicia-home flex flex-col min-h-screen bg-white">
       <Navigation userName={session?.user.name} onLogout={session ? onLogout : undefined} onLogin={onLogin} solid={!darkNav} />
-      <main className="flex-1 bg-[#fffaf0] text-[var(--ink)]">{children}</main>
+      <main className="flex-1 bg-white text-[var(--ink)]">{children}</main>
       <Footer />
       <CartDrawer session={session} onLogin={onLogin} />
     </div>
@@ -442,7 +442,7 @@ function FilterDropdown({
                 className={`flex w-full items-center justify-between px-2.5 py-1 text-left text-[10.5px] rounded-lg transition-colors cursor-pointer ${
                   value === opt
                     ? "bg-[#351c13] font-semibold text-white"
-                    : "text-[#24130d] hover:bg-[#fffaf0] hover:text-[#24130d]"
+                    : "text-[#24130d] hover:bg-white hover:text-[#24130d]"
                 }`}
               >
                 <span>{opt}</span>
@@ -611,7 +611,7 @@ function PriceRangeDropdown({
                   placeholder="e.g. 4000"
                   value={tempPrice}
                   onChange={(e) => handleApplyInput(e.target.value)}
-                  className="w-full h-7 pl-6 pr-2 rounded-lg border border-[#4b261a25] bg-[#fffaf0]/60 text-[10.5px] font-semibold text-[#24130d] outline-none focus:border-[#351c13] focus:ring-1 focus:ring-[#351c13]"
+                  className="w-full h-7 pl-6 pr-2 rounded-lg border border-[#4b261a25] bg-white/60 text-[10.5px] font-semibold text-[#24130d] outline-none focus:border-[#351c13] focus:ring-1 focus:ring-[#351c13]"
                 />
               </div>
               {maxPrice < 40000 && (
@@ -767,7 +767,7 @@ function ColorFilterDropdown({
                 className={`flex w-full items-center justify-between px-2.5 py-1 text-left text-[10.5px] rounded-lg transition-colors cursor-pointer ${
                   value === swatch.name
                     ? "bg-[#351c13] text-[#fffdf8] font-semibold"
-                    : "text-[#24130d] hover:bg-[#fffaf0]"
+                    : "text-[#24130d] hover:bg-white"
                 }`}
               >
                 <div className="flex items-center gap-2">
@@ -824,19 +824,19 @@ export function ProductCard({
       onClick={() => {
         window.location.hash = productPath(product);
       }}
-      className={`group cursor-pointer rounded-[22px] border bg-[#fffdf8] p-2 pb-3.5 shadow-[0_16px_45px_rgba(75,38,26,0.06)] transition-all duration-500 hover:-translate-y-1 hover:shadow-[0_24px_50px_rgba(75,38,26,0.12)] flex flex-col justify-between ${
+      className={`group cursor-pointer rounded-[22px] border bg-white p-2 pb-3.5 shadow-[0_16px_45px_rgba(75,38,26,0.06)] transition-all duration-500 hover:-translate-y-1 hover:shadow-[0_24px_50px_rgba(75,38,26,0.12)] flex flex-col justify-between ${
         isSelected
           ? "border-[var(--gold)] ring-2 ring-[var(--gold)]/40 shadow-[0_20px_50px_rgba(196,141,63,0.15)]"
           : "border-[#4b261a1a] hover:border-[#4b261a33]"
       }`}
     >
-      <div className="relative aspect-[0.9] overflow-hidden rounded-[16px] bg-[#fffaf0] flex items-center justify-center">
+      <div className="relative aspect-[0.9] overflow-hidden rounded-[16px] bg-white flex items-center justify-center">
         {/* Available badge matching Pic 1 */}
         <div className="absolute left-2.5 top-2.5 z-10 rounded bg-white/95 px-2 py-0.5 text-[9px] font-semibold uppercase tracking-wider text-[#24130d] shadow-sm border border-black/5">
           {product.status === "Live" ? "AVAILABLE" : product.status.toUpperCase()}
         </div>
 
-        <div className="flex h-full w-full items-center justify-center p-3">
+        <div className="flex h-full w-full items-center justify-center p-3 bg-white">
           <img
             loading="lazy"
             src={displayImage}
@@ -850,7 +850,7 @@ export function ProductCard({
                 e.currentTarget.src = "/products/fa-01.webp";
               }
             }}
-            className="h-[86%] w-[86%] object-contain mix-blend-multiply transition-transform duration-700 ease-out group-hover:scale-105"
+            className="h-full w-full object-contain transition-transform duration-700 ease-out group-hover:scale-105"
           />
         </div>
 
@@ -2027,7 +2027,7 @@ export function ProductDetailPage({
         </a>
       </div>
 
-      <section className="mx-auto grid max-w-[1400px] w-full min-w-0 gap-5 sm:gap-6 bg-[#fffaf0] px-3.5 sm:px-6 py-2 sm:py-3 md:px-10 lg:grid-cols-[1fr_1fr] xl:grid-cols-[1.05fr_0.95fr] items-start">
+      <section className="mx-auto grid max-w-[1400px] w-full min-w-0 gap-5 sm:gap-6 bg-white px-3.5 sm:px-6 py-2 sm:py-3 md:px-10 lg:grid-cols-[1fr_1fr] xl:grid-cols-[1.05fr_0.95fr] items-start">
         {/* Left Column: Interactive Zoom Hero Image & Thumbnails */}
         <div className="grid gap-2 sm:gap-3 w-full min-w-0">
           <ProductImageZoom
@@ -2037,7 +2037,7 @@ export function ProductDetailPage({
             images={gallery}
             productTitle={product.title}
             onSelectImage={(newImg) => setActiveImage(newImg)}
-            containerClassName={`${gallery.length > 1 ? "h-[250px] xs:h-[290px] sm:h-[400px] lg:h-[470px]" : "h-[270px] xs:h-[330px] sm:h-[440px] lg:h-[536px]"} rounded-2xl bg-[#fffdf8] border border-[#4b261a15] holo-shine shadow-[0_16px_40px_rgba(75,38,26,0.06)]`}
+            containerClassName={`${gallery.length > 1 ? "h-[250px] xs:h-[290px] sm:h-[400px] lg:h-[470px]" : "h-[270px] xs:h-[330px] sm:h-[440px] lg:h-[536px]"} rounded-2xl bg-white`}
           />
 
           {/* Thumbnail Gallery */}
@@ -2045,7 +2045,7 @@ export function ProductDetailPage({
             <div className="grid grid-cols-4 gap-1.5 sm:gap-2">
               {gallery.slice(0, 4).map((image, index) => (
                 <motion.button type="button" key={`${image}-${index}`} onClick={() => setActiveImage(image)} whileHover={{ scale: 1.02 }} className={`h-12 sm:h-16 w-full overflow-hidden rounded-xl bg-white border cursor-pointer p-1 transition-all flex items-center justify-center ${displayImage === image ? "border-[var(--gold)] ring-2 ring-[var(--gold)]/30 shadow-xs" : "border-[#4b261a15] hover:border-[#4b261a35]"}`}>
-                  <img src={image} alt="" className="h-full w-full object-contain mix-blend-multiply transition-transform duration-500 hover:scale-105" />
+                  <img src={image} alt="" className="h-full w-full object-contain transition-transform duration-500 hover:scale-105" />
                 </motion.button>
               ))}
             </div>
@@ -2148,7 +2148,7 @@ export function ProductDetailPage({
                     key={item} 
                     onClick={() => setSize(item)} 
                     whileTap={{ scale: 0.95 }}
-                    className={`h-8 sm:h-9 min-w-[44px] sm:min-w-[48px] px-2 sm:px-2.5 rounded-lg border text-[11px] font-semibold uppercase tracking-wider transition-all duration-200 cursor-pointer ${size === item ? "border-[#24130d] bg-[#24130d] text-white shadow-sm ring-1 ring-[#24130d]/20" : "border-[#4b261a20] bg-white text-[#24130d] hover:border-[var(--gold)] hover:bg-[#fffdf8]"}`}
+                    className={`h-8 sm:h-9 min-w-[44px] sm:min-w-[48px] px-2 sm:px-2.5 rounded-lg border text-[11px] font-semibold uppercase tracking-wider transition-all duration-200 cursor-pointer ${size === item ? "border-[#24130d] bg-[#24130d] text-white shadow-sm ring-1 ring-[#24130d]/20" : "border-[#4b261a20] bg-white text-[#24130d] hover:border-[var(--gold)] hover:bg-white"}`}
                   >
                     {item}
                   </motion.button>
@@ -2156,7 +2156,7 @@ export function ProductDetailPage({
               </div>
               
               {/* Compact Size Confidence helper banner */}
-              <div className="mt-2.5 flex items-center justify-between rounded-lg bg-[#fffaf0] border border-[#4b261a15] px-2.5 sm:px-3 py-1.5 text-[10px] sm:text-[11px] text-[#4b261a90] w-full min-w-0 box-border">
+              <div className="mt-2.5 flex items-center justify-between rounded-lg bg-white border border-[#4b261a15] px-2.5 sm:px-3 py-1.5 text-[10px] sm:text-[11px] text-[#4b261a90] w-full min-w-0 box-border">
                 <div className="flex items-center gap-1.5 min-w-0 truncate">
                   <span className="text-[var(--gold)] font-bold text-xs shrink-0">✦</span>
                   <span className="truncate">{confidence || "Standard Italian lasts · True to size"}</span>
@@ -2213,15 +2213,15 @@ export function ProductDetailPage({
 
             {/* Trust Signals: Compact 3-Pill Banner */}
             <div className="mt-2.5 pt-2 border-t border-[#4b261a10] grid grid-cols-3 gap-1 text-center w-full min-w-0">
-              <div className="rounded-md bg-[#fffaf0] border border-[#4b261a0f] p-1 sm:p-1.5 min-w-0 overflow-hidden">
+              <div className="rounded-md bg-white border border-[#4b261a0f] p-1 sm:p-1.5 min-w-0 overflow-hidden">
                 <span className="block text-[8px] xs:text-[9px] sm:text-[10px] font-bold uppercase text-[#24130d] truncate">⚡ 48h Dispatch</span>
                 <span className="block text-[7.5px] xs:text-[8px] sm:text-[9px] text-[#4b261a70] truncate">Ready to ship</span>
               </div>
-              <div className="rounded-md bg-[#fffaf0] border border-[#4b261a0f] p-1 sm:p-1.5 min-w-0 overflow-hidden">
+              <div className="rounded-md bg-white border border-[#4b261a0f] p-1 sm:p-1.5 min-w-0 overflow-hidden">
                 <span className="block text-[8px] xs:text-[9px] sm:text-[10px] font-bold uppercase text-[#24130d] truncate">🚚 Free Express</span>
                 <span className="block text-[7.5px] xs:text-[8px] sm:text-[9px] text-[#4b261a70] truncate">All India</span>
               </div>
-              <div className="rounded-md bg-[#fffaf0] border border-[#4b261a0f] p-1 sm:p-1.5 min-w-0 overflow-hidden">
+              <div className="rounded-md bg-white border border-[#4b261a0f] p-1 sm:p-1.5 min-w-0 overflow-hidden">
                 <span className="block text-[8px] xs:text-[9px] sm:text-[10px] font-bold uppercase text-[#24130d] truncate">🔄 7D Return</span>
                 <span className="block text-[7.5px] xs:text-[8px] sm:text-[9px] text-[#4b261a70] truncate">Size exchange</span>
               </div>
@@ -2245,7 +2245,7 @@ export function ProductDetailPage({
                         </div>
                       ) : panel === "Product Details" ? (
                         <div className="grid gap-2 pb-2.5 text-xs leading-relaxed text-[#4b261a80]">
-                          <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5 p-3 rounded-xl bg-[#fffaf0] border border-[#4b261a10]">
+                          <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5 p-3 rounded-xl bg-white border border-[#4b261a10]">
                             <div>
                               <span className="block text-[10px] uppercase font-bold tracking-wider text-[#4b261a70]">Design ID</span>
                               <strong className="text-[#24130d] font-mono text-xs">{product.designId || product.id.toUpperCase()}</strong>

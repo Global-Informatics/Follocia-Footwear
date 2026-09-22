@@ -227,7 +227,7 @@ export function CollectionsPage({
   };
 
   return (
-    <div className="follicia-home flex flex-col min-h-screen bg-[#fffaf0]">
+    <div className="follicia-home flex flex-col min-h-screen bg-white">
       {/* Site Header */}
       <Navigation
         userName={session?.user.name}
@@ -236,7 +236,7 @@ export function CollectionsPage({
         solid
       />
 
-      <main className="flex-1 bg-[#fffaf0] text-[var(--ink)]">
+      <main className="flex-1 bg-white text-[var(--ink)]">
         {selectedCollection ? (
           /* ============================================================ */
           /* DYNAMIC COLLECTION VIEW (Aura / Bloom / Muse / Noire)        */

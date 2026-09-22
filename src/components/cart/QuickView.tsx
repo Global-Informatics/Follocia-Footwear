@@ -138,7 +138,7 @@ export function QuickView({ item, onClose }: { item: QuickItem | null; onClose: 
         </button>
 
         {/* LEFT COLUMN: Dedicated Shoe Display Stage (Uncropped) */}
-        <div className="relative w-full md:w-[52%] bg-[#fffaf0] p-6 sm:p-8 md:p-10 flex flex-col justify-between border-b md:border-b-0 md:border-r border-[#4b261a12] shrink-0">
+        <div className="relative w-full md:w-[52%] bg-white p-6 sm:p-8 md:p-10 flex flex-col justify-between border-b md:border-b-0 md:border-r border-[#4b261a12] shrink-0">
           {/* Top Bar inside image stage */}
           <div className="flex items-center justify-between z-10">
             <span className="rounded-full bg-white/90 px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-[#24130d] border border-black/5 shadow-2xs flex items-center gap-1.5">
@@ -206,7 +206,7 @@ export function QuickView({ item, onClose }: { item: QuickItem | null; onClose: 
                       : "border-[#4b261a15] hover:border-[#4b261a35] opacity-75 hover:opacity-100"
                   }`}
                 >
-                  <img src={img} alt="" className="h-full w-full object-contain mix-blend-multiply" />
+                  <img src={img} alt="" className="h-full w-full object-contain brightness-[1.15] contrast-[1.05] saturate-[1.05]" style={{ backgroundColor: 'white' }} />
                 </button>
               ))}
             </div>
@@ -274,7 +274,7 @@ export function QuickView({ item, onClose }: { item: QuickItem | null; onClose: 
                       className={`h-11 min-w-[62px] px-3.5 rounded-xl text-xs font-semibold uppercase tracking-wider transition-all cursor-pointer border ${
                         isSel
                           ? "bg-[#24130d] text-white border-[#24130d] shadow-sm ring-2 ring-[#24130d]/20 scale-102"
-                          : "bg-white text-[#24130d] border-[#4b261a20] hover:border-[var(--gold)] hover:bg-[#fffdf8]"
+                          : "bg-white text-[#24130d] border-[#4b261a20] hover:border-[var(--gold)] hover:bg-white"
                       }`}
                     >
                       {s}

@@ -104,7 +104,7 @@ export function NewArrivalsPage({
   );
 
   return (
-    <div className="follicia-home flex flex-col min-h-screen bg-[#fffaf0]">
+    <div className="follicia-home flex flex-col min-h-screen bg-white">
       {/* Site Header */}
       <Navigation
         userName={session?.user.name}
@@ -113,7 +113,7 @@ export function NewArrivalsPage({
         solid
       />
 
-      <main className="flex-1 bg-[#fffaf0] text-[var(--ink)]">
+      <main className="flex-1 bg-white text-[var(--ink)]">
         {/* Walk Light Arrival Hero */}
         <section className="arrival-hero">
           <div className="arrival-copy">
@@ -185,11 +185,12 @@ export function NewArrivalsPage({
                     key={p.id}
                     className="group relative flex flex-col overflow-hidden rounded-2xl border border-[#4b261a18] bg-white shadow-sm transition-all hover:shadow-xl hover:border-[var(--gold)]/40"
                   >
-                    <div className="relative aspect-square w-full overflow-hidden bg-[#fdfbf7] p-6">
+                    <div className="relative aspect-square w-full overflow-hidden bg-white p-6">
                       <img
                         src={p.image}
                         alt={p.title}
-                        className="h-full w-full object-contain mix-blend-multiply transition-transform duration-700 group-hover:scale-105"
+                        className="h-full w-full object-contain brightness-[1.15] contrast-[1.05] saturate-[1.05] transition-transform duration-700 group-hover:scale-105"
+                        style={{ backgroundColor: 'white' }}
                       />
                       <div className="absolute top-4 left-4 flex flex-col gap-1.5">
                         <span className="rounded-full bg-[#351c13] px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-[#fffdf8] shadow-sm">

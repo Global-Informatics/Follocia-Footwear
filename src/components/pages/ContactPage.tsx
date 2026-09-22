@@ -88,7 +88,7 @@ export function ContactPage({
   };
 
   return (
-    <div className="follicia-home flex flex-col min-h-screen bg-[#fffaf0]">
+    <div className="follicia-home flex flex-col min-h-screen bg-white">
       <Navigation
         userName={session?.user?.name}
         onLogout={session ? onLogout : undefined}
@@ -96,7 +96,7 @@ export function ContactPage({
         solid
       />
 
-      <main className="flex-1 bg-[#fffaf0] text-[var(--ink)]">
+      <main className="flex-1 bg-white text-[var(--ink)]">
         {/* Banner Section */}
         <section className="border-b border-[#4b261a]/10 bg-[#f9f3e9] py-14 px-6 md:px-12 text-center">
           <div className="max-w-3xl mx-auto">
@@ -239,7 +239,7 @@ export function ContactPage({
                         value={formData.name}
                         onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                         placeholder="e.g. Priya Sharma"
-                        className="w-full bg-[#fffaf0] border border-[#4b261a]/20 px-4 py-3 text-sm text-[var(--ink)] placeholder:text-[var(--ink)]/35 focus:outline-none focus:border-[var(--gold)] transition-colors rounded-xs"
+                        className="w-full bg-white border border-[#4b261a]/20 px-4 py-3 text-sm text-[var(--ink)] placeholder:text-[var(--ink)]/35 focus:outline-none focus:border-[var(--gold)] transition-colors rounded-xs"
                       />
                     </div>
                     <div>
@@ -252,7 +252,7 @@ export function ContactPage({
                         value={formData.email}
                         onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                         placeholder="name@example.com"
-                        className="w-full bg-[#fffaf0] border border-[#4b261a]/20 px-4 py-3 text-sm text-[var(--ink)] placeholder:text-[var(--ink)]/35 focus:outline-none focus:border-[var(--gold)] transition-colors rounded-xs"
+                        className="w-full bg-white border border-[#4b261a]/20 px-4 py-3 text-sm text-[var(--ink)] placeholder:text-[var(--ink)]/35 focus:outline-none focus:border-[var(--gold)] transition-colors rounded-xs"
                       />
                     </div>
                   </div>
@@ -267,7 +267,7 @@ export function ContactPage({
                         value={formData.phone}
                         onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
                         placeholder="+91 7082216801"
-                        className="w-full bg-[#fffaf0] border border-[#4b261a]/20 px-4 py-3 text-sm text-[var(--ink)] placeholder:text-[var(--ink)]/35 focus:outline-none focus:border-[var(--gold)] transition-colors rounded-xs"
+                        className="w-full bg-white border border-[#4b261a]/20 px-4 py-3 text-sm text-[var(--ink)] placeholder:text-[var(--ink)]/35 focus:outline-none focus:border-[var(--gold)] transition-colors rounded-xs"
                       />
                     </div>
                     <div>
@@ -277,7 +277,7 @@ export function ContactPage({
                       <select
                         value={formData.subject}
                         onChange={(e) => setFormData({ ...formData, subject: e.target.value })}
-                        className="w-full bg-[#fffaf0] border border-[#4b261a]/20 px-4 py-3 text-sm text-[var(--ink)] focus:outline-none focus:border-[var(--gold)] transition-colors rounded-xs"
+                        className="w-full bg-white border border-[#4b261a]/20 px-4 py-3 text-sm text-[var(--ink)] focus:outline-none focus:border-[var(--gold)] transition-colors rounded-xs"
                       >
                         <option value="General Inquiry">General Inquiry</option>
                         <option value="Order &amp; Delivery Query">Order &amp; Delivery Query</option>
@@ -298,7 +298,7 @@ export function ContactPage({
                       value={formData.message}
                       onChange={(e) => setFormData({ ...formData, message: e.target.value })}
                       placeholder="Write your message or question here..."
-                      className="w-full bg-[#fffaf0] border border-[#4b261a]/20 px-4 py-3 text-sm text-[var(--ink)] placeholder:text-[var(--ink)]/35 focus:outline-none focus:border-[var(--gold)] transition-colors rounded-xs resize-y"
+                      className="w-full bg-white border border-[#4b261a]/20 px-4 py-3 text-sm text-[var(--ink)] placeholder:text-[var(--ink)]/35 focus:outline-none focus:border-[var(--gold)] transition-colors rounded-xs resize-y"
                     ></textarea>
                   </div>
 

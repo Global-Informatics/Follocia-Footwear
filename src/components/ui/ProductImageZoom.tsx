@@ -260,7 +260,7 @@ export function ProductImageZoom({
         }}
       >
         {/* Main Product Image with Smooth Transform Origin & Zoom Scaling */}
-        <div className="h-full w-full flex items-center justify-center p-2.5 sm:p-6 overflow-hidden">
+        <div className="h-full w-full flex items-center justify-center p-2.5 sm:p-6 overflow-hidden bg-white">
           <img
             src={src}
             alt={alt}
@@ -268,7 +268,7 @@ export function ProductImageZoom({
               transformOrigin: `${hoverPos.x}% ${hoverPos.y}%`,
               transform: isHovered ? "scale(2.15)" : "scale(1)",
             }}
-            className={`h-full w-full object-contain mix-blend-multiply transition-transform duration-200 ease-out will-change-transform ${className}`}
+            className={`h-full w-full object-contain transition-transform duration-200 ease-out will-change-transform ${className}`}
           />
         </div>
 
@@ -278,10 +278,6 @@ export function ProductImageZoom({
             {status === "Live" ? "AVAILABLE" : status.toUpperCase()}
           </div>
         )}
-
-        {/* Luxury Gold Accents */}
-        <div className="absolute left-0 top-0 h-16 w-px bg-gradient-to-b from-[var(--gold)]/40 to-transparent pointer-events-none" />
-        <div className="absolute left-0 top-0 h-px w-16 bg-gradient-to-r from-[var(--gold)]/40 to-transparent pointer-events-none" />
 
         {/* Hover / Tap Zoom Floating Cue Pill */}
         <div className="absolute top-2.5 right-2.5 z-10 flex items-center gap-1.5 rounded-full bg-white/90 backdrop-blur-md px-2.5 py-1 text-[9.5px] font-semibold text-[#24130d] border border-[#4b261a15] shadow-xs transition-all duration-300 group-hover:bg-[#24130d] group-hover:text-white group-hover:scale-105 pointer-events-none">

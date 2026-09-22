@@ -1156,11 +1156,12 @@ function OrderRow({
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 pb-5 border-b border-[#4b261a]/10">
           <div className="flex items-center gap-3.5 min-w-0 w-full sm:w-auto">
             {/* Shoe Thumbnail */}
-            <div className="w-16 h-16 sm:w-20 sm:h-20 shrink-0 rounded-xl overflow-hidden bg-[#fbf6ed] border border-[#4b261a]/15 p-1 flex items-center justify-center shadow-2xs">
+            <div className="w-16 h-16 sm:w-20 sm:h-20 shrink-0 rounded-xl overflow-hidden bg-white border border-[#4b261a]/15 p-1 flex items-center justify-center shadow-2xs">
               <img
                 src={orderImage}
                 alt={order.product}
-                className="max-h-full max-w-full object-contain mix-blend-multiply transition-transform hover:scale-105"
+                className="max-h-full max-w-full object-contain brightness-[1.15] contrast-[1.05] saturate-[1.05] transition-transform hover:scale-105"
+                style={{ backgroundColor: 'white' }}
                 onError={(e) => {
                   e.currentTarget.src = "/products/fa-01.webp";
                 }}
@@ -1542,17 +1543,23 @@ function ProductImagePicker({
               >
                 <img src={image} alt="" className="h-full w-full object-cover" />
                 {isActive && (
-                  <span className="absolute top-1 left-1 bg-[#24130d] text-[#fffdf8] text-[8px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded shadow-sm">
+                  <span className="absolute top-1 left-1 bg-[#24130d] text-[#fffdf8] text-[8px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded shadow-sm z-10">
                     Active
                   </span>
                 )}
                 <button
                   type="button"
+                  onPointerDown={(e) => {
+                    e.stopPropagation();
+                    e.preventDefault();
+                  }}
                   onClick={(e) => {
                     e.stopPropagation();
+                    e.preventDefault();
                     onChange(slots.filter((_, itemIndex) => itemIndex !== index));
                   }}
-                  className="absolute inset-x-1 bottom-1 bg-white/90 px-1 py-1 text-[9px] uppercase tracking-widest opacity-0 transition-opacity group-hover:opacity-100 cursor-pointer"
+                  className="absolute inset-x-0 bottom-0 z-30 bg-[#24130d] text-white px-2 py-1.5 text-[9px] font-bold uppercase tracking-widest cursor-pointer hover:bg-red-700 transition-colors text-center"
+                  style={{ pointerEvents: 'auto' }}
                 >
                   Remove
                 </button>
@@ -1739,7 +1746,7 @@ function AdminProductCard({
     <article key={product.id} className="flex flex-col sm:flex-row gap-5 border border-[#4b261a15] bg-white p-4 sm:p-5 rounded-xl shadow-2xs">
       {/* Product Thumbnail Column */}
       <div className="w-full sm:w-36 shrink-0 flex flex-col items-center sm:items-start">
-        <div className="relative w-32 h-40 sm:w-36 sm:h-44 rounded-lg overflow-hidden border border-[#4b261a15] bg-[#fffaf0] flex items-center justify-center p-2 shadow-2xs">
+        <div className="relative w-32 h-40 sm:w-36 sm:h-44 rounded-lg overflow-hidden border border-[#4b261a15] bg-white flex items-center justify-center p-2 shadow-2xs">
           <img
             src={activeImage || productPrimaryImage(product)}
             alt={product.title}
@@ -1750,9 +1757,10 @@ function AdminProductCard({
                 setActiveImage(variants[nextIdx].image);
               }
             }}
-            className={`max-h-full max-w-full object-contain mix-blend-multiply transition-transform ${
+            className={`max-h-full max-w-full object-contain brightness-[1.15] contrast-[1.05] saturate-[1.05] transition-transform ${
               variants.length > 1 ? "cursor-pointer hover:scale-105" : ""
             }`}
+            style={{ backgroundColor: 'white' }}
             title={variants.length > 1 ? "Click to switch variant photo" : undefined}
           />
         </div>
@@ -3642,8 +3650,8 @@ function LegacyAdminPanel({ onLogout }: { onLogout?: () => void }) {
                       transition={{ delay: i * 0.05 }}
                       className="group flex flex-col sm:flex-row gap-5 border border-[#4b261a15] bg-white/80 backdrop-blur-md p-4 sm:p-5 rounded-xl shadow-xs hover:shadow-md transition-all"
                     >
-                      <div className="w-28 h-36 shrink-0 rounded-lg overflow-hidden border border-[#4b261a15] bg-[#fffaf0] p-1.5 flex items-center justify-center">
-                        <img src={productPrimaryImage(product)} alt={product.title} className="max-h-full max-w-full object-contain mix-blend-multiply transform group-hover:scale-105 transition-transform duration-500" />
+                      <div className="w-28 h-36 shrink-0 rounded-lg overflow-hidden border border-[#4b261a15] bg-white p-1.5 flex items-center justify-center">
+                        <img src={productPrimaryImage(product)} alt={product.title} className="max-h-full max-w-full object-contain brightness-[1.15] contrast-[1.05] saturate-[1.05] transform group-hover:scale-105 transition-transform duration-500" style={{ backgroundColor: 'white' }} />
                       </div>
                       <div className="flex-1 grid gap-4 sm:grid-cols-2 md:grid-cols-3">
                         <AdminField label="Title" value={product.title} onChange={(value) => persistProducts(products.map((item) => item.id === product.id ? { ...item, title: value } : item))} />
