@@ -928,6 +928,36 @@ public class CommerceApiController(FollociaDbContext db, IConfiguration config, 
         return new { images = urls };
     }
 
+    [HttpDelete("product-images")]
+    public IActionResult DeleteProductImage([FromQuery] string url)
+    {
+        if (string.IsNullOrWhiteSpace(url)) return BadRequest(new { success = false, message = "URL is required." });
+
+        var cleanUrl = url.Trim();
+        if (!cleanUrl.StartsWith("/uploads/products/", StringComparison.OrdinalIgnoreCase))
+        {
+            return BadRequest(new { success = false, message = "Only custom uploaded product images can be deleted." });
+        }
+
+        var fileName = Path.GetFileName(cleanUrl);
+        var path = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "uploads", "products", fileName);
+        if (System.IO.File.Exists(path))
+        {
+            try
+            {
+                System.IO.File.Delete(path);
+                return Ok(new { success = true, message = "Image file deleted successfully." });
+            }
+            catch (Exception ex)
+            {
+                logger.LogWarning(ex, "Failed to delete image file {Path}", path);
+                return StatusCode(500, new { success = false, message = "Failed to delete file from disk." });
+            }
+        }
+
+        return NotFound(new { success = false, message = "File not found." });
+    }
+
     [HttpPut("orders/{id}")]
     public async Task<IActionResult> SaveOrder(string id, OrderDto dto)
     {

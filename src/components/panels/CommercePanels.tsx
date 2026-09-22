@@ -1495,6 +1495,24 @@ function ProductImagePicker({
     setBusy(false);
   };
 
+  const removeImageAt = async (index: number, e: React.MouseEvent | React.PointerEvent) => {
+    e.stopPropagation();
+    e.preventDefault();
+    const targetUrl = slots[index];
+    const nextImages = slots.filter((_, itemIndex) => itemIndex !== index);
+    onChange(nextImages);
+
+    if (targetUrl && targetUrl.startsWith("/uploads/products/")) {
+      try {
+        await fetch(`/api/commerce/product-images?url=${encodeURIComponent(targetUrl)}`, {
+          method: "DELETE",
+        });
+      } catch (err) {
+        console.warn("Failed to delete remote image file:", err);
+      }
+    }
+  };
+
   return (
     <div className="grid gap-3">
       <div
@@ -1507,7 +1525,7 @@ function ProductImagePicker({
       >
         <label className="grid cursor-pointer gap-2 text-xs uppercase tracking-[0.16em] text-[var(--ink)]/55">
           <span className="font-medium text-[var(--ink)]">{busy ? "Uploading images..." : "Select or drag product photos"}</span>
-          <span>{slots.length}/5 uploaded</span>
+          <span>{slots.length}/5 uploaded (PNG, JPG, WEBP)</span>
           <input
             type="file"
             accept="image/*"
@@ -1541,7 +1559,7 @@ function ProductImagePicker({
                     : "border-[var(--ink)]/15 hover:border-[var(--gold)]/70"
                 }`}
               >
-                <img src={image} alt="" className="h-full w-full object-cover" />
+                <img src={image} alt={`Photo ${index + 1}`} className="h-full w-full object-cover" />
                 {isActive && (
                   <span className="absolute top-1 left-1 bg-[#24130d] text-[#fffdf8] text-[8px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded shadow-sm z-10">
                     Active
@@ -1553,15 +1571,11 @@ function ProductImagePicker({
                     e.stopPropagation();
                     e.preventDefault();
                   }}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    e.preventDefault();
-                    onChange(slots.filter((_, itemIndex) => itemIndex !== index));
-                  }}
-                  className="absolute inset-x-0 bottom-0 z-30 bg-[#24130d] text-white px-2 py-1.5 text-[9px] font-bold uppercase tracking-widest cursor-pointer hover:bg-red-700 transition-colors text-center"
+                  onClick={(e) => void removeImageAt(index, e)}
+                  className="absolute inset-x-0 bottom-0 z-30 bg-red-800 text-white px-2 py-1.5 text-[9px] font-bold uppercase tracking-widest cursor-pointer hover:bg-red-900 transition-colors text-center"
                   style={{ pointerEvents: 'auto' }}
                 >
-                  Remove
+                  ✕ Remove
                 </button>
               </div>
             );

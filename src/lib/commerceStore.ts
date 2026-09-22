@@ -345,6 +345,9 @@ function write<T>(key: string, value: T) {
 }
 
 export function productImages(product: CommerceProduct) {
+  if (product.images && product.images.length > 0) {
+    return Array.from(new Set(product.images.filter(Boolean))).slice(0, 5);
+  }
   const pId = (product.designId || product.id || "").toLowerCase();
   const matched = FOLLICIA_PRODUCTS.find(
     (p) => p.id.toLowerCase() === pId || p.designId.toLowerCase() === pId
@@ -355,12 +358,11 @@ export function productImages(product: CommerceProduct) {
   const fallbackCatalogImg = `/products/${(matched?.designId || product.designId || product.id).toLowerCase()}.webp`;
 
   const gallery = [
+    product.image,
     matched?.image,
     fallbackCatalogImg,
-    product.image,
     ...variantImgs,
     ...matchedVariantDict,
-    ...(product.images ?? []),
     ...prodVariantImgs,
   ].filter(Boolean);
 
@@ -368,11 +370,18 @@ export function productImages(product: CommerceProduct) {
 }
 
 export function productPrimaryImage(product: CommerceProduct) {
+  if (product.image && product.image.trim()) {
+    return product.image.trim();
+  }
+  const images = productImages(product);
+  if (images.length > 0 && images[0].trim()) {
+    return images[0].trim();
+  }
   const pId = (product.designId || product.id || "").toLowerCase();
   const matched = FOLLICIA_PRODUCTS.find(
     (p) => p.id.toLowerCase() === pId || p.designId.toLowerCase() === pId
   );
-  return matched?.image || `/products/${(matched?.designId || product.designId || product.id).toLowerCase()}.webp` || productImages(product)[0] || "/products/fa-01.webp";
+  return matched?.image || `/products/${(matched?.designId || product.designId || product.id).toLowerCase()}.webp` || "/products/fa-01.webp";
 }
 
 const OLD_PRODUCT_IDS = new Set([
@@ -405,7 +414,7 @@ function normalizeProduct(product: CommerceProduct): CommerceProduct {
           colourName: product.colourName || heroCol,
           colourCode: colorCode,
           colourVariantSku: product.colourVariantSku || `${dId}-${colorCode}`,
-          image: images[0] || product.image || "",
+          image: product.image || images[0] || "",
           fullSkus: computeAllFullSkus(dId, heroCol),
         }
       ]);
@@ -418,8 +427,8 @@ function normalizeProduct(product: CommerceProduct): CommerceProduct {
     ...product,
     designId: dId,
     price: formattedPrice,
-    image: matched?.image || images[0] || product.image || "/products/fa-01.webp",
-    images: images.length > 0 ? images : [matched?.image || "/products/fa-01.webp"],
+    image: product.image || images[0] || matched?.image || "/products/fa-01.webp",
+    images: (product.images && product.images.length > 0) ? product.images : images,
     variants,
     availableColors: product.availableColors || matched?.availableColors,
     colors: product.colors || matched?.colors,
